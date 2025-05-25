@@ -1,177 +1,70 @@
-# MedSage: AI-Powered Medical Study Companion
+# Getting Started with Create React App
 
-MedSage is an intelligent study companion designed specifically for medical students. It provides syllabus-aligned answers with textbook citations, personalized study plans, and offline support to make medical learning more efficient and accessible.
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## 🧠 Features
+## Available Scripts
 
-- **Expert Q&A:** Get concise, exam-focused or in-depth conceptual answers with proper textbook citations
-- **Syllabus Alignment:** Responses tailored to your curriculum (Indian MBBS, US MD, etc.)
-- **Personalized Study Planner:** Generate adaptive study schedules based on your progress and exam date
-- **Offline & Low-Bandwidth Support:** Access core features even with limited connectivity
-- **Progress Tracking:** Monitor your learning journey and revisit weak areas
+In the project directory, you can run:
 
-## 🚀 Getting Started
+### `npm start`
 
-### Prerequisites
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-- Node.js (v14+)
-- MongoDB
-- Redis
-- Perplexity Sonar API key
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
 
-### Installation
+### `npm test`
 
-1. Clone the repository
-```bash
-git clone https://github.com/yourusername/medsage.git
-cd medsage
-```
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-2. Install dependencies
-```bash
-# Install backend dependencies
-cd backend
-npm install
+### `npm run build`
 
-# Install frontend dependencies
-cd ../src/frontend
-npm install
-```
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-3. Create environment files
-```bash
-# In the backend directory
-cp .env.example .env
-```
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-4. Add your API keys and configuration to the `.env` file
-```
-PORT=4000
-MONGODB_URI=mongodb://localhost:27017/medsage
-REDIS_URL=redis://localhost:6379
-SONAR_API_KEY=your_sonar_api_key
-SESSION_SECRET=your_session_secret
-```
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-5. Start the development servers
-```bash
-# Start backend (from backend directory)
-npm run dev
+### `npm run eject`
 
-# Start frontend (from frontend directory)
-npm start
-```
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-## 🏗️ Tech Stack
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-### Backend
-- Node.js + TypeScript
-- Express.js
-- MongoDB with Mongoose
-- Redis for caching
-- Perplexity Sonar API
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-### Frontend
-- React + TypeScript
-- Material-UI (MUI)
-- Workbox for offline support
-- Axios for API requests
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-## 📁 Project Structure
+## Learn More
 
-```
-medsage/
-├── backend/
-│   ├── src/
-│   │   ├── server.ts         # Main server entry point
-│   │   ├── routes/           # API route definitions
-│   │   ├── services/         # Business logic services
-│   │   ├── models/           # Database models
-│   │   └── utils/            # Helper utilities
-│   ├── tsconfig.json         # TypeScript configuration
-│   └── package.json          # Backend dependencies
-├── src/
-│   ├── frontend/             # React frontend application
-│   │   ├── src/
-│   │   │   ├── components/   # React components
-│   │   │   ├── services/     # API integration services
-│   │   │   ├── contexts/     # React contexts
-│   │   │   ├── App.tsx       # Main application component
-│   │   │   └── index.tsx     # Entry point
-│   │   └── public/           # Static assets
-│   └── package.json          # Frontend dependencies
-└── README.md                 # Project documentation
-```
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-## 🧪 API Reference
+To learn React, check out the [React documentation](https://reactjs.org/).
 
-### Medical Query
+### Code Splitting
 
-```
-POST /api/medical-query
-```
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
-Request body:
-```json
-{
-  "question": "What are the major complications of diabetes mellitus?",
-  "mode": "exam",  // "exam" or "conceptual"
-  "syllabus": "Indian MBBS"  // Or other supported curricula
-}
-```
+### Analyzing the Bundle Size
 
-Response:
-```json
-{
-  "textWithRefs": "The major complications of diabetes mellitus include...<ref id='0'>[Harrison's, p.2399]</ref>",
-  "bookReferences": [
-    { "book": "Harrison's", "year": 2018, "page": 2399 }
-  ]
-}
-```
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
-### Study Plan
+### Making a Progressive Web App
 
-```
-POST /api/study-plan
-```
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
-Request body:
-```json
-{
-  "syllabus": "Indian MBBS",
-  "examDate": "2023-12-15",
-  "currentProgress": ["Cardiovascular System", "Respiratory System"]
-}
-```
+### Advanced Configuration
 
-Response:
-```json
-{
-  "daysRemaining": 45,
-  "dailyTopics": [
-    ["Endocrine System", "Renal System"],
-    ["Gastrointestinal System"],
-    // ...additional days
-  ],
-  "completionEstimate": "25%"
-}
-```
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-## 📋 Contributing
+### Deployment
 
-We welcome contributions to MedSage! Please check our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
-## 📄 License
+### `npm run build` fails to minify
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgements
-
-- Perplexity for providing the Sonar API
-- Medical textbook publishers for the valuable knowledge base
-- All medical students who provided feedback during development
-
----
-
-**MedSage: Your wise guide for the medical journey.**
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
