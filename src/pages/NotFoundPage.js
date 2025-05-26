@@ -3,6 +3,7 @@ import { Box, Typography, Button, Paper, Container } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Error as ErrorIcon } from '@mui/icons-material';
 
+
 const NotFoundPage = () => {
   return (
     <Container maxWidth="md">

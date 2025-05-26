@@ -29,24 +29,68 @@ function App() {
   };
 
   // Create the theme based on current mode
-  const theme = useMemo(() => createTheme({
-    palette: {
-      mode,
-      primary: {
-        main: '#1976d2',
-      },
-      secondary: {
-        main: '#f50057',
-      },
-      background: {
-        default: mode === 'light' ? '#f5f5f5' : '#121212',
-        paper: mode === 'light' ? '#fff' : '#1e1e1e',
+  // In App.js, update your theme creation
+const theme = useMemo(() => createTheme({
+  palette: {
+    mode,
+    primary: {
+      light: '#4dabf5',
+      main: '#1976d2',
+      dark: '#1565c0',
+      contrastText: '#fff',
+    },
+    secondary: {
+      light: '#f73378',
+      main: '#f50057',
+      dark: '#ab003c',
+      contrastText: '#fff',
+    },
+    info: {
+      light: '#33c9dc',
+      main: '#00b0cd',
+      dark: '#007a8f',
+    },
+    success: {
+      light: '#4caf50',
+      main: '#2e7d32',
+      dark: '#1b5e20',
+    },
+    background: {
+      default: mode === 'light' ? '#f8f9fa' : '#121212',
+      paper: mode === 'light' ? '#fff' : '#1e1e1e',
+    },
+  },
+  typography: {
+    fontFamily: '"Poppins", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: { fontWeight: 700 },
+    h2: { fontWeight: 700 },
+    h3: { fontWeight: 700 },
+    h4: { fontWeight: 600 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
+  },
+  shape: {
+    borderRadius: 8,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          borderRadius: 8,
+        },
       },
     },
-    typography: {
-      fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
     },
-  }), [mode]);
+  },
+}), [mode]);
+
 
   return (
     <ThemeContext.Provider value={{ mode, toggleColorMode }}>
