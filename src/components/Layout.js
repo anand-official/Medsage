@@ -142,7 +142,7 @@ function Layout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            MedStudy Companion
+            MedSage
           </Typography>
           
           {isOfflineMode && (
