@@ -129,17 +129,21 @@ const StudyPlannerPage = () => {
     visible: { 
       opacity: 1,
       transition: { 
-        staggerChildren: 0.1 
+        duration: 0.3,
+        staggerChildren: 0.1,
+        when: "beforeChildren"
       }
     }
   };
   
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { opacity: 0 },
     visible: { 
-      y: 0, 
       opacity: 1,
-      transition: { type: "spring", stiffness: 100 }
+      transition: { 
+        duration: 0.3,
+        ease: "easeOut"
+      }
     }
   };
 
@@ -164,50 +168,162 @@ const StudyPlannerPage = () => {
     })) : [];
   };
 
+  // Check if form is valid
+  const isFormValid = () => {
+    return (
+      isValid(localExamDate) &&
+      selectedSubjects.length > 0 &&
+      weakSubjects.length > 0
+    );
+  };
+
+  // Handle generate plan
+  const handleGeneratePlan = (e) => {
+    e.preventDefault();
+    if (!isGenerating && isFormValid()) {
+      contextGenerateStudyPlan();
+    }
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container 
+      maxWidth={false} 
+      sx={{ 
+        py: 4, 
+        minHeight: '100vh',
+        px: { xs: 2, sm: 3, md: 4 },
+        maxWidth: '100% !important'
+      }}
+    >
       <motion.div
         initial="hidden"
         animate="visible"
         variants={containerVariants}
+        style={{ 
+          position: 'relative',
+          width: '100%',
+          height: '100%'
+        }}
       >
         {/* Page Header */}
-        <motion.div variants={itemVariants}>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            gutterBottom 
-            sx={{ 
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              mb: 4
-            }}
-          >
-            <CalendarTodayIcon sx={{ mr: 2 }} />
-            Study Planner
-          </Typography>
+        <motion.div 
+          variants={itemVariants}
+          style={{ 
+            position: 'relative',
+            width: '100%'
+          }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            mb: 4,
+            position: 'relative',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: -16,
+              left: 0,
+              right: 0,
+              height: '1px',
+              background: `linear-gradient(90deg, transparent, ${theme.palette.primary.main}40, transparent)`
+            }
+          }}>
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+                textShadow: `0 2px 10px ${theme.palette.primary.main}40`
+              }}
+            >
+              <CalendarTodayIcon sx={{ mr: 2, filter: `drop-shadow(0 2px 4px ${theme.palette.primary.main}40)` }} />
+              Study Planner
+            </Typography>
+            
+            {studyPlan && studyPlan.daysRemaining && (
+              <Chip
+                icon={<TimelineIcon />}
+                label={`${studyPlan.daysRemaining} days until exam`}
+                color="primary"
+                variant="outlined"
+                sx={{
+                  borderRadius: 2,
+                  px: 2,
+                  py: 3,
+                  background: theme.palette.mode === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(0, 0, 0, 0.02)',
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${theme.palette.primary.main}30`,
+                  '& .MuiChip-label': {
+                    fontWeight: 600
+                  }
+                }}
+              />
+            )}
+          </Box>
         </motion.div>
 
-        <Grid container spacing={4}>
+        <Grid container spacing={3} sx={{ position: 'relative', width: '100%' }}>
           {/* Left Column - Today's Schedule and Form */}
-          <Grid item xs={12} md={5}>
-            <motion.div variants={itemVariants}>
+          <Grid item xs={12} md={5} sx={{ width: '100%' }}>
+            <motion.div 
+              variants={itemVariants}
+              style={{ 
+                position: 'relative',
+                width: '100%'
+              }}
+            >
               <TodaySchedule schedule={getTodaySchedule()} />
             </motion.div>
 
-            <motion.div variants={itemVariants} style={{ marginTop: '2rem' }}>
+            <motion.div 
+              variants={itemVariants}
+              style={{ 
+                position: 'relative',
+                width: '100%',
+                marginTop: '2rem'
+              }}
+            >
               <Card 
-                elevation={3}
-                className="classic-card"
+                elevation={0}
                 sx={{ 
                   height: '100%',
-                  background: mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(10px)'
+                  width: '100%',
+                  background: theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(30, 30, 30, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 247, 250, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: 3,
+                  border: `1px solid ${theme.palette.mode === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(0, 0, 0, 0.1)'}`,
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? '0 4px 30px rgba(0, 0, 0, 0.5)'
+                    : '0 4px 30px rgba(0, 0, 0, 0.1)'
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom className="classic-header">
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom 
+                    sx={{
+                      fontWeight: 600,
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      color: theme.palette.primary.main
+                    }}
+                  >
+                    <BookmarkIcon sx={{ color: 'inherit' }} />
                     Generate Your Study Plan
                   </Typography>
                   
@@ -220,7 +336,18 @@ const StudyPlannerPage = () => {
                         slotProps={{ 
                           textField: { 
                             fullWidth: true,
-                            margin: "normal"
+                            margin: "normal",
+                            sx: {
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                  '& fieldset': {
+                                    borderColor: theme.palette.primary.main
+                                  }
+                                }
+                              }
+                            }
                           }
                         }}
                         disablePast
@@ -237,10 +364,30 @@ const StudyPlannerPage = () => {
                         renderValue={(selected) => (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {selected.map((value) => (
-                              <Chip key={value} label={value} size="small" />
+                              <Chip 
+                                key={value} 
+                                label={value} 
+                                size="small"
+                                sx={{
+                                  borderRadius: 1,
+                                  bgcolor: `${theme.palette.primary.main}15`,
+                                  borderColor: `${theme.palette.primary.main}30`,
+                                  '&:hover': {
+                                    bgcolor: `${theme.palette.primary.main}25`
+                                  }
+                                }}
+                              />
                             ))}
                           </Box>
                         )}
+                        sx={{
+                          borderRadius: 2,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: theme.palette.mode === 'dark' 
+                              ? 'rgba(255, 255, 255, 0.2)' 
+                              : 'rgba(0, 0, 0, 0.2)'
+                          }
+                        }}
                       >
                         {SUBJECTS.map((subject) => (
                           <MenuItem key={subject} value={subject}>
@@ -264,10 +411,26 @@ const StudyPlannerPage = () => {
                                 label={value} 
                                 size="small"
                                 color="secondary"
+                                sx={{
+                                  borderRadius: 1,
+                                  bgcolor: `${theme.palette.secondary.main}15`,
+                                  borderColor: `${theme.palette.secondary.main}30`,
+                                  '&:hover': {
+                                    bgcolor: `${theme.palette.secondary.main}25`
+                                  }
+                                }}
                               />
                             ))}
                           </Box>
                         )}
+                        sx={{
+                          borderRadius: 2,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: theme.palette.mode === 'dark' 
+                              ? 'rgba(255, 255, 255, 0.2)' 
+                              : 'rgba(0, 0, 0, 0.2)'
+                          }
+                        }}
                       >
                         {SUBJECTS.map((subject) => (
                           <MenuItem key={subject} value={subject}>
@@ -283,17 +446,13 @@ const StudyPlannerPage = () => {
                       color="primary"
                       size="large"
                       onClick={contextGenerateStudyPlan}
-                      disabled={isGenerating}
-                      sx={{ mt: 3 }}
+                      sx={{
+                        mt: 3,
+                        py: 1.5,
+                        borderRadius: 2
+                      }}
                     >
-                      {isGenerating ? (
-                        <>
-                          <CircularProgress size={24} sx={{ mr: 1 }} />
-                          Generating Plan...
-                        </>
-                      ) : (
-                        'Generate Study Plan'
-                      )}
+                      Generate Study Plan
                     </Button>
                   </Box>
                 </CardContent>
@@ -302,48 +461,102 @@ const StudyPlannerPage = () => {
           </Grid>
 
           {/* Right Column - Study Plan */}
-          <Grid item xs={12} md={7}>
-            <motion.div variants={itemVariants}>
+          <Grid item xs={12} md={7} sx={{ width: '100%' }}>
+            <motion.div 
+              variants={itemVariants}
+              style={{ 
+                position: 'relative',
+                width: '100%',
+                height: '100%'
+              }}
+            >
               <Card 
-                elevation={3}
-                className="classic-card"
+                elevation={0}
                 sx={{ 
                   height: '100%',
-                  background: mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(10px)'
+                  width: '100%',
+                  background: theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(30, 30, 30, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 247, 250, 0.95) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: 3,
+                  border: `1px solid ${theme.palette.mode === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(0, 0, 0, 0.1)'}`,
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? '0 4px 30px rgba(0, 0, 0, 0.5)'
+                    : '0 4px 30px rgba(0, 0, 0, 0.1)'
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom className="classic-header">
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom 
+                    sx={{
+                      fontWeight: 600,
+                      mb: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      color: theme.palette.primary.main
+                    }}
+                  >
+                    <TimelineIcon sx={{ color: 'inherit' }} />
                     Your Study Plan
                   </Typography>
                   
                   {studyPlan && studyPlan.dailyPlan ? (
-                    <List>
+                    <List sx={{ p: 0 }}>
                       {studyPlan.dailyPlan.map((day, dayIndex) => {
                         const planDate = new Date(day.date);
                         if (!isValid(planDate)) return null;
                         
                         return (
                           <React.Fragment key={dayIndex}>
-                            <ListItem 
+                            <ListItem
                               button
                               onClick={() => toggleDayExpansion(dayIndex)}
                               sx={{ 
                                 borderRadius: 2,
                                 mb: 1,
-                                bgcolor: theme.palette.background.default
+                                bgcolor: theme.palette.mode === 'dark'
+                                  ? 'rgba(255, 255, 255, 0.05)'
+                                  : 'rgba(0, 0, 0, 0.03)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                  bgcolor: theme.palette.mode === 'dark'
+                                    ? 'rgba(255, 255, 255, 0.08)'
+                                    : 'rgba(0, 0, 0, 0.05)',
+                                  transform: 'translateX(4px)'
+                                }
                               }}
                             >
                               <ListItemText
                                 primary={
-                                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                  <Typography 
+                                    variant="subtitle1" 
+                                    sx={{ 
+                                      fontWeight: 600,
+                                      color: theme.palette.primary.main
+                                    }}
+                                  >
                                     {format(planDate, 'EEEE, MMMM d')}
                                   </Typography>
                                 }
-                                secondary={`${day.topics.length} topics`}
+                                secondary={
+                                  <Typography 
+                                    variant="caption" 
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    {day.topics.length} topics to cover
+                                  </Typography>
+                                }
                               />
-                              {expandedDay === dayIndex ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                              {expandedDay === dayIndex ? 
+                                <ExpandLessIcon sx={{ color: theme.palette.primary.main }} /> : 
+                                <ExpandMoreIcon sx={{ color: theme.palette.primary.main }} />
+                              }
                             </ListItem>
                             
                             <Collapse in={expandedDay === dayIndex}>
@@ -355,18 +568,44 @@ const StudyPlannerPage = () => {
                                       pl: 4,
                                       borderRadius: 2,
                                       mb: 1,
-                                      bgcolor: theme.palette.background.paper
+                                      bgcolor: theme.palette.mode === 'dark'
+                                        ? 'rgba(255, 255, 255, 0.03)'
+                                        : 'rgba(0, 0, 0, 0.02)',
+                                      transition: 'all 0.3s ease',
+                                      '&:hover': {
+                                        bgcolor: theme.palette.mode === 'dark'
+                                          ? 'rgba(255, 255, 255, 0.05)'
+                                          : 'rgba(0, 0, 0, 0.03)',
+                                        transform: 'translateX(4px)'
+                                      }
                                     }}
                                   >
                                     <ListItemText
                                       primary={topic}
-                                      secondary="Click to mark as complete"
+                                      secondary={
+                                        <Typography 
+                                          variant="caption" 
+                                          color="text.secondary"
+                                          sx={{ mt: 0.5 }}
+                                        >
+                                          Click to mark as complete
+                                        </Typography>
+                                      }
                                     />
                                     <Button
                                       size="small"
                                       variant="outlined"
                                       color="primary"
                                       onClick={() => markTopicComplete(dayIndex, topicIndex)}
+                                      sx={{
+                                        borderRadius: 2,
+                                        textTransform: 'none',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                          transform: 'translateY(-2px)',
+                                          boxShadow: `0 4px 12px ${theme.palette.primary.main}40`
+                                        }
+                                      }}
                                     >
                                       Complete
                                     </Button>
@@ -379,12 +618,42 @@ const StudyPlannerPage = () => {
                       })}
                     </List>
                   ) : (
-                    <Box sx={{ py: 4, textAlign: 'center' }}>
-                      <Typography color="text.secondary" gutterBottom>
+                    <Box 
+                      sx={{ 
+                        py: 8, 
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 2,
+                        background: theme.palette.mode === 'dark'
+                          ? 'radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%)'
+                          : 'radial-gradient(circle at center, rgba(0, 0, 0, 0.02) 0%, transparent 70%)',
+                        borderRadius: 3
+                      }}
+                    >
+                      <TimelineIcon 
+                        sx={{ 
+                          fontSize: 60,
+                          color: theme.palette.primary.main,
+                          opacity: 0.5,
+                          filter: `drop-shadow(0 4px 8px ${theme.palette.primary.main}40)`
+                        }} 
+                      />
+                      <Typography 
+                        variant="h6" 
+                        color="text.secondary" 
+                        gutterBottom
+                        sx={{ fontWeight: 600 }}
+                      >
                         No study plan generated yet
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Fill out the form and click "Generate Study Plan" to get started
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ maxWidth: 400 }}
+                      >
+                        Fill out the form and click "Generate Study Plan" to create your personalized study schedule
                       </Typography>
                     </Box>
                   )}
