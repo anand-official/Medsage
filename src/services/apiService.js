@@ -117,7 +117,7 @@ export const getStudyPlan = async (syllabus, examDate, progress) => {
 // IndexedDB cache functions
 const saveToCache = async (storeName, key, data) => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('MedStudyDB', 1);
+    const request = indexedDB.open('MedSage DB', 1);
     
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
@@ -152,7 +152,7 @@ const saveToCache = async (storeName, key, data) => {
 
 const getFromCache = async (storeName, key) => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('MedStudyDB', 1);
+    const request = indexedDB.open('MedSage DB', 1);
     
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
@@ -208,7 +208,7 @@ const findSimilarCachedQuery = async (question, mode, syllabus) => {
   // This would be a more complex implementation in a real app
   // For the hackathon, a simplified version:
   try {
-    const request = indexedDB.open('MedStudyDB', 1);
+    const request = indexedDB.open('MedSage DB', 1);
     
     return new Promise((resolve, reject) => {
       request.onsuccess = (event) => {

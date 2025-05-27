@@ -1,179 +1,183 @@
-// src/theme.js
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976D2',
-      light: '#4791db',
-      dark: '#115293',
+// Create a function to generate a theme based on mode
+const getTheme = (mode) => {
+  let theme = createTheme({
+    palette: {
+      mode: mode,
+      ...(mode === 'light' 
+        ? {
+            // Light mode palette
+            primary: {
+              main: '#1976d2',
+            },
+            secondary: {
+              main: '#f50057',
+            },
+            background: {
+              default: '#f5f7fa',
+              paper: '#ffffff',
+            },
+          }
+        : {
+            // Dark mode palette
+            primary: {
+              main: '#90caf9',
+            },
+            secondary: {
+              main: '#f48fb1',
+            },
+            background: {
+              default: '#121212',
+              paper: '#1e1e1e',
+            },
+            text: {
+              primary: 'rgba(255, 255, 255, 0.87)',
+              secondary: 'rgba(255, 255, 255, 0.6)',
+            },
+          }),
     },
-    secondary: {
-      main: '#DC004E',
-      light: '#e33371',
-      dark: '#9a0036',
+    typography: {
+      fontFamily: "'Poppins', sans-serif",
+      h1: {
+        fontWeight: 600,
+        fontSize: '2.5rem',
+      },
+      h2: {
+        fontWeight: 600,
+        fontSize: '2rem',
+      },
+      h3: {
+        fontWeight: 600,
+        fontSize: '1.75rem',
+      },
+      h4: {
+        fontWeight: 500,
+        fontSize: '1.5rem',
+      },
+      h5: {
+        fontWeight: 500,
+        fontSize: '1.25rem',
+      },
+      h6: {
+        fontWeight: 500,
+        fontSize: '1.1rem',
+      },
+      subtitle1: {
+        fontSize: '1rem',
+        fontWeight: 400,
+      },
+      body1: {
+        fontSize: '0.95rem',
+      },
     },
-    background: {
-      default: '#F9FAFB',
-      paper: '#FFFFFF',
+    shape: {
+      borderRadius: 8,
     },
-    text: {
-      primary: '#212121',
-      secondary: '#757575',
-    },
-    divider: '#E0E0E0',
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: '24px',
-      lineHeight: '32px',
-      fontWeight: 600,
-      marginBottom: '16px',
-    },
-    h2: {
-      fontSize: '20px',
-      lineHeight: '28px',
-      fontWeight: 500,
-      marginBottom: '12px',
-    },
-    h5: {
-      fontWeight: 600,
-      fontSize: '18px',
-      lineHeight: '26px',
-    },
-    h6: {
-      fontWeight: 600,
-      fontSize: '16px',
-      lineHeight: '24px',
-    },
-    body1: {
-      fontSize: '16px',
-      lineHeight: '24px',
-      fontWeight: 400,
-    },
-    body2: {
-      fontSize: '14px',
-      lineHeight: '20px',
-      color: '#757575',
-    },
-    button: {
-      fontSize: '14px',
-      lineHeight: '20px',
-      fontWeight: 500,
-      textTransform: 'uppercase',
-    },
-  },
-  shape: {
-    borderRadius: 8,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          height: 40,
-          borderRadius: 4,
-          padding: '8px 16px',
-          boxShadow: 'none',
-          '&:hover': {
-            boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
-            backgroundColor: '#1565C0', // Darker on hover
-          },
-        },
-        contained: {
-          boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.12)',
-        },
-        containedPrimary: {
-          '&:hover': {
-            backgroundColor: '#115293',
-          },
-        },
-        containedSecondary: {
-          '&:hover': {
-            backgroundColor: '#9a0036',
+    components: {
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+            boxShadow: mode === 'dark' 
+              ? '0 8px 24px rgba(0, 0, 0, 0.2)' 
+              : '0 2px 12px rgba(0, 0, 0, 0.08)',
+            borderRadius: 12,
           },
         },
       },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          marginBottom: 16,
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+          },
         },
       },
-      defaultProps: {
-        variant: 'outlined',
-        fullWidth: true,
-        InputProps: {
-          style: {
-            height: 48,
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            textTransform: 'none',
+            borderRadius: 8,
+            padding: '8px 16px',
+            fontWeight: 500,
+          },
+          containedPrimary: {
+            boxShadow: mode === 'dark' 
+              ? '0 4px 12px rgba(144, 202, 249, 0.3)' 
+              : '0 4px 12px rgba(25, 118, 210, 0.2)',
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 6,
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'dark' ? '#1a1a1a' : '#ffffff',
+            color: mode === 'dark' ? '#ffffff' : '#000000',
+            boxShadow: mode === 'dark' 
+              ? '0 2px 10px rgba(0, 0, 0, 0.3)' 
+              : '0 2px 10px rgba(0, 0, 0, 0.1)',
+          },
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+          },
+        },
+      },
+      MuiListItem: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            marginBottom: 4,
+          },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            margin: '16px 0',
+            borderColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 8,
+            },
+          },
+        },
+      },
+      MuiAlert: {
+        styleOverrides: {
+          root: {
             borderRadius: 8,
           },
         },
       },
     },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-          boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.08)',
-          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
-          },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-        },
-      },
-    },
-    MuiContainer: {
-      styleOverrides: {
-        root: {
-          paddingLeft: 16,
-          paddingRight: 16,
-          '@media (min-width:600px)': {
-            paddingLeft: 24,
-            paddingRight: 24,
-            maxWidth: 600,
-          },
-          '@media (min-width:960px)': {
-            maxWidth: 960,
-          },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-        },
-      },
-    },
-    MuiListItem: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          '&:hover': {
-            backgroundColor: 'rgba(25, 118, 210, 0.04)',
-          },
-        },
-      },
-    },
-    MuiLinearProgress: {
-      styleOverrides: {
-        root: {
-          borderRadius: 5,
-          height: 10,
-        },
-      },
-    },
-  },
-});
+  });
+
+  // Add responsive font sizes
+  theme = responsiveFontSizes(theme);
+  
+  return theme;
+}
+
+// Export default light theme
+const theme = getTheme('light');
+
+// Export the theme generator function
+export { getTheme };
 
 export default theme;
