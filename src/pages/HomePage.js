@@ -135,14 +135,14 @@ const HomePage = () => {
               mb: 3
             }}
           >
-            Your AI-powered medical learning assistant
+            Your Smartest Ally in Medical Mastery 
           </Typography>
         </motion.div>
       </Box>
       
       {/* Quick Actions */}
       <motion.div variants={itemVariants}>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
           Quick Actions
         </Typography>
         

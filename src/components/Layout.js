@@ -40,7 +40,7 @@ import {
 import { motion } from 'framer-motion';
 import { ThemeContext } from '../App';
 import { StudyContext } from '../contexts/StudyContext';
-import logo from '../assets/logo.png'; // Ensure you have a logo file
+import logo from './assets/logo.jpg'; // Ensure you have a logo file
 
 const Layout = () => {
   const theme = useTheme();
