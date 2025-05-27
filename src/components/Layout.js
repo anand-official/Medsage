@@ -42,7 +42,7 @@ function Layout() {
     <Box>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Typography variant="h6" component="div">
-          MedStudy Companion
+          MedSage
         </Typography>
       </Box>
       <Divider />
