@@ -40,7 +40,6 @@ import {
 import { motion } from 'framer-motion';
 import { ThemeContext } from '../App';
 import { StudyContext } from '../contexts/StudyContext';
-import logo from './assets/logo.jpg'; // Ensure you have a logo file
 
 const Layout = () => {
   const theme = useTheme();
@@ -81,10 +80,6 @@ const Layout = () => {
         p: 2,
         borderBottom: `1px solid ${theme.palette.divider}`
       }}>
-        <img src={logo} alt="MedSage Logo" height="40" />
-        <Typography variant="h6" sx={{ ml: 1, fontWeight: 700 }}>
-          MedSage
-        </Typography>
       </Box>
       
       <Box sx={{ mt: 2, px: 2 }}>
@@ -191,9 +186,8 @@ const Layout = () => {
           </IconButton>
           
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-            <img src={logo} alt="MedSage Logo" height="30" style={{ marginRight: 8 }} />
             <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
-              MedSage
+              Study Assistant
             </Typography>
           </Box>
           

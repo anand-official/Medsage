@@ -9,15 +9,17 @@ MedSage is an intelligent study companion designed specifically for medical stud
 - **Personalized Study Planner:** Generate adaptive study schedules based on your progress and exam date
 - **Offline & Low-Bandwidth Support:** Access core features even with limited connectivity
 - **Progress Tracking:** Monitor your learning journey and revisit weak areas
+- **Smart Dashboard:** View today's schedule, recent activity, and quick access to key features
+- **Responsive Design:** Optimized for all device sizes with a modern, intuitive interface
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v14+)
-- MongoDB
-- Redis
-- Perplexity Sonar API key
+- Node.js (v16+)
+- npm or yarn
+- MongoDB (optional for full features)
+- Redis (optional for caching)
 
 ### Installation
 
@@ -29,51 +31,33 @@ cd medsage
 
 2. Install dependencies
 ```bash
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../src/frontend
 npm install
 ```
 
-3. Create environment files
+3. Create environment file
 ```bash
-# In the backend directory
 cp .env.example .env
 ```
 
-4. Add your API keys and configuration to the `.env` file
+4. Add your configuration to the `.env` file
 ```
-PORT=4000
-MONGODB_URI=mongodb://localhost:27017/medsage
-REDIS_URL=redis://localhost:6379
-SONAR_API_KEY=your_sonar_api_key
-SESSION_SECRET=your_session_secret
+REACT_APP_API_URL=http://localhost:4000
+REACT_APP_OFFLINE_MODE=true
 ```
 
-5. Start the development servers
+5. Start the development server
 ```bash
-# Start backend (from backend directory)
-npm run dev
-
-# Start frontend (from frontend directory)
 npm start
 ```
 
 ## 🏗️ Tech Stack
 
-### Backend
-- Node.js + TypeScript
-- Express.js
-- MongoDB with Mongoose
-- Redis for caching
-- Perplexity Sonar API
-
 ### Frontend
-- React + TypeScript
-- Material-UI (MUI)
+- React 18
+- Material-UI (MUI) v5
+- Framer Motion for animations
+- React Router v6
+- Context API for state management
 - Workbox for offline support
 - Axios for API requests
 
@@ -81,82 +65,78 @@ npm start
 
 ```
 medsage/
-├── backend/
-│   ├── src/
-│   │   ├── server.ts         # Main server entry point
-│   │   ├── routes/           # API route definitions
-│   │   ├── services/         # Business logic services
-│   │   ├── models/           # Database models
-│   │   └── utils/            # Helper utilities
-│   ├── tsconfig.json         # TypeScript configuration
-│   └── package.json          # Backend dependencies
 ├── src/
-│   ├── frontend/             # React frontend application
-│   │   ├── src/
-│   │   │   ├── components/   # React components
-│   │   │   ├── services/     # API integration services
-│   │   │   ├── contexts/     # React contexts
-│   │   │   ├── App.tsx       # Main application component
-│   │   │   └── index.tsx     # Entry point
-│   │   └── public/           # Static assets
-│   └── package.json          # Frontend dependencies
-└── README.md                 # Project documentation
+│   ├── components/           # React components
+│   │   ├── common/          # Shared components
+│   │   ├── home/           # Home page components
+│   │   ├── study-planner/  # Study planner components
+│   │   ├── questions/      # Question components
+│   │   └── book-reference/ # Book reference components
+│   ├── contexts/           # React contexts
+│   ├── hooks/             # Custom React hooks
+│   ├── pages/             # Page components
+│   ├── services/          # API integration services
+│   ├── utils/             # Helper utilities
+│   ├── App.js             # Main application component
+│   └── index.js           # Entry point
+├── public/                # Static assets
+├── package.json           # Project dependencies
+└── README.md             # Project documentation
 ```
 
-## 🧪 API Reference
+## 🎨 UI Components
 
-### Medical Query
+### Home Page
+- Hero section with gradient title
+- Quick action cards with animated icons
+- Progress tracking with circular indicator
+- Recent activity feed
+- Recommended content section
 
-```
-POST /api/medical-query
+### Study Planner
+- Today's schedule overview
+- Interactive study plan generator
+- Subject and weak area selection
+- Expandable daily topics
+- Progress tracking
+
+### Question Page
+- Syllabus-aligned Q&A
+- Textbook citations
+- Offline support
+- Recent queries history
+
+## 📱 Responsive Design
+
+The application is fully responsive and optimized for:
+- Desktop (1920px, 1440px, 1024px)
+- Tablet (768px)
+- Mobile (480px, 320px)
+
+## 🔧 Development
+
+### Available Scripts
+
+```bash
+# Start development server
+npm start
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+
+# Eject from create-react-app
+npm run eject
 ```
 
-Request body:
-```json
-{
-  "question": "What are the major complications of diabetes mellitus?",
-  "mode": "exam",  // "exam" or "conceptual"
-  "syllabus": "Indian MBBS"  // Or other supported curricula
-}
-```
+### Code Style
 
-Response:
-```json
-{
-  "textWithRefs": "The major complications of diabetes mellitus include...<ref id='0'>[Harrison's, p.2399]</ref>",
-  "bookReferences": [
-    { "book": "Harrison's", "year": 2018, "page": 2399 }
-  ]
-}
-```
-
-### Study Plan
-
-```
-POST /api/study-plan
-```
-
-Request body:
-```json
-{
-  "syllabus": "Indian MBBS",
-  "examDate": "2023-12-15",
-  "currentProgress": ["Cardiovascular System", "Respiratory System"]
-}
-```
-
-Response:
-```json
-{
-  "daysRemaining": 45,
-  "dailyTopics": [
-    ["Endocrine System", "Renal System"],
-    ["Gastrointestinal System"],
-    // ...additional days
-  ],
-  "completionEstimate": "25%"
-}
-```
+- ESLint for code linting
+- Prettier for code formatting
+- Component-based architecture
+- Custom hooks for reusable logic
 
 ## 📋 Contributing
 
@@ -168,8 +148,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgements
 
-- Perplexity for providing the Sonar API
-- Medical textbook publishers for the valuable knowledge base
+- Material-UI team for the excellent component library
+- Framer Motion for the animation capabilities
 - All medical students who provided feedback during development
 
 ---
