@@ -1,371 +1,435 @@
-import React, { useState, useContext, useEffect } from 'react';
-import {
-  Box, Typography, Paper, Button, CircularProgress, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Checkbox, LinearProgress, Card, CardContent, Container,
-  Chip, Divider
+// StudyPlannerPage.js
+import React, { useState, useEffect, useContext } from 'react';
+import { 
+  Container, Typography, Box, Grid, Card, CardContent, 
+  Button, Divider, TextField, FormControl, InputLabel,
+  Select, MenuItem, Chip, Alert, CircularProgress, 
+  Paper, List, ListItem, ListItemText, Collapse
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import {
-  CalendarMonth as CalendarIcon,
-  CheckCircle as CheckCircleIcon,
-  Timer as TimerIcon
-} from '@mui/icons-material';
+import { motion } from 'framer-motion';
+import { format, differenceInDays, addDays } from 'date-fns';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import TimelineIcon from '@mui/icons-material/Timeline';
+
 import { StudyContext } from '../contexts/StudyContext';
-import { getStudyPlan } from '../services/apiService';
+import { ThemeContext } from '../App';
+import { usePageAnimation } from '../hooks/usePageAnimation';
+
+// Sample subject data - in a real app this would come from an API
+const SUBJECTS = [
+  "Anatomy",
+  "Physiology",
+  "Biochemistry",
+  "Pharmacology",
+  "Pathology",
+  "Microbiology",
+  "Community Medicine",
+  "Forensic Medicine",
+  "Medicine",
+  "Surgery",
+  "Obstetrics & Gynecology",
+  "Pediatrics",
+  "Psychiatry",
+  "Dermatology",
+  "Orthopedics",
+  "ENT",
+  "Ophthalmology",
+  "Radiology"
+];
 
 const StudyPlannerPage = () => {
+  // Hooks
+  usePageAnimation();
+  const { mode } = useContext(ThemeContext);
   const { 
     currentSyllabus, 
+    progress, 
     examDate, 
     setExamDate, 
-    studyProgress, 
-    updateProgress,
-    isOfflineMode
+    selectedSubjects, 
+    setSelectedSubjects,
+    weakSubjects, 
+    setWeakSubjects,
+    generateStudyPlan: contextGenerateStudyPlan,
+    isGenerating,
+    studyPlan
   } = useContext(StudyContext);
   
-  const [studyPlan, setStudyPlan] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // Generate or refresh study plan
-  const generatePlan = async () => {
-    if (!examDate) {
-      setError('Please select an exam date');
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const plan = await getStudyPlan(currentSyllabus, examDate.toISOString(), studyProgress);
-      if (plan.error) {
-        setError(plan.error);
-      } else {
-        setStudyPlan(plan);
-      }
-    } catch (err) {
-      setError('Failed to generate study plan. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Calculate days until exam
-  const getDaysUntilExam = () => {
-    if (!examDate) return null;
-    
-    const today = new Date();
-    const exam = new Date(examDate);
-    return Math.ceil((exam - today) / (1000 * 60 * 60 * 24));
-  };
-  
-  // Format date to display
-  const formatDate = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-  
-  // Toggle topic completion status
-  const toggleTopicCompleted = (topic) => {
-    const isCompleted = studyProgress.includes(topic);
-    updateProgress(topic, !isCompleted);
-  };
-  
-  // Calculate overall progress percentage
-  const calculateProgress = () => {
-    if (!studyPlan || !studyPlan.allTopics || studyPlan.allTopics.length === 0) return 0;
-    
-    return Math.round((studyProgress.length / studyPlan.allTopics.length) * 100);
-  };
-  
+  // State
+  const [expandedDay, setExpandedDay] = useState(null);
+  const [localExamDate, setLocalExamDate] = useState(examDate || addDays(new Date(), 30));
+
+  // Update context exam date when local date changes
   useEffect(() => {
-    // If we have an exam date, generate the plan when the component mounts
-    if (examDate && !studyPlan && !loading) {
-      generatePlan();
+    if (setExamDate) {
+      setExamDate(localExamDate);
     }
-  }, []);
+  }, [localExamDate, setExamDate]);
+
+  // Toggle day expansion
+  const toggleDayExpansion = (dayIndex) => {
+    if (expandedDay === dayIndex) {
+      setExpandedDay(null);
+    } else {
+      setExpandedDay(dayIndex);
+    }
+  };
+
+  // Handle subject selection
+  const handleSubjectChange = (event) => {
+    setSelectedSubjects(event.target.value);
+  };
+
+  // Handle weak subject selection
+  const handleWeakSubjectChange = (event) => {
+    setWeakSubjects(event.target.value);
+  };
+
+  // Mark topic as complete
+  const markTopicComplete = (dayIndex, topicIndex) => {
+    // Get the topic
+    const topic = studyPlan.dailyPlan[dayIndex][topicIndex];
+    
+    // Update progress in context
+    const updatedProgress = { ...progress };
+    updatedProgress[topic] = 100;
+    
+    // In a real app, you would call a context method to update progress
+    // For now, we'll just update the local study plan
+    const updatedPlan = { ...studyPlan };
+    
+    // Remove topic from plan
+    updatedPlan.dailyPlan[dayIndex] = updatedPlan.dailyPlan[dayIndex].filter(
+      (_, index) => index !== topicIndex
+    );
+    
+    // Remove day if empty
+    if (updatedPlan.dailyPlan[dayIndex].length === 0) {
+      updatedPlan.dailyPlan = updatedPlan.dailyPlan.filter(
+        (_, index) => index !== dayIndex
+      );
+    }
+    
+    // In a real app, you would call a context method to update the study plan
+    localStorage.setItem('studyPlan', JSON.stringify(updatedPlan));
+  };
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.1 
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100 }
+    }
+  };
 
   return (
-    <Container maxWidth="md" sx={{ pt: 2 }}>
-      <Card sx={{ 
-        borderRadius: 3, 
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
-        mb: 4 
-      }}>
-        <CardContent sx={{ pt: 3, pb: 3 }}>
-          <Typography variant="h5" component="h1" fontWeight="600" color="primary" gutterBottom>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        {/* Page Header */}
+        <motion.div variants={itemVariants}>
+          <Typography 
+            variant="h4" 
+            component="h1" 
+            gutterBottom 
+            sx={{ 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              mb: 4
+            }}
+          >
+            <CalendarTodayIcon sx={{ mr: 2 }} />
             Study Planner
           </Typography>
-          
-          {isOfflineMode && (
-            <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-              You're in offline mode. Only cached study plans will be available.
-            </Alert>
-          )}
-          
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-              Set Your Exam Date
-            </Typography>
-            
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Exam Date"
-                value={examDate}
-                onChange={(newValue) => {
-                  setExamDate(newValue);
+        </motion.div>
+
+        <Grid container spacing={4}>
+          {/* Form Section */}
+          <Grid item xs={12} md={5}>
+            <motion.div variants={itemVariants}>
+              <Card 
+                elevation={3}
+                className="classic-card"
+                sx={{ 
+                  height: '100%',
+                  background: mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)'
                 }}
-                renderInput={(params) => (
-                  <Box sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 3,
-                    p: 1,
-                    backgroundColor: '#f5f5f5'
-                  }}>
-                    <CalendarIcon sx={{ mr: 1, color: 'primary.main' }} />
-                    <input
-                      {...params}
-                      style={{ 
-                        border: 'none', 
-                        background: 'transparent',
-                        fontSize: '1rem',
-                        width: '100%',
-                        outline: 'none'
-                      }}
-                    />
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom className="classic-header">
+                    Generate Your Study Plan
+                  </Typography>
+                  
+                  <Box component="form" sx={{ mt: 3 }}>
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DatePicker
+                        label="Exam Date"
+                        value={localExamDate}
+                        onChange={(newDate) => setLocalExamDate(newDate)}
+                        slotProps={{ 
+                          textField: { 
+                            fullWidth: true,
+                            margin: "normal"
+                          }
+                        }}
+                        disablePast
+                        sx={{ mb: 3 }}
+                      />
+                    </LocalizationProvider>
+                    
+                    <FormControl fullWidth margin="normal">
+                      <InputLabel>Subjects to Study</InputLabel>
+                      <Select
+                        multiple
+                        value={selectedSubjects}
+                        onChange={handleSubjectChange}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value) => (
+                              <Chip key={value} label={value} size="small" />
+                            ))}
+                          </Box>
+                        )}
+                      >
+                        {SUBJECTS.map((subject) => (
+                          <MenuItem key={subject} value={subject}>
+                            {subject}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    
+                    <FormControl fullWidth margin="normal">
+                      <InputLabel>Weak Areas (Priority)</InputLabel>
+                      <Select
+                        multiple
+                        value={weakSubjects}
+                        onChange={handleWeakSubjectChange}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value) => (
+                              <Chip 
+                                key={value} 
+                                label={value} 
+                                size="small"
+                                color="secondary"
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      >
+                        {SUBJECTS.map((subject) => (
+                          <MenuItem key={subject} value={subject}>
+                            {subject}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    
+                    <Box sx={{ mt: 4 }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        size="large"
+                        fullWidth
+                        onClick={contextGenerateStudyPlan}
+                        disabled={isGenerating || selectedSubjects.length === 0}
+                        sx={{ 
+                          py: 1.5,
+                          fontWeight: 600,
+                          boxShadow: '0 4px 14px rgba(25, 118, 210, 0.3)'
+                        }}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <CircularProgress size={24} sx={{ mr: 1 }} color="inherit" />
+                            Generating Plan...
+                          </>
+                        ) : (
+                          'Generate Study Plan'
+                        )}
+                      </Button>
+                    </Box>
                   </Box>
-                )}
-                disablePast
-                minDate={new Date(Date.now() + 24 * 60 * 60 * 1000)} // Tomorrow
-              />
-            </LocalizationProvider>
-          </Box>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
           
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 2
-          }}>
-            <Box>
-              <Typography variant="body1" fontWeight="500">
-                Current Syllabus: <Chip label={currentSyllabus} color="primary" size="small" />
-              </Typography>
+          {/* Plan Display Section */}
+          <Grid item xs={12} md={7}>
+            <motion.div variants={itemVariants}>
+              <Card 
+                elevation={3}
+                className="classic-card"
+                sx={{ 
+                  mb: 4,
+                  background: mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom className="classic-header">
+                    Your Study Plan
+                  </Typography>
+                  
+                  {studyPlan && studyPlan.dailyPlan && studyPlan.dailyPlan.length > 0 && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        Based on your current progress, you need to cover approximately 
+                        <strong> {studyPlan.dailyPlan.flat().length} topics</strong> in 
+                        <strong> {studyPlan.daysRemaining} days</strong>.
+                      </Typography>
+                      
+                      {studyPlan.fromCache && (
+                        <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
+                          This is a cached study plan. Generate a new one for the most up-to-date recommendations.
+                        </Alert>
+                      )}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
               
-              {getDaysUntilExam() !== null && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <TimerIcon fontSize="small" sx={{ mr: 0.5, color: 'secondary.main' }} />
-                  <Typography variant="body2" color="secondary.main" fontWeight="500">
-                    {getDaysUntilExam()} days until exam
+              {/* Daily Plan List */}
+              {studyPlan && studyPlan.dailyPlan && studyPlan.dailyPlan.length > 0 ? (
+                <Box sx={{ mt: 3 }}>
+                  {studyPlan.dailyPlan.map((dayTopics, dayIndex) => (
+                    <motion.div
+                      key={dayIndex}
+                      variants={itemVariants}
+                      className="animate-on-scroll"
+                    >
+                      <Paper 
+                        elevation={2}
+                        sx={{ 
+                          mb: 2, 
+                          overflow: 'hidden',
+                          borderRadius: 2,
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <Box 
+                          sx={{ 
+                            p: 2, 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            bgcolor: expandedDay === dayIndex ? 
+                              'primary.light' : 
+                              (mode === 'dark' ? 'background.paper' : 'grey.100')
+                          }}
+                          onClick={() => toggleDayExpansion(dayIndex)}
+                        >
+                          <Typography 
+                            variant="subtitle1" 
+                            sx={{ 
+                              fontWeight: 600,
+                              color: expandedDay === dayIndex ? 'white' : 'text.primary'
+                            }}
+                          >
+                            Day {dayIndex + 1} - {format(addDays(new Date(), dayIndex), 'EEEE, MMM d')}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Chip 
+                              label={`${dayTopics.length} topics`} 
+                              size="small" 
+                              color={expandedDay === dayIndex ? "secondary" : "default"}
+                              sx={{ mr: 1 }}
+                            />
+                            {expandedDay === dayIndex ? 
+                              <ExpandLessIcon /> : 
+                              <ExpandMoreIcon />
+                            }
+                          </Box>
+                        </Box>
+                        
+                        <Collapse in={expandedDay === dayIndex}>
+                          <List>
+                            {dayTopics.map((topic, topicIndex) => (
+                              <ListItem 
+                                key={topicIndex}
+                                secondaryAction={
+                                  <Button
+                                    size="small"
+                                    startIcon={<BookmarkIcon />}
+                                    onClick={() => markTopicComplete(dayIndex, topicIndex)}
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ borderRadius: 2 }}
+                                  >
+                                    Mark Complete
+                                  </Button>
+                                }
+                                sx={{
+                                  '&:hover': {
+                                    bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+                                  }
+                                }}
+                              >
+                                <ListItemText 
+                                  primary={topic} 
+                                  secondary={`${progress[topic] || 0}% completed`} 
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Collapse>
+                      </Paper>
+                    </motion.div>
+                  ))}
+                </Box>
+              ) : (
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    py: 6,
+                    px: 3,
+                    bgcolor: mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(245, 245, 245, 0.8)',
+                    borderRadius: 2,
+                    textAlign: 'center'
+                  }}
+                >
+                  <TimelineIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    No Study Plan Generated Yet
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Select your subjects and exam date to generate a personalized study plan.
                   </Typography>
                 </Box>
               )}
-            </Box>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={generatePlan}
-              disabled={!examDate || loading || isOfflineMode}
-              sx={{ borderRadius: 2, px: 3 }}
-            >
-              {studyPlan ? 'Refresh Plan' : 'Generate Plan'}
-            </Button>
-          </Box>
-          
-          {/* Pro tip */}
-          <Paper 
-            sx={{ 
-              p: 2, 
-              mt: 3, 
-              bgcolor: '#f5f5f5', 
-              borderRadius: 2,
-              border: '1px solid #e0e0e0'
-            }}
-          >
-            <Typography variant="subtitle2" fontWeight="600">
-              Pro Tip
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              A well-structured study plan can increase your exam performance by up to 30%.
-              Set realistic daily goals and track your progress regularly.
-            </Typography>
-          </Paper>
-        </CardContent>
-      </Card>
-      
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
-      
-      {error && (
-        <Alert severity="error" sx={{ my: 2, borderRadius: 2 }}>
-          {error}
-        </Alert>
-      )}
-      
-      {studyPlan && studyPlan.dailyPlan && (
-        <>
-          <Card sx={{ 
-            borderRadius: 3, 
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
-            mb: 4 
-          }}>
-            <CardContent>
-              <Typography variant="h6" component="h2" fontWeight="600" gutterBottom>
-                Overall Progress
-              </Typography>
-              
-              <Box sx={{ mb: 2 }}>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={calculateProgress()} 
-                  sx={{ height: 10, borderRadius: 5 }}
-                />
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {studyProgress.length} topics completed
-                  </Typography>
-                  <Typography variant="body2" fontWeight="600" color="primary">
-                    {calculateProgress()}% Complete
-                  </Typography>
-                </Box>
-              </Box>
-              
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Based on your current progress, you need to cover approximately 
-                  <strong> {studyPlan.dailyPlan.flat().length} topics</strong> in 
-                  <strong> {studyPlan.daysRemaining} days</strong>.
-                </Typography>
-                
-                {studyPlan.fromCache && (
-                  <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
-                    This is a cached study plan. Generate a new one for the most up-to-date recommendations.
-                  </Alert>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-          
-          <Typography variant="h5" component="h2" fontWeight="600" gutterBottom>
-            Daily Study Schedule
-          </Typography>
-          
-          {studyPlan.dailyPlan.map((dayTopics, dayIndex) => (
-            <Card key={dayIndex} sx={{ 
-              borderRadius: 3, 
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
-              mb: 3,
-              overflow: 'hidden'
-            }}>
-              <Box sx={{ 
-                p: 2, 
-                bgcolor: 'primary.main', 
-                color: 'white' 
-              }}>
-                <Typography variant="h6" component="h3" fontWeight="600">
-                  Day {dayIndex + 1} - {formatDate(new Date(Date.now() + dayIndex * 24 * 60 * 60 * 1000))}
-                </Typography>
-              </Box>
-              
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Topic</TableCell>
-                      <TableCell align="center">Difficulty</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {dayTopics.map((topic, index) => (
-                      <TableRow 
-                        key={index} 
-                        hover
-                        sx={{
-                          backgroundColor: studyProgress.includes(topic.name) 
-                            ? 'rgba(76, 175, 80, 0.08)' 
-                            : 'inherit'
-                        }}
-                      >
-                        <TableCell>
-                          <Typography 
-                            variant="body2"
-                            sx={{
-                              textDecoration: studyProgress.includes(topic.name) 
-                                ? 'line-through' 
-                                : 'none'
-                            }}
-                          >
-                            {topic.name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          {Array(topic.difficulty).fill('★').join('')}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Checkbox
-                            checked={studyProgress.includes(topic.name)}
-                            onChange={() => toggleTopicCompleted(topic.name)}
-                            color="primary"
-                            icon={<CheckCircleIcon sx={{ opacity: 0.3 }} />}
-                            checkedIcon={<CheckCircleIcon />}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {dayTopics.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} align="center">
-                          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                            No topics scheduled for this day
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              <Box sx={{ 
-                p: 2, 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                bgcolor: '#f9f9f9'
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Estimated difficulty: {studyPlan.difficultyByDay[dayIndex]}/10
-                </Typography>
-                
-                <Chip 
-                  label={`${dayTopics.filter(t => studyProgress.includes(t.name)).length}/${dayTopics.length} complete`}
-                  color={dayTopics.filter(t => studyProgress.includes(t.name)).length === dayTopics.length ? "success" : "primary"}
-                  size="small"
-                  variant="outlined"
-                />
-              </Box>
-            </Card>
-          ))}
-        </>
-      )}
+            </motion.div>
+          </Grid>
+        </Grid>
+      </motion.div>
     </Container>
   );
 };
