@@ -1,160 +1,323 @@
-import React, { useState, useContext } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+// src/components/Layout.js
+import React, { useContext, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  AppBar, Toolbar, Typography, Drawer, Box, 
-  List, ListItem, ListItemIcon, ListItemText, 
-  IconButton, Divider, Container, Badge, 
-  Chip, useMediaQuery, useTheme, Tooltip
+  Box, 
+  Container, 
+  CssBaseline, 
+  Drawer, 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  IconButton, 
+  List, 
+  ListItem, 
+  ListItemIcon, 
+  ListItemText, 
+  Divider, 
+  useMediaQuery, 
+  Avatar, 
+  Tooltip, 
+  Menu, 
+  MenuItem,
+  Fab,
+  Badge,
+  useTheme
 } from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Home as HomeIcon,
-  QuestionAnswer as QuestionIcon,
-  Book as BookIcon,
-  CalendarToday as CalendarIcon,
-  WifiOff as OfflineIcon,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon
+import { 
+  Menu as MenuIcon, 
+  Home as HomeIcon, 
+  QuestionAnswer as QuestionIcon, 
+  DateRange as DateRangeIcon, 
+  Book as BookIcon, 
+  Brightness4 as DarkModeIcon, 
+  Brightness7 as LightModeIcon,
+  NotificationsOutlined as NotificationIcon,
+  AccountCircle as AccountIcon,
+  Help as HelpIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
+import { motion } from 'framer-motion';
+import { ThemeContext } from '../App';
 import { StudyContext } from '../contexts/StudyContext';
-import { ThemeContext } from '../App'; // Import ThemeContext
+import logo from '../assets/logo.png'; // Ensure you have a logo file
 
-function Layout() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const { isOfflineMode, currentSyllabus } = useContext(StudyContext);
-  const { mode, toggleColorMode } = useContext(ThemeContext); // Use ThemeContext
-  const location = useLocation();
+const Layout = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
+  const { mode, toggleColorMode } = useContext(ThemeContext);
+  const { currentSyllabus, examDate, studyProgress } = useContext(StudyContext);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
   };
-
-  const menuItems = [
+  
+  const handleProfileMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  const handleProfileClose = () => {
+    setAnchorEl(null);
+  };
+  
+  const navItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/' },
-    { text: 'Question & Answer', icon: <QuestionIcon />, path: '/question' },
-    { text: 'Study Planner', icon: <CalendarIcon />, path: '/planner' },
+    { text: 'Ask Question', icon: <QuestionIcon />, path: '/question' },
+    { text: 'Study Planner', icon: <DateRangeIcon />, path: '/planner' },
     { text: 'Book References', icon: <BookIcon />, path: '/books' },
   ];
-
+  
   const drawer = (
-    <Box>
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography variant="h6" component="div">
+    <Box sx={{ width: 250 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        p: 2,
+        borderBottom: `1px solid ${theme.palette.divider}`
+      }}>
+        <img src={logo} alt="MedSage Logo" height="40" />
+        <Typography variant="h6" sx={{ ml: 1, fontWeight: 700 }}>
           MedSage
         </Typography>
       </Box>
-      <Divider />
+      
+      <Box sx={{ mt: 2, px: 2 }}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Current Program:
+        </Typography>
+        <Typography variant="body1" fontWeight={500}>
+          {currentSyllabus}
+        </Typography>
+        
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+          Exam Countdown:
+        </Typography>
+        <Typography variant="body1" fontWeight={600} color="secondary">
+          {Math.floor((new Date(examDate) - new Date()) / (1000 * 60 * 60 * 24))} days
+        </Typography>
+      </Box>
+      
+      <Divider sx={{ my: 2 }} />
+      
       <List>
-        {menuItems.map((item) => (
+        {navItems.map((item) => (
           <ListItem 
             button 
-            key={item.text} 
-            component={Link} 
-            to={item.path}
+            key={item.text}
+            onClick={() => {
+              navigate(item.path);
+              if(isMobile) setDrawerOpen(false);
+            }}
             selected={location.pathname === item.path}
-            onClick={isMobile ? handleDrawerToggle : undefined}
+            sx={{
+              borderRadius: 2,
+              mx: 1,
+              mb: 0.5,
+              '&.Mui-selected': {
+                bgcolor: 'primary.light',
+                '&:hover': {
+                  bgcolor: 'primary.light',
+                },
+              }
+            }}
           >
-            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemIcon sx={{ minWidth: 40, color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
+              {item.icon}
+            </ListItemIcon>
             <ListItemText primary={item.text} />
           </ListItem>
         ))}
       </List>
-      <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="subtitle2">Current Syllabus:</Typography>
-        <Chip 
-          label={currentSyllabus} 
-          color="primary" 
-          size="small" 
-          sx={{ mt: 1 }}
-        />
+      
+      <Divider sx={{ my: 2 }} />
+      
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Study Progress
+        </Typography>
+        <Box sx={{ 
+          height: 10, 
+          bgcolor: 'background.paper', 
+          borderRadius: 5,
+          border: `1px solid ${theme.palette.divider}`,
+          overflow: 'hidden'
+        }}>
+          <Box 
+            sx={{ 
+              height: '100%', 
+              width: `${studyProgress.completionPercentage}%`, 
+              bgcolor: 'success.main',
+              transition: 'width 1s ease-in-out'
+            }} 
+          />
+        </Box>
+        <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
+          {studyProgress.completionPercentage}% Complete
+        </Typography>
       </Box>
     </Box>
   );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
+      <CssBaseline />
+      
+      {/* App Bar */}
+      <AppBar 
+        position="fixed" 
+        elevation={0}
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          bgcolor: theme.palette.background.paper,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          color: 'text.primary'
+        }}
+      >
         <Toolbar>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 2 }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            MedSage
-          </Typography>
           
-          {/* Dark Mode Toggle Button */}
-          <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
-            <IconButton onClick={toggleColorMode} color="inherit" sx={{ mr: 1 }}>
-              {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <img src={logo} alt="MedSage Logo" height="30" style={{ marginRight: 8 }} />
+            <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
+              MedSage
+            </Typography>
+          </Box>
           
-          {isOfflineMode && (
-            <Badge color="error">
-              <OfflineIcon />
-              <Typography variant="caption" sx={{ ml: 1 }}>
-                Offline
-              </Typography>
-            </Badge>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Tooltip title="Toggle theme">
+              <IconButton color="inherit" onClick={toggleColorMode} sx={{ mr: 1 }}>
+                {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Notifications">
+              <IconButton color="inherit" sx={{ mr: 1 }}>
+                <Badge badgeContent={3} color="error">
+                  <NotificationIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Profile">
+              <IconButton
+                onClick={handleProfileMenu}
+                color="inherit"
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                  <AccountIcon />
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+            
+            <Menu
+              id="menu-appbar"
+              anchorEl={anchorEl}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              open={Boolean(anchorEl)}
+              onClose={handleProfileClose}
+            >
+              <MenuItem onClick={handleProfileClose}>Profile</MenuItem>
+              <MenuItem onClick={handleProfileClose}>Settings</MenuItem>
+              <Divider />
+              <MenuItem onClick={handleProfileClose}>Log Out</MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
       
-      <Box
-        component="nav"
-        sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
+      {/* Side Drawer */}
+      <Drawer
+        variant={isMobile ? "temporary" : "permanent"}
+        open={isMobile ? drawerOpen : true}
+        onClose={handleDrawerToggle}
+        sx={{
+          width: 250,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: 250,
+            boxSizing: 'border-box',
+          },
+        }}
       >
-        {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
-          open={drawerOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        
-        {/* Desktop drawer */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+        <Toolbar /> {/* Spacer to push content below AppBar */}
+        {drawer}
+      </Drawer>
       
+      {/* Main Content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - 240px)` },
-          mt: '64px', // AppBar height
+          width: { sm: `calc(100% - 250px)` },
+          ml: { sm: '250px' },
+          pt: { xs: 8, sm: 10 }
         }}
       >
-        <Container maxWidth="lg" sx={{ pt: 2 }}>
-          <Outlet />
+        <Container maxWidth="lg" sx={{ mb: 4 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Outlet />
+          </motion.div>
         </Container>
       </Box>
+      
+      {/* Quick Action FAB */}
+      <Fab 
+        color="primary" 
+        aria-label="ask question"
+        sx={{ 
+          position: 'fixed', 
+          bottom: 20, 
+          right: 20,
+          display: { xs: 'flex', md: 'none' }
+        }}
+        onClick={() => navigate('/question')}
+      >
+        <QuestionIcon />
+      </Fab>
+      
+      {/* Help FAB */}
+      <Fab 
+        size="small"
+        color="secondary" 
+        aria-label="help"
+        sx={{ 
+          position: 'fixed', 
+          bottom: 20, 
+          right: isMobile ? 80 : 20,
+        }}
+      >
+        <HelpIcon />
+      </Fab>
     </Box>
   );
-}
+};
 
 export default Layout;

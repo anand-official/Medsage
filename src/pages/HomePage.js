@@ -1,25 +1,40 @@
-import React, { useContext, useEffect } from 'react';
-import {
-  Box, Typography, Paper, Grid, Card, CardContent,
-  CardActions, Button, Divider, List, ListItem,
-  ListItemText, ListItemIcon, Chip, useTheme, 
-  Container, Fade, Grow, Slide, Avatar, CircularProgress
+// src/pages/HomePage.js
+import React, { useContext } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Grid, 
+  Paper, 
+  Card, 
+  CardContent, 
+  CardActionArea,
+  Button, 
+  Divider, 
+  Chip,
+  Avatar,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  useTheme
 } from '@mui/material';
-import { motion } from 'framer-motion';
-import {
-  QuestionAnswer as QuestionIcon,
-  CalendarToday as CalendarIcon,
-  Book as BookIcon,
-  History as HistoryIcon,
+import { 
   TrendingUp as TrendingIcon,
-  Bookmark as BookmarkIcon,
-  School as SchoolIcon
+  Schedule as ScheduleIcon,
+  ArrowForward as ArrowIcon,
+  Book as BookIcon,
+  School as SchoolIcon,
+  CalendarToday as CalendarIcon,
+  Check as CheckIcon,
+  QuestionAnswer as QuestionIcon,
+  Notifications as NotificationIcon
 } from '@mui/icons-material';
-import { Link as RouterLink } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { format, differenceInDays } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { StudyContext } from '../contexts/StudyContext';
 import { usePageAnimation } from '../hooks/usePageAnimation';
-import { format, differenceInDays } from 'date-fns';
-import '../animations.css';
 
 const HomePage = () => {
   const { 
@@ -30,14 +45,19 @@ const HomePage = () => {
     isOfflineMode 
   } = useContext(StudyContext);
   const theme = useTheme();
+  const navigate = useNavigate();
   usePageAnimation();
   
-  // Animation variants
+  // Calculate date-related information
+  const daysRemaining = differenceInDays(examDate, new Date());
+  const formattedExamDate = format(examDate, 'MMM dd, yyyy');
+  
+  // Motion variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
-      transition: { staggerChildren: 0.12, delayChildren: 0.1 }
+      transition: { staggerChildren: 0.1 }
     }
   };
   
@@ -46,448 +66,456 @@ const HomePage = () => {
     visible: { 
       y: 0, 
       opacity: 1,
-      transition: { type: "spring", stiffness: 80, damping: 12 }
+      transition: { type: "spring", stiffness: 100 }
     }
   };
+  
+  // Quick action cards
+  const quickActions = [
+    { 
+      title: 'Ask a Question', 
+      description: 'Get syllabus-aligned answers with citations', 
+      icon: <QuestionIcon fontSize="large" />, 
+      color: theme.palette.primary.main,
+      path: '/question'
+    },
+    { 
+      title: 'Study Planner', 
+      description: 'Create personalized study schedules', 
+      icon: <CalendarIcon fontSize="large" />, 
+      color: theme.palette.secondary.main,
+      path: '/planner'
+    },
+    { 
+      title: 'Book References', 
+      description: 'Find recommended medical textbooks', 
+      icon: <BookIcon fontSize="large" />, 
+      color: theme.palette.info.main,
+      path: '/books'
+    },
+    { 
+      title: 'Track Progress', 
+      description: 'Monitor your learning journey', 
+      icon: <TrendingIcon fontSize="large" />, 
+      color: theme.palette.success.main,
+      path: '/progress'
+    },
+  ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Hero Section with elegant animation */}
-      <Fade in timeout={800}>
-        <Box sx={{ 
-          textAlign: 'center', 
-          mb: 6
-        }}>
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Welcome Header */}
+      <Box sx={{ mb: 4, textAlign: 'center' }}>
+        <motion.div variants={itemVariants}>
+          <Typography 
+            variant="h3" 
+            component="h1" 
+            gutterBottom
+            sx={{ 
+              fontWeight: 700,
+              fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' } 
+            }}
           >
-            <Typography 
-              variant="h2" 
-              component="h1"
-              className="classic-header"
-              sx={{ 
-                fontWeight: 700,
-                mb: 2,
-                backgroundImage: 'linear-gradient(135deg, #333, #000)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '0.02em'
-              }}
-            >
-              MedSage
-            </Typography>
-          </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
+            Welcome to MedSage
+          </Typography>
+        </motion.div>
+        
+        <motion.div variants={itemVariants}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            gutterBottom
+            sx={{ 
+              fontStyle: 'italic',
+              fontWeight: 300,
+              mb: 3
+            }}
           >
-            <Typography 
-              variant="h6" 
-              color="text.secondary" 
-              gutterBottom
-              sx={{ 
-                fontStyle: 'italic',
-                fontWeight: 300,
-                mb: 3
-              }}
-            >
-              Your AI-powered medical learning assistant
-            </Typography>
-          </motion.div>
-        </Box>
-      </Fade>
-
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
-      >
-        <Grid container spacing={4}>
-          {/* Feature Cards Section */}
-          <Grid item xs={12}>
-            <motion.div variants={itemVariants}>
-              <Typography 
-                variant="h4" 
+            Your AI-powered medical learning assistant
+          </Typography>
+        </motion.div>
+      </Box>
+      
+      {/* Quick Actions */}
+      <motion.div variants={itemVariants}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+          Quick Actions
+        </Typography>
+        
+        <Grid container spacing={3} sx={{ mb: 5 }}>
+          {quickActions.map((action, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <Card 
+                elevation={1} 
+                className="hover-lift"
                 sx={{ 
-                  mb: 3, 
-                  fontWeight: 600,
-                  textAlign: 'left',
-                  position: 'relative',
-                  '&:after': {
-                    content: '""',
-                    position: 'absolute',
-                    bottom: '-10px',
-                    left: 0,
-                    width: '60px',
-                    height: '3px',
-                    backgroundColor: theme.palette.primary.main,
-                    borderRadius: '2px'
+                  height: '100%', 
+                  borderRadius: 3,
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: theme.shadows[4]
                   }
                 }}
               >
-                Learning Tools
-              </Typography>
-            </motion.div>
-            
-            <Grid container spacing={3}>
-              {[
-                {
-                  title: "Ask a Question",
-                  icon: <QuestionIcon />,
-                  description: "Get answers to your medical questions with textbook references",
-                  to: "/question",
-                  color: theme.palette.primary.main
-                },
-                {
-                  title: "Study Planner",
-                  icon: <CalendarIcon />,
-                  description: "Create and manage your personalized study schedule",
-                  to: "/planner",
-                  color: theme.palette.secondary.main
-                },
-                {
-                  title: "Book References",
-                  icon: <BookIcon />,
-                  description: "Browse recommended medical textbooks and resources",
-                  to: "/books",
-                  color: "#f57c00"
-                },
-                {
-                  title: "Track Progress",
-                  icon: <TrendingIcon />,
-                  description: "Monitor your learning journey and identify weak areas",
-                  to: "/planner",
-                  color: "#7cb342"
-                }
-              ].map((feature, index) => (
-                <Grid item xs={12} sm={6} md={3} key={index}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + (index * 0.1) }}
-                    whileHover={{ 
-                      y: -8,
-                      transition: { duration: 0.2 }
+                <CardActionArea 
+                  onClick={() => navigate(action.path)}
+                  sx={{ height: '100%', p: 2 }}
+                >
+                  <Box 
+                    sx={{ 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center'
                     }}
-                    className="hover-lift shine"
                   >
-                    <Paper
-                      elevation={0}
-                      component={RouterLink}
-                      to={feature.to}
-                      sx={{
-                        p: 3,
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        bgcolor: 'rgba(255, 255, 255, 0.8)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(0,0,0,0.05)',
-                        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        '&:hover': { 
-                          boxShadow: '0 15px 30px rgba(0,0,0,0.07)',
-                          bgcolor: 'rgba(255, 255, 255, 1)',
-                          borderColor: 'transparent',
-                          transform: 'translateY(-5px)'
-                        },
-                        '&:after': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: '-100%',
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                          transition: 'all 0.6s',
-                        },
-                        '&:hover:after': {
-                          left: '100%'
-                        }
+                    <Avatar 
+                      sx={{ 
+                        bgcolor: action.color,
+                        width: 60,
+                        height: 60,
+                        mb: 2
                       }}
-                      style={{ textDecoration: 'none' }}
+                    >
+                      {action.icon}
+                    </Avatar>
+                    
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      {action.title}
+                    </Typography>
+                    
+                    <Typography variant="body2" color="text.secondary">
+                      {action.description}
+                    </Typography>
+                  </Box>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </motion.div>
+      
+      {/* Main Content Section */}
+      <Grid container spacing={4}>
+        {/* Left Column - Stats */}
+        <Grid item xs={12} md={4}>
+          <motion.div variants={itemVariants}>
+            <Card 
+              elevation={1}
+              sx={{ 
+                mb: 3, 
+                borderRadius: 3,
+                background: `linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+              }}
+            >
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                  Your Progress
+                </Typography>
+                
+                <Box sx={{ textAlign: 'center', py: 2 }}>
+                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                    <Box
+                      sx={{
+                        width: 120,
+                        height: 120,
+                        borderRadius: '50%',
+                        background: `conic-gradient(${theme.palette.primary.main} ${studyProgress.completionPercentage}%, ${theme.palette.divider} 0%)`,
+                        transform: 'rotate(-90deg)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
                     >
                       <Box
                         sx={{
-                          width: 70,
-                          height: 70,
+                          width: 100,
+                          height: 100,
                           borderRadius: '50%',
+                          bgcolor: theme.palette.background.paper,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          mb: 3,
-                          background: `linear-gradient(135deg, ${feature.color}90, ${feature.color}40)`,
-                          boxShadow: `0 5px 15px ${feature.color}30`,
-                          transition: 'all 0.3s ease'
-                        }}
-                        className="float"
-                      >
-                        {React.cloneElement(feature.icon, { 
-                          sx: { fontSize: 32, color: feature.color } 
-                        })}
-                      </Box>
-                      <Typography 
-                        variant="h6" 
-                        component="h3" 
-                        gutterBottom
-                        sx={{ 
-                          fontWeight: 600,
-                          transition: 'color 0.3s ease'
+                          transform: 'rotate(90deg)'
                         }}
                       >
-                        {feature.title}
-                      </Typography>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary" 
-                        sx={{ lineHeight: 1.7 }}
-                      >
-                        {feature.description}
-                      </Typography>
-                    </Paper>
-                  </motion.div>
-                </Grid>
-              ))}
-            </Grid>
-          </Grid>
-
-          {/* Study Progress Section */}
-          <Grid item xs={12} md={4}>
-            <motion.div 
-              variants={itemVariants}
-              className="animate-on-scroll"
-            >
-              <Card sx={{ 
-                borderRadius: 2, 
-                boxShadow: '0 5px 20px rgba(0,0,0,0.05)',
-                height: '100%',
-                transition: 'transform 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.08)',
-                }
-              }}>
-                <CardContent>
-                  <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                    Study Progress
-                  </Typography>
-                  
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    flexDirection: 'column',
-                    mb: 2 
-                  }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.7, duration: 0.5 }}
-                      >
-                        <CircularProgress 
-                          variant="determinate" 
-                          value={studyProgress?.completionPercentage || 0} 
-                          size={120}
-                          thickness={4}
-                          sx={{ color: theme.palette.primary.main }}
-                        />
-                      </motion.div>
-                      <Box
-                        sx={{
-                          top: 0,
-                          left: 0,
-                          bottom: 0,
-                          right: 0,
-                          position: 'absolute',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.9 }}
-                        >
-                          <Typography
-                            variant="h4"
-                            component="div"
-                            color="text.primary"
-                            sx={{ fontWeight: 700 }}
-                          >
-                            {studyProgress?.completionPercentage || 0}%
-                          </Typography>
-                        </motion.div>
+                        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                          {studyProgress.completionPercentage}%
+                        </Typography>
                       </Box>
                     </Box>
-                    
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
-                      of your {currentSyllabus} syllabus completed
-                    </Typography>
                   </Box>
                   
-                  <Divider sx={{ my: 2 }} />
-                  
-                  <Box>
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-                      Exam Countdown
-                    </Typography>
-                    <Typography variant="h5" color="secondary" sx={{ fontWeight: 700 }}>
-                      {differenceInDays(examDate, new Date())} days
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      until your exam on {format(examDate, 'MMM dd, yyyy')}
-                    </Typography>
-                  </Box>
-
-                  <List>
-                    <ListItem sx={{ px: 0 }}>
-                      <ListItemIcon>
-                        <TrendingIcon color="secondary" />
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary="Topics Completed" 
-                        secondary={`${studyProgress?.length || 0} topics`}
-                        primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
-                        secondaryTypographyProps={{ variant: 'body2' }}
-                      />
-                    </ListItem>
-                  </List>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
-
-          {/* Recent Activity Section */}
-          <Grid item xs={12} md={8}>
-            <motion.div 
-              variants={itemVariants}
-              className="animate-on-scroll"
-            >
-              <Card sx={{ 
-                borderRadius: 2, 
-                boxShadow: '0 5px 20px rgba(0,0,0,0.05)',
-                height: '100%',
-                transition: 'transform 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.08)',
-                }
-              }}>
-                <CardContent>
-                  <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                    Recent Questions
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    of your {currentSyllabus} syllabus completed
                   </Typography>
+                </Box>
+                
+                <Divider sx={{ my: 2 }} />
+                
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                    Exam Countdown
+                  </Typography>
+                  <Typography variant="h5" color="secondary" sx={{ fontWeight: 700 }}>
+                    {daysRemaining} days
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    until your exam on {formattedExamDate}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+            
+            <Card 
+              elevation={1}
+              sx={{ 
+                borderRadius: 3,
+                background: `linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+              }}
+            >
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Today's Schedule
+                  </Typography>
+                  <Chip 
+                    icon={<ScheduleIcon />} 
+                    label="3 Tasks" 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                  />
+                </Box>
+                
+                <List sx={{ p: 0 }}>
+                  <ListItem 
+                    sx={{ 
+                      px: 0, 
+                      borderRadius: 2,
+                      mb: 1,
+                      bgcolor: theme.palette.background.default
+                    }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: theme.palette.success.light }}>
+                        <CheckIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary="Cardiovascular System"
+                      secondary="Chapter 3 • 9:00 AM"
+                    />
+                  </ListItem>
                   
-                  {recentQueries && recentQueries.length > 0 ? (
-                    <List>
-                      {recentQueries.slice(0, 4).map((item, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.8 + (index * 0.1) }}
-                        >
-                          <ListItem 
-                            sx={{ 
-                              px: 0, 
-                              py: 1.5,
-                              borderBottom: index < recentQueries.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                              transition: 'background-color 0.2s ease',
-                              borderRadius: 1,
-                              '&:hover': {
-                                backgroundColor: 'rgba(0,0,0,0.02)'
-                              }
-                            }}
-                            button
-                            component={RouterLink}
-                            to="/question"
-                          >
-                            <ListItemIcon>
-                              <Avatar 
-                                sx={{ 
-                                  bgcolor: `${theme.palette.primary.main}20`,
-                                  color: theme.palette.primary.main
-                                }}
-                              >
-                                <QuestionIcon fontSize="small" />
-                              </Avatar>
-                            </ListItemIcon>
-                            <ListItemText 
-                              primary={item.query.length > 60 ? item.query.substring(0, 60) + '...' : item.query} 
-                              secondary={format(new Date(item.timestamp), 'MMM dd, yyyy • h:mm a')}
-                              primaryTypographyProps={{ fontWeight: 500 }}
-                            />
-                          </ListItem>
-                        </motion.div>
-                      ))}
-                    </List>
-                  ) : (
-                    <Box sx={{ 
-                      textAlign: 'center', 
-                      py: 6,
-                      opacity: 0.7
-                    }}>
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.5, duration: 0.4 }}
-                      >
-                        <QuestionIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                        <Typography variant="h6" color="text.secondary" gutterBottom>
-                          No recent questions yet
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Start asking medical questions to see your history here
-                        </Typography>
-                        
-                        <Button 
-                          component={RouterLink} 
-                          to="/question" 
-                          variant="outlined"
-                          sx={{ mt: 3 }}
-                          endIcon={<QuestionIcon />}
-                        >
-                          Ask Your First Question
-                        </Button>
-                      </motion.div>
-                    </Box>
-                  )}
-
-                  {recentQueries && recentQueries.length > 0 && (
-                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                      <Button 
-                        component={RouterLink} 
-                        to="/question" 
-                        color="primary"
-                        variant="outlined"
-                        sx={{ 
-                          borderRadius: 2,
-                          px: 3,
-                          py: 1,
-                          transition: 'all 0.3s ease',
-                        }}
-                        endIcon={<QuestionIcon />}
-                      >
-                        Ask New Question
-                      </Button>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
+                  <ListItem 
+                    sx={{ 
+                      px: 0, 
+                      borderRadius: 2,
+                      mb: 1,
+                      bgcolor: theme.palette.background.default
+                    }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: theme.palette.primary.light }}>
+                        <SchoolIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary="Pharmacology Quiz"
+                      secondary="Beta Blockers • 2:00 PM"
+                    />
+                  </ListItem>
+                  
+                  <ListItem 
+                    sx={{ 
+                      px: 0, 
+                      borderRadius: 2,
+                      bgcolor: theme.palette.background.default
+                    }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: theme.palette.info.light }}>
+                        <BookIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary="Review Anatomy Notes"
+                      secondary="Upper Limb • 4:30 PM"
+                    />
+                  </ListItem>
+                </List>
+                
+                <Button 
+                  fullWidth 
+                  variant="outlined" 
+                  color="primary" 
+                  sx={{ mt: 2 }}
+                  onClick={() => navigate('/planner')}
+                >
+                  View Full Schedule
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         </Grid>
-      </motion.div>
-    </Container>
+        
+        {/* Right Column - Recent Activity */}
+        <Grid item xs={12} md={8}>
+          <motion.div variants={itemVariants}>
+            <Card 
+              elevation={1}
+              sx={{ 
+                height: '100%',
+                borderRadius: 3,
+                background: `linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+              }}
+            >
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Recent Activity
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    size="small"
+                    endIcon={<ArrowIcon />}
+                  >
+                    View All
+                  </Button>
+                </Box>
+                
+                {recentQueries && recentQueries.length > 0 ? (
+                  <List>
+                    {recentQueries.slice(0, 5).map((query, index) => (
+                      <React.Fragment key={index}>
+                        <ListItem 
+                          alignItems="flex-start" 
+                          sx={{ 
+                            px: 2, 
+                            py: 1.5, 
+                            borderRadius: 2,
+                            mb: 1,
+                            bgcolor: theme.palette.background.default,
+                            '&:hover': {
+                              bgcolor: theme.palette.action.hover
+                            }
+                          }}
+                          button
+                          onClick={() => navigate('/question', { state: { question: query.question } })}
+                        >
+                          <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                              <QuestionIcon />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                {query.question.length > 60 
+                                  ? `${query.question.substring(0, 60)}...` 
+                                  : query.question}
+                              </Typography>
+                            }
+                            secondary={
+                              <React.Fragment>
+                                <Typography
+                                  component="span"
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  {format(new Date(query.timestamp), 'MMM dd, yyyy • h:mm a')}
+                                </Typography>
+                              </React.Fragment>
+                            }
+                          />
+                        </ListItem>
+                      </React.Fragment>
+                    ))}
+                  </List>
+                ) : (
+                  <Box sx={{ py: 4, textAlign: 'center' }}>
+                    <Typography color="text.secondary" gutterBottom>
+                      No recent activity
+                    </Typography>
+                    <Button 
+                      variant="contained" 
+                      color="primary"
+                      sx={{ mt: 2 }}
+                      onClick={() => navigate('/question')}
+                    >
+                      Ask Your First Question
+                    </Button>
+                  </Box>
+                )}
+                
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                    Recommended for You
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor: theme.palette.primary.light,
+                          color: theme.palette.primary.contrastText,
+                          display: 'flex',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: theme.palette.primary.main,
+                          }
+                        }}
+                        onClick={() => navigate('/books')}
+                      >
+                        <BookIcon sx={{ mr: 1 }} />
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          Top Anatomy References
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor: theme.palette.secondary.light,
+                          color: theme.palette.secondary.contrastText,
+                          display: 'flex',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: theme.palette.secondary.main,
+                          }
+                        }}
+                        onClick={() => navigate('/planner')}
+                      >
+                        <CalendarIcon sx={{ mr: 1 }} />
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          Generate Study Plan
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </Grid>
+      </Grid>
+    </motion.div>
   );
 };
 
