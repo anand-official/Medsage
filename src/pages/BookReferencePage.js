@@ -12,7 +12,7 @@ import {
   OpenInNew as OpenInNewIcon,
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
-import { StudyContext } from '../contexts/StudyContext';
+import { useStudyContext } from '../contexts/StudyContext';
 import { useNavigate } from 'react-router-dom';
 
 // Mock book data - in a real app, this would come from an API
@@ -134,7 +134,7 @@ const booksByProgram = {
 };
 
 const BookReferencePage = () => {
-  const { currentSyllabus, isOfflineMode } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const [activeTab, setActiveTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredBooks, setFilteredBooks] = useState([]);
@@ -157,12 +157,12 @@ const BookReferencePage = () => {
     }
     
     // Initialize filtered books
-    setFilteredBooks(booksByProgram[currentSyllabus] || []);
-  }, [currentSyllabus]);
+    setFilteredBooks(booksByProgram[studyPlan] || []);
+  }, [studyPlan]);
   
   // Filter books based on selected tab and search term
   useEffect(() => {
-    let books = booksByProgram[currentSyllabus] || [];
+    let books = booksByProgram[studyPlan] || [];
     
     // Apply category filter
     if (activeTab > 0 && categories[activeTab] !== 'All') {
@@ -181,7 +181,7 @@ const BookReferencePage = () => {
     }
     
     setFilteredBooks(books);
-  }, [currentSyllabus, activeTab, searchTerm]);
+  }, [studyPlan, activeTab, searchTerm]);
   
   // Toggle book bookmark status
   const toggleBookmark = (bookId, event) => {
@@ -238,9 +238,9 @@ const BookReferencePage = () => {
             Medical Textbook References
           </Typography>
           
-          {isOfflineMode && (
+          {loading && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              You're in offline mode. Some book information may not be available.
+              Loading...
             </Alert>
           )}
           

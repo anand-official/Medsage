@@ -14,7 +14,7 @@ import {
   AutoAwesome as MagicIcon,
   Book as BookIcon
 } from '@mui/icons-material';
-import { StudyContext } from '../contexts/StudyContext';
+import { useStudyContext } from '../contexts/StudyContext';
 import { fetchMedicalQuery } from '../services/apiService';
 import { motion } from 'framer-motion';
 
@@ -34,7 +34,7 @@ const QuestionPage = () => {
     currentSyllabus, 
     addRecentQuery,
     isOfflineMode
-  } = useContext(StudyContext);
+  } = useStudyContext();
 
   // Handle question submission
   const handleSubmit = async (e) => {

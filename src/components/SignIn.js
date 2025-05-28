@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Button, Container, Typography, Box, Alert } from '@mui/material';
+import { Button, Container, Typography, Box, Alert, CircularProgress } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
+import { useNavigate } from 'react-router-dom';
 
 export default function SignIn() {
   const { signInWithGoogle } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
     try {
@@ -15,9 +17,10 @@ export default function SignIn() {
       console.log('Starting Google sign in...');
       const result = await signInWithGoogle();
       console.log('Sign in successful:', result);
+      navigate('/'); // Redirect to home page after successful sign-in
     } catch (error) {
       console.error('Error signing in with Google:', error);
-      setError('Failed to sign in with Google. Please try again.');
+      setError(error.message || 'Failed to sign in with Google. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -48,7 +51,7 @@ export default function SignIn() {
           variant="contained"
           sx={{ mt: 3, mb: 2 }}
           onClick={handleGoogleSignIn}
-          startIcon={<GoogleIcon />}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <GoogleIcon />}
           disabled={loading}
         >
           {loading ? 'Signing in...' : 'Sign in with Google'}

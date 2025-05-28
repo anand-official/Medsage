@@ -31,10 +31,10 @@ import {
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { StudyContext } from '../../contexts/StudyContext';
+import { useStudyContext } from '../../contexts/StudyContext';
 
 const RecentActivity = () => {
-  const { recentQueries, studyProgress } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const navigate = useNavigate();
 
@@ -129,9 +129,9 @@ const RecentActivity = () => {
             </Button>
           </Box>
           
-          {recentQueries && recentQueries.length > 0 ? (
+          {studyPlan && studyPlan.length > 0 ? (
             <List sx={{ mb: 4 }}>
-              {recentQueries.slice(0, 5).map((query, index) => (
+              {studyPlan.slice(0, 5).map((query, index) => (
                 <React.Fragment key={index}>
                   <ListItem 
                     alignItems="flex-start" 

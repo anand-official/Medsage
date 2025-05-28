@@ -1,224 +1,91 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { differenceInDays, format } from 'date-fns';
-import { getStudyPlan } from '../services/apiService';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import { studyAPI } from '../services/api';
 
-// Create the context
-export const StudyContext = createContext();
+const StudyContext = createContext();
 
-// Hook for using the context
-export const useStudyContext = () => useContext(StudyContext);
+export function useStudyContext() {
+  return useContext(StudyContext);
+}
 
-// You can optionally create a provider component if needed
-export const StudyContextProvider = ({ children }) => {
-  // State management
-  const [examDate, setExamDate] = useState(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)); // 90 days from now
-  const [currentSyllabus, setSyllabus] = useState('MBBS');
-  const [studyProgress, setStudyProgress] = useState({
-    completedTopics: [],
-    weakAreas: [],
-    lastStudySession: new Date(),
-    completionPercentage: 25
-  });
-  const [progress, setProgress] = useState({
-    completedTopics: [],
-    weakAreas: [],
-    lastStudySession: new Date(),
-    completionPercentage: 25
-  });
-  const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [weakSubjects, setWeakSubjects] = useState([]);
-  const [studyMode, setStudyMode] = useState('exam'); // 'exam' or 'conceptual'
-  const [recentQueries, setRecentQueries] = useState([]);
-  const [isOfflineMode, setOfflineMode] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [studyPlan, setStudyPlan] = useState({
-    dailyPlan: [],
-    daysRemaining: 0,
-    fromCache: false
-  });
+export function StudyProvider({ children }) {
+  const { userProfile, updateStudyPreferences } = useAuth();
+  const [studyPlan, setStudyPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [studyMode, setStudyMode] = useState('comprehensive');
 
-  // Check for network status on mount
+  // Load study plan when user profile changes
   useEffect(() => {
-    const handleOfflineStatus = () => {
-      setOfflineMode(!navigator.onLine);
-    };
+    const loadStudyPlan = async () => {
+      if (!userProfile) {
+        setStudyPlan(null);
+        setLoading(false);
+        return;
+      }
 
-    window.addEventListener('online', handleOfflineStatus);
-    window.addEventListener('offline', handleOfflineStatus);
-    
-    // Set initial status
-    setOfflineMode(!navigator.onLine);
-
-    return () => {
-      window.removeEventListener('online', handleOfflineStatus);
-      window.removeEventListener('offline', handleOfflineStatus);
-    };
-  }, []);
-
-  // Handle form submission
-  const generateStudyPlan = () => {
-    setIsGenerating(true);
-    
-    // Simulate API call or complex calculation
-    setTimeout(async () => {
       try {
-        // Calculate days remaining
-        const daysRemaining = differenceInDays(examDate, new Date());
-        
-        // Call the API service to get the study plan
-        const result = await getStudyPlan(currentSyllabus, examDate, progress);
-        
-        if (result.error) {
-          console.error("Error generating study plan:", result.error);
-          // Set default plan in case of error
-          setStudyPlan({
-            dailyPlan: generateDefaultPlan(daysRemaining),
-            daysRemaining,
-            fromCache: false
-          });
-        } else {
-          // Set the study plan from API result
-          setStudyPlan({
-            dailyPlan: result.dailyTopics || [],
-            daysRemaining,
-            fromCache: result.fromCache || false
-          });
-        }
+        setLoading(true);
+        const plan = await studyAPI.getStudyPlan();
+        setStudyPlan(plan);
+        setError(null);
       } catch (error) {
-        console.error("Exception in study plan generation:", error);
-        // Fallback to a default plan
-        const daysRemaining = differenceInDays(examDate, new Date());
-        setStudyPlan({
-          dailyPlan: generateDefaultPlan(daysRemaining),
-          daysRemaining,
-          fromCache: false
-        });
+        console.error('Error loading study plan:', error);
+        setError('Failed to load study plan');
       } finally {
-        setIsGenerating(false);
+        setLoading(false);
       }
-    }, 1500); // Simulate processing time
-  };
-  
-  // Helper function to generate a default plan if API fails
-  const generateDefaultPlan = (daysRemaining) => {
-    // Simple algorithm to distribute subjects evenly
-    const allSubjects = [
-      'Anatomy', 'Physiology', 'Biochemistry',
-      'Pathology', 'Pharmacology', 'Microbiology',
-      'Community Medicine', 'Forensic Medicine', 
-      'ENT', 'Ophthalmology', 'Medicine', 'Surgery',
-      'Obstetrics & Gynecology', 'Pediatrics', 'Psychiatry'
-    ];
-    
-    // Prioritize weak subjects
-    const prioritizedSubjects = [
-      ...weakSubjects,
-      ...allSubjects.filter(subject => !weakSubjects.includes(subject))
-    ];
-    
-    // Generate daily plan
-    const dailyPlan = [];
-    const subjectsPerDay = 2;
-    
-    for (let day = 0; day < Math.min(daysRemaining, 30); day++) {
-      const todaySubjects = [];
-      for (let i = 0; i < subjectsPerDay; i++) {
-        const subjectIndex = (day * subjectsPerDay + i) % prioritizedSubjects.length;
-        todaySubjects.push(prioritizedSubjects[subjectIndex]);
-      }
-      dailyPlan.push(todaySubjects);
+    };
+
+    loadStudyPlan();
+  }, [userProfile]);
+
+  const createOrUpdateStudyPlan = async (dailyPlan) => {
+    try {
+      setLoading(true);
+      const updatedPlan = await studyAPI.createOrUpdateStudyPlan(dailyPlan);
+      setStudyPlan(updatedPlan);
+      setError(null);
+      return updatedPlan;
+    } catch (error) {
+      console.error('Error updating study plan:', error);
+      setError('Failed to update study plan');
+      throw error;
+    } finally {
+      setLoading(false);
     }
-    
-    return dailyPlan;
   };
 
-  // Add recent query
-  const addRecentQuery = (query) => {
-    setRecentQueries(prev => {
-      const newQueries = [query, ...prev.filter(q => q.id !== query.id)];
-      // Keep only the 10 most recent queries
-      return newQueries.slice(0, 10);
-    });
+  const updateTopicStatus = async (topicId, completed) => {
+    try {
+      const updatedPlan = await studyAPI.updateTopicStatus(topicId, completed);
+      setStudyPlan(updatedPlan);
+      setError(null);
+      return updatedPlan;
+    } catch (error) {
+      console.error('Error updating topic status:', error);
+      setError('Failed to update topic status');
+      throw error;
+    }
   };
 
-  // Mark topic as completed
-  const markTopicCompleted = (topic) => {
-    setProgress(prev => {
-      const newCompletedTopics = [...prev.completedTopics, topic];
-      const newPercentage = Math.min(
-        100, 
-        Math.round((newCompletedTopics.length / allTopicsCount) * 100)
-      );
-      
-      return {
-        ...prev,
-        completedTopics: newCompletedTopics,
-        lastStudySession: new Date(),
-        completionPercentage: newPercentage
-      };
-    });
+  const value = {
+    studyPlan,
+    loading,
+    error,
+    createOrUpdateStudyPlan,
+    updateTopicStatus,
+    examDate: userProfile?.studyPreferences?.examDate,
+    selectedSubjects: userProfile?.studyPreferences?.selectedSubjects || [],
+    weakSubjects: userProfile?.studyPreferences?.weakSubjects || [],
+    updateStudyPreferences,
+    studyMode,
+    setStudyMode
   };
-
-  // Mark topic as weak area
-  const markTopicAsWeak = (topic) => {
-    setProgress(prev => {
-      const newWeakAreas = [...prev.weakAreas];
-      if (!newWeakAreas.includes(topic)) {
-        newWeakAreas.push(topic);
-      }
-      
-      return {
-        ...prev,
-        weakAreas: newWeakAreas
-      };
-    });
-  };
-
-  // Set the exam date
-  const updateExamDate = (date) => {
-    setExamDate(date);
-    // Regenerate the study plan with the new date
-    generateStudyPlan();
-  };
-
-  // Set the syllabus
-  const updateSyllabus = (syllabus) => {
-    setSyllabus(syllabus);
-    // Regenerate the study plan with the new syllabus
-    generateStudyPlan();
-  };
-
-  // Calculate the total number of topics (for progress percentage)
-  const allTopicsCount = 150; // This would be dynamic in a real app
 
   return (
-    <StudyContext.Provider value={{
-      examDate,
-      setExamDate: updateExamDate,
-      currentSyllabus,
-      setSyllabus: updateSyllabus,
-      studyProgress,
-      setStudyProgress,
-      progress,
-      setProgress,
-      selectedSubjects,
-      setSelectedSubjects,
-      weakSubjects,
-      setWeakSubjects,
-      studyMode,
-      setStudyMode,
-      recentQueries,
-      addRecentQuery,
-      isOfflineMode,
-      isGenerating,
-      studyPlan,
-      generateStudyPlan,
-      markTopicCompleted,
-      markTopicAsWeak
-    }}>
+    <StudyContext.Provider value={value}>
       {children}
     </StudyContext.Provider>
   );
-};
-
-export default StudyContext;
+}

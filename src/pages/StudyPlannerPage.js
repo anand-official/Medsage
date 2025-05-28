@@ -18,7 +18,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
-import { StudyContext } from '../contexts/StudyContext';
+import { useStudyContext } from '../contexts/StudyContext';
 import { ThemeContext } from '../App';
 import { usePageAnimation } from '../hooks/usePageAnimation';
 import TodaySchedule from '../components/study-planner/TodaySchedule';
@@ -60,8 +60,9 @@ const StudyPlannerPage = () => {
     setWeakSubjects,
     generateStudyPlan: contextGenerateStudyPlan,
     isGenerating,
-    studyPlan
-  } = useContext(StudyContext);
+    studyPlan,
+    loading
+  } = useStudyContext();
   
   // State
   const [expandedDay, setExpandedDay] = useState(null);

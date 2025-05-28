@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { Box, Typography, Button, Chip, useTheme, useMediaQuery } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { StudyContext } from '../../contexts/StudyContext';
+import { useStudyContext } from '../../contexts/StudyContext';
 import { format, differenceInDays } from 'date-fns';
 import { 
   School as SchoolIcon,
@@ -11,13 +11,17 @@ import {
 } from '@mui/icons-material';
 
 const HeroSection = () => {
-  const { examDate, studyProgress } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const daysRemaining = differenceInDays(examDate, new Date());
-  const formattedExamDate = format(examDate, 'MMMM dd, yyyy');
+  const daysRemaining = studyPlan?.examDate 
+    ? differenceInDays(new Date(studyPlan.examDate), new Date())
+    : 0;
+  const formattedExamDate = studyPlan?.examDate 
+    ? format(new Date(studyPlan.examDate), 'MMMM dd, yyyy')
+    : 'Not set';
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -35,6 +39,20 @@ const HeroSection = () => {
       transition: { type: "spring", stiffness: 100 }
     }
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ 
+        position: 'relative',
+        py: { xs: 4, md: 6 },
+        px: { xs: 2, md: 4 },
+        textAlign: 'center',
+        zIndex: 1
+      }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <motion.div
@@ -94,7 +112,7 @@ const HeroSection = () => {
           }}>
             <Chip
               icon={<SchoolIcon />}
-              label={`${studyProgress.completionPercentage}% Complete`}
+              label={`${studyPlan?.completionPercentage || 0}% Complete`}
               sx={{
                 bgcolor: `${theme.palette.primary.main}15`,
                 color: theme.palette.primary.main,
@@ -122,7 +140,7 @@ const HeroSection = () => {
             />
             <Chip
               icon={<TrendingIcon />}
-              label={`${studyProgress.completedTopics} Topics Mastered`}
+              label={`${studyPlan?.completedTopics || 0} Topics Mastered`}
               sx={{
                 bgcolor: `${theme.palette.success.main}15`,
                 color: theme.palette.success.main,

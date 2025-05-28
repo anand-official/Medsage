@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1748440047883,
+    "timestamp": "2025-05-28T13:47:27.830Z",
+    "role": "user",
+    "message": "hi",
+    "sender": "user"
+  },
+  {
+    "id": 1748440047953,
+    "timestamp": "2025-05-28T13:47:27.953Z",
+    "role": "user",
+    "message": "hi",
+    "sender": "user"
+  },
+  {
+    "id": 1748440048080,
+    "timestamp": "2025-05-28T13:47:27.991Z",
+    "role": "assistant",
+    "message": "I understand you're asking about: \"hi\". This is a mock response. The actual AI integration will be implemented soon.",
+    "sender": "bot"
+  },
+  {
+    "id": 1748440075589,
+    "timestamp": "2025-05-28T13:47:55.538Z",
+    "role": "user",
+    "message": "mnnj",
+    "sender": "user"
+  },
+  {
+    "id": 1748440075682,
+    "timestamp": "2025-05-28T13:47:55.682Z",
+    "role": "user",
+    "message": "mnnj",
+    "sender": "user"
+  },
+  {
+    "id": 1748440075714,
+    "timestamp": "2025-05-28T13:47:55.703Z",
+    "role": "assistant",
+    "message": "I understand you're asking about: \"mnnj\". This is a mock response. The actual AI integration will be implemented soon.",
+    "sender": "bot"
+  }
+]

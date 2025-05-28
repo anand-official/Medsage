@@ -55,17 +55,19 @@ import {
   CalendarToday as CalendarTodayIcon,
   CalendarMonth as CalendarMonthIcon,
   Timer as TimerIcon,
-  Note as NoteIcon
+  Note as NoteIcon,
+  Chat as ChatIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { ThemeContext } from '../App';
-import { StudyContext } from '../contexts/StudyContext';
+import { useStudyContext } from '../contexts/StudyContext';
 import { useAuth } from '../contexts/AuthContext';
+import { NavLink } from 'react-router-dom';
 
 const Layout = () => {
   const { mode, toggleColorMode } = useContext(ThemeContext);
   const theme = useTheme();
-  const { currentSyllabus, examDate, studyProgress, setSyllabus } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,6 +80,7 @@ const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchorEl, setProfileAnchorEl] = useState(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const [currentSyllabus, setCurrentSyllabus] = useState('MBBS-India');
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -105,6 +108,13 @@ const Layout = () => {
     }
   ]);
 
+  // Calculate derived values
+  const daysRemaining = Math.floor((new Date(studyPlan?.examDate) - new Date()) / (1000 * 60 * 60 * 24));
+  const completionPercentage = studyPlan?.completionPercentage || 0;
+  const completedTopics = studyPlan?.completedTopics || 0;
+  const totalTopics = studyPlan?.totalTopics || 0;
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -115,7 +125,7 @@ const Layout = () => {
   };
 
   const handleSyllabusChange = (event) => {
-    setSyllabus(event.target.value);
+    setCurrentSyllabus(event.target.value);
   };
   
   const handleDrawerToggle = () => {
@@ -134,11 +144,32 @@ const Layout = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
   
-  const navItems = [
-    { text: 'Home', icon: <HomeIcon />, path: '/' },
-    { text: 'Ask Question', icon: <QuestionIcon />, path: '/question' },
-    { text: 'Study Planner', icon: <DateRangeIcon />, path: '/planner' },
-    { text: 'Book References', icon: <BookIcon />, path: '/books' },
+  const navigationItems = [
+    { 
+      label: 'Home', 
+      icon: <HomeIcon />, 
+      path: '/' 
+    },
+    { 
+      label: 'Ask Question', 
+      icon: <QuestionIcon />, 
+      path: '/question' 
+    },
+    { 
+      label: 'Study Planner', 
+      icon: <DateRangeIcon />, 
+      path: '/planner' 
+    },
+    { 
+      label: 'Book References', 
+      icon: <BookIcon />, 
+      path: '/books' 
+    },
+    { 
+      label: 'Chat', 
+      icon: <ChatIcon />, 
+      path: '/chat' 
+    }
   ];
   
   const drawer = (
@@ -233,7 +264,7 @@ const Layout = () => {
         <FormControl fullWidth size="small" sx={{ mb: 3 }}>
           <Select
             value={currentSyllabus}
-            onChange={(e) => setSyllabus(e.target.value)}
+            onChange={(e) => setCurrentSyllabus(e.target.value)}
             sx={{
               bgcolor: theme.palette.mode === 'dark' 
                 ? 'rgba(255, 255, 255, 0.05)' 
@@ -321,7 +352,7 @@ const Layout = () => {
               letterSpacing: '-0.5px'
             }}
           >
-            {Math.floor((new Date(examDate) - new Date()) / (1000 * 60 * 60 * 24))}
+            {Math.floor((new Date(studyPlan?.examDate) - new Date()) / (1000 * 60 * 60 * 24))}
             <Typography 
               variant="subtitle1" 
               color="text.secondary" 
@@ -346,10 +377,10 @@ const Layout = () => {
       
       {/* Navigation Items */}
       <List sx={{ px: sidebarCollapsed ? 1 : 3 }}>
-        {navItems.map((item, index) => (
+        {navigationItems.map((item, index) => (
           <ListItem 
             button 
-            key={item.text}
+            key={`nav-${item.path}`}
             component={motion.div}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -395,7 +426,7 @@ const Layout = () => {
             </ListItemIcon>
             {!sidebarCollapsed && (
               <ListItemText 
-                primary={item.text} 
+                primary={item.label} 
                 primaryTypographyProps={{
                   fontWeight: location.pathname === item.path ? 600 : 400,
                   fontSize: '0.95rem',
@@ -503,7 +534,7 @@ const Layout = () => {
                   <Box
                     component={motion.div}
                     initial={{ rotate: -90 }}
-                    animate={{ rotate: (studyProgress.completionPercentage * 3.6) - 90 }}
+                    animate={{ rotate: (completionPercentage * 3.6) - 90 }}
                     transition={{ duration: 1, ease: "easeOut" }}
             sx={{ 
                       position: 'absolute',
@@ -511,8 +542,8 @@ const Layout = () => {
               height: '100%', 
                       borderRadius: '50%',
                       background: `conic-gradient(
-                        ${theme.palette.primary.main} 0% ${studyProgress.completionPercentage}%,
-                        ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} ${studyProgress.completionPercentage}% 100%
+                        ${theme.palette.primary.main} 0% ${completionPercentage}%,
+                        ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} ${completionPercentage}% 100%
                       )`,
                       '&::before': {
                         content: '""',
@@ -534,7 +565,7 @@ const Layout = () => {
                       zIndex: 1
                     }}
                   >
-                    {studyProgress.completionPercentage}%
+                    {completionPercentage}%
                   </Typography>
         </Box>
               </Box>
@@ -591,7 +622,7 @@ const Layout = () => {
                     textShadow: `0 2px 8px ${theme.palette.secondary.main}40`
                   }}
                 >
-                  {Math.floor((new Date(examDate) - new Date()) / (1000 * 60 * 60 * 24))}
+                  {Math.floor((new Date(studyPlan?.examDate) - new Date()) / (1000 * 60 * 60 * 24))}
                 </Typography>
                 <Typography 
                   variant="subtitle1" 
@@ -635,8 +666,6 @@ const Layout = () => {
       prevNotifications.map(notification => ({ ...notification, read: true }))
     );
   };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <Box sx={{ 
@@ -743,9 +772,9 @@ const Layout = () => {
               alignItems: 'center',
               gap: 1
             }}>
-              {navItems.map((item) => (
+              {navigationItems.map((item) => (
                 <Button
-                  key={item.text}
+                  key={item.path}
                   onClick={() => navigate(item.path)}
                   startIcon={item.icon}
                   sx={{
@@ -763,7 +792,7 @@ const Layout = () => {
                     }
                   }}
                 >
-                  {item.text}
+                  {item.label}
                 </Button>
               ))}
             </Box>
@@ -874,7 +903,7 @@ const Layout = () => {
                 {notifications.length > 0 ? (
                   notifications.map((notification) => (
                     <MenuItem
-                      key={notification.id}
+                      key={`notification-${notification.id}`}
                       onClick={() => markNotificationAsRead(notification.id)}
                       sx={{
                         py: 1.5,
@@ -1211,7 +1240,7 @@ const Layout = () => {
                     { text: 'Read Chapter 5 - Nervous System', time: '3 hours', checked: false, priority: 'high' }
                   ].map((task, index) => (
                     <ListItem
-                      key={index}
+                      key={`task-${index}-${task.text}`}
                       sx={{
                         bgcolor: theme.palette.mode === 'dark' 
                           ? 'rgba(255, 255, 255, 0.05)' 
@@ -1474,7 +1503,7 @@ const Layout = () => {
                     { text: 'Review 3 Chapters', progress: 2, total: 3 }
                   ].map((goal, index) => (
                     <ListItem
-                      key={index}
+                      key={`weekly-goal-${index}-${goal.text}`}
                       sx={{
                         bgcolor: theme.palette.mode === 'dark' 
                           ? 'rgba(255, 255, 255, 0.05)' 
@@ -1498,7 +1527,7 @@ const Layout = () => {
                       <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ flex: 1, height: 6, bgcolor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
                           <Box
-        sx={{
+                            sx={{
                               height: '100%',
                               width: `${(goal.progress / goal.total) * 100}%`,
                               bgcolor: 'secondary.main',
@@ -1539,7 +1568,7 @@ const Layout = () => {
                     { text: 'Finish 200 MCQs', progress: 120, total: 200 }
                   ].map((goal, index) => (
                     <ListItem
-                      key={index}
+                      key={`monthly-goal-${index}-${goal.text}`}
                       sx={{
                         bgcolor: theme.palette.mode === 'dark' 
                           ? 'rgba(255, 255, 255, 0.05)' 

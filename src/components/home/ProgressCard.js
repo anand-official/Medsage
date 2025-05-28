@@ -14,7 +14,7 @@ import {
   useMediaQuery
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { StudyContext } from '../../contexts/StudyContext';
+import { useStudyContext } from '../../contexts/StudyContext';
 import { 
   School as SchoolIcon,
   CheckCircle as CheckCircleIcon,
@@ -25,9 +25,30 @@ import {
 } from '@mui/icons-material';
 
 const ProgressCard = () => {
-  const { studyProgress, examDate } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  if (loading) {
+    return (
+      <Box sx={{ 
+        p: 3,
+        borderRadius: 2,
+        bgcolor: theme.palette.mode === 'dark' 
+          ? 'rgba(255, 255, 255, 0.05)' 
+          : 'rgba(0, 0, 0, 0.02)',
+        border: `1px solid ${theme.palette.mode === 'dark' 
+          ? 'rgba(255, 255, 255, 0.1)' 
+          : 'rgba(0, 0, 0, 0.1)'}`,
+      }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
+
+  const completionPercentage = studyPlan?.completionPercentage || 0;
+  const completedTopics = studyPlan?.completedTopics || 0;
+  const totalTopics = studyPlan?.totalTopics || 0;
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -41,14 +62,14 @@ const ProgressCard = () => {
   const stats = [
     {
       label: 'Completion',
-      value: `${studyProgress.completionPercentage}%`,
+      value: `${completionPercentage}%`,
       icon: <CheckCircleIcon />,
       color: theme.palette.primary.main,
       tooltip: 'Overall completion of your study plan'
     },
     {
       label: 'Topics',
-      value: `${studyProgress.completedTopics}/${studyProgress.totalTopics}`,
+      value: `${completedTopics}/${totalTopics}`,
       icon: <SchoolIcon />,
       color: theme.palette.secondary.main,
       tooltip: 'Topics covered vs total topics'
@@ -137,7 +158,7 @@ const ProgressCard = () => {
                     width: '100%',
                     height: '100%',
                     borderRadius: '50%',
-                    background: `conic-gradient(${theme.palette.primary.main} ${studyProgress.completionPercentage}%, ${theme.palette.divider} 0%)`,
+                    background: `conic-gradient(${theme.palette.primary.main} ${completionPercentage}%, ${theme.palette.divider} 0%)`,
                     transform: 'rotate(-90deg)',
                     display: 'flex',
                     alignItems: 'center',
@@ -163,7 +184,7 @@ const ProgressCard = () => {
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent'
                     }}>
-                      {studyProgress.completionPercentage}%
+                      {completionPercentage}%
                     </Typography>
                   </Box>
                 </Box>
@@ -271,12 +292,12 @@ const ProgressCard = () => {
                 Overall Progress
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {studyProgress.completedTopics} of {studyProgress.totalTopics} topics completed
+                {completedTopics} of {totalTopics} topics completed
               </Typography>
             </Box>
             <LinearProgress 
               variant="determinate" 
-              value={studyProgress.completionPercentage}
+              value={completionPercentage}
               sx={{
                 height: 8,
                 borderRadius: 4,

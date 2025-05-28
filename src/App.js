@@ -16,9 +16,10 @@ import StudyPlannerPage from './pages/StudyPlannerPage';
 import BookReferencePage from './pages/BookReferencePage';
 import NotFoundPage from './pages/NotFoundPage';
 import SignIn from './components/SignIn';
+import Chat from './components/chat/Chat';
 
 // Import contexts and theme
-import { StudyContextProvider } from './contexts/StudyContext';
+import { StudyProvider } from './contexts/StudyContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getTheme } from './theme';
 
@@ -88,7 +89,7 @@ function App() {
         <CssBaseline />
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <AuthProvider>
-            <StudyContextProvider>
+            <StudyProvider>
               <Router>
                 <Routes>
                   <Route path="/signin" element={<SignIn />} />
@@ -113,11 +114,12 @@ function App() {
                         <BookReferencePage />
                       </ProtectedRoute>
                     } />
+                    <Route path="chat" element={<Chat />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>
               </Router>
-            </StudyContextProvider>
+            </StudyProvider>
           </AuthProvider>
         </LocalizationProvider>
       </ThemeProvider>

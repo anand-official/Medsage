@@ -24,11 +24,11 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { StudyContext } from '../../contexts/StudyContext';
+import { useStudyContext } from '../../contexts/StudyContext';
 import { format } from 'date-fns';
 
 const QuickActions = () => {
-  const { studyProgress, examDate } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const navigate = useNavigate();
 

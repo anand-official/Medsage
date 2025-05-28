@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { StudyContext } from '../contexts/StudyContext';
+import { useStudyContext } from '../contexts/StudyContext';
 import { usePageAnimation } from '../hooks/usePageAnimation';
 import HeroSection from '../components/home/HeroSection';
 import QuickActions from '../components/home/QuickActions';
@@ -18,13 +18,7 @@ import ProgressCard from '../components/home/ProgressCard';
 import RecentActivity from '../components/home/RecentActivity';
 
 const HomePage = () => {
-  const { 
-    currentSyllabus, 
-    examDate, 
-    studyProgress, 
-    recentQueries, 
-    isOfflineMode 
-  } = useContext(StudyContext);
+  const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
