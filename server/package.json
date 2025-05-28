@@ -8,13 +8,21 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
-    "axios": "^1.6.2",
+    "axios": "^1.9.0",
     "body-parser": "^1.20.2",
+    "compression": "^1.8.0",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "dotenv": "^16.3.1"
+    "date-fns": "^2.30.0",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   }
-} 
+}

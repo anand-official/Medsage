@@ -16,7 +16,6 @@ import StudyPlannerPage from './pages/StudyPlannerPage';
 import BookReferencePage from './pages/BookReferencePage';
 import NotFoundPage from './pages/NotFoundPage';
 import SignIn from './components/SignIn';
-import Chat from './components/chat/Chat';
 
 // Import contexts and theme
 import { StudyProvider } from './contexts/StudyContext';
@@ -114,7 +113,6 @@ function App() {
                         <BookReferencePage />
                       </ProtectedRoute>
                     } />
-                    <Route path="chat" element={<Chat />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>

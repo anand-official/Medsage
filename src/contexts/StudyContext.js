@@ -1,71 +1,71 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useState } from 'react';
 import { studyAPI } from '../services/api';
 
 const StudyContext = createContext();
 
-export function useStudyContext() {
-  return useContext(StudyContext);
-}
+export const useStudyContext = () => {
+  const context = useContext(StudyContext);
+  if (!context) {
+    throw new Error('useStudyContext must be used within a StudyProvider');
+  }
+  return context;
+};
 
-export function StudyProvider({ children }) {
-  const { userProfile, updateStudyPreferences } = useAuth();
+export const StudyProvider = ({ children }) => {
   const [studyPlan, setStudyPlan] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [studyMode, setStudyMode] = useState('comprehensive');
+  const [examDate, setExamDate] = useState(null);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [weakSubjects, setWeakSubjects] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Load study plan when user profile changes
-  useEffect(() => {
-    const loadStudyPlan = async () => {
-      if (!userProfile) {
-        setStudyPlan(null);
-        setLoading(false);
-        return;
-      }
+  const generateStudyPlan = async () => {
+    try {
+      setIsGenerating(true);
+      setError(null);
+      const data = await studyAPI.generateStudyPlan({
+        examDate,
+        selectedSubjects,
+        weakSubjects,
+      });
+      setStudyPlan(data.data);
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to generate study plan');
+      throw err;
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-      try {
-        setLoading(true);
-        const plan = await studyAPI.getStudyPlan();
-        setStudyPlan(plan);
-        setError(null);
-      } catch (error) {
-        console.error('Error loading study plan:', error);
-        setError('Failed to load study plan');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStudyPlan();
-  }, [userProfile]);
-
-  const createOrUpdateStudyPlan = async (dailyPlan) => {
+  const getStudyPlan = async () => {
     try {
       setLoading(true);
-      const updatedPlan = await studyAPI.createOrUpdateStudyPlan(dailyPlan);
-      setStudyPlan(updatedPlan);
       setError(null);
-      return updatedPlan;
-    } catch (error) {
-      console.error('Error updating study plan:', error);
-      setError('Failed to update study plan');
-      throw error;
+      const data = await studyAPI.getStudyPlan();
+      setStudyPlan(data.data);
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to fetch study plan');
+      throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  const updateTopicStatus = async (topicId, completed) => {
+  const updateStudyPlan = async (dailyPlan) => {
     try {
-      const updatedPlan = await studyAPI.updateTopicStatus(topicId, completed);
-      setStudyPlan(updatedPlan);
+      setLoading(true);
       setError(null);
-      return updatedPlan;
-    } catch (error) {
-      console.error('Error updating topic status:', error);
-      setError('Failed to update topic status');
-      throw error;
+      const data = await studyAPI.updateStudyPlan({ dailyPlan });
+      setStudyPlan(data.data);
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to update study plan');
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,19 +73,17 @@ export function StudyProvider({ children }) {
     studyPlan,
     loading,
     error,
-    createOrUpdateStudyPlan,
-    updateTopicStatus,
-    examDate: userProfile?.studyPreferences?.examDate,
-    selectedSubjects: userProfile?.studyPreferences?.selectedSubjects || [],
-    weakSubjects: userProfile?.studyPreferences?.weakSubjects || [],
-    updateStudyPreferences,
-    studyMode,
-    setStudyMode
+    examDate,
+    setExamDate,
+    selectedSubjects,
+    setSelectedSubjects,
+    weakSubjects,
+    setWeakSubjects,
+    isGenerating,
+    generateStudyPlan,
+    getStudyPlan,
+    updateStudyPlan,
   };
 
-  return (
-    <StudyContext.Provider value={value}>
-      {children}
-    </StudyContext.Provider>
-  );
-}
+  return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>;
+};

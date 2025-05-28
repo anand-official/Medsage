@@ -1,31 +1,37 @@
 import axios from 'axios';
 import { auth } from '../firebase';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
-// Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   },
-  withCredentials: true
 });
 
-// Add response interceptor for better error handling
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
 api.interceptors.response.use(
-  response => response,
-  error => {
-    console.error('API Error:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        data: error.config?.data
-      }
-    });
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
     return Promise.reject(error);
   }
 );
@@ -78,52 +84,36 @@ export const authAPI = {
       method: 'PUT',
       data: preferences
     });
-  }
+  },
+
+  login: (credentials) => api.post('/auth/login', credentials),
+  register: (userData) => api.post('/auth/register', userData),
+  logout: () => api.post('/auth/logout'),
 };
 
 // Study API calls
 export const studyAPI = {
-  getStudyPlan: async () => {
-    return apiCall('/study/plan');
-  },
-
-  createOrUpdateStudyPlan: async (dailyPlan) => {
-    return apiCall('/study/plan', {
-      method: 'POST',
-      data: { dailyPlan }
-    });
-  },
-
-  updateTopicStatus: async (topicId, completed) => {
-    return apiCall(`/study/topic/${topicId}`, {
-      method: 'PUT',
-      data: { completed }
-    });
-  }
+  generateStudyPlan: (data) => api.post('/study/generate', data),
+  getStudyPlan: () => api.get('/study/plan'),
+  updateStudyPlan: (data) => api.put('/study/plan', data),
 };
 
 // Questions API calls
-export const questionsAPI = {
-  getQuestions: async () => {
-    return apiCall('/questions');
-  },
-
-  createQuestion: async (questionData) => {
-    return apiCall('/questions', {
-      method: 'POST',
-      data: questionData
-    });
-  },
-
-  getQuestionById: async (id) => {
-    return apiCall(`/questions/${id}`);
-  }
+export const questionAPI = {
+  getQuestions: () => api.get('/questions'),
+  createQuestion: (data) => api.post('/questions', data),
+  updateQuestion: (id, data) => api.put(`/questions/${id}`, data),
+  deleteQuestion: (id) => api.delete(`/questions/${id}`),
 };
 
-export const fetchMedicalQuery = async (query) => {
-  return apiCall('/api/medical-query', {
+export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = 'Indian MBBS') => {
+  return apiCall('/api/medical/query', {
     method: 'POST',
-    data: { message: query }
+    data: { 
+      message: query,
+      mode,
+      syllabus
+    }
   });
 };
 
@@ -132,6 +122,13 @@ export const syncUserWithBackend = async (user) => {
     method: 'POST',
     data: user
   });
+};
+
+export const chatAPI = {
+  sendMessage: async (message) => {
+    const response = await api.post('/chat', { message });
+    return response.data;
+  },
 };
 
 export default api; 

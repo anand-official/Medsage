@@ -40,5 +40,47 @@
     "role": "assistant",
     "message": "I understand you're asking about: \"mnnj\". This is a mock response. The actual AI integration will be implemented soon.",
     "sender": "bot"
+  },
+  {
+    "id": 1748440547708,
+    "timestamp": "2025-05-28T13:55:47.692Z",
+    "role": "user",
+    "message": "heyy",
+    "sender": "user"
+  },
+  {
+    "id": 1748440547758,
+    "timestamp": "2025-05-28T13:55:47.758Z",
+    "role": "user",
+    "message": "heyy",
+    "sender": "user"
+  },
+  {
+    "id": 1748440547785,
+    "timestamp": "2025-05-28T13:55:47.770Z",
+    "role": "assistant",
+    "message": "I understand you're asking about: \"heyy\". This is a mock response. The actual AI integration will be implemented soon.",
+    "sender": "bot"
+  },
+  {
+    "id": 1748440555831,
+    "timestamp": "2025-05-28T13:55:55.799Z",
+    "role": "user",
+    "message": "hello",
+    "sender": "user"
+  },
+  {
+    "id": 1748440555896,
+    "timestamp": "2025-05-28T13:55:55.896Z",
+    "role": "user",
+    "message": "hello",
+    "sender": "user"
+  },
+  {
+    "id": 1748440555999,
+    "timestamp": "2025-05-28T13:55:55.980Z",
+    "role": "assistant",
+    "message": "I understand you're asking about: \"hello\". This is a mock response. The actual AI integration will be implemented soon.",
+    "sender": "bot"
   }
 ]

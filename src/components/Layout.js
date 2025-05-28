@@ -164,11 +164,6 @@ const Layout = () => {
       label: 'Book References', 
       icon: <BookIcon />, 
       path: '/books' 
-    },
-    { 
-      label: 'Chat', 
-      icon: <ChatIcon />, 
-      path: '/chat' 
     }
   ];
   

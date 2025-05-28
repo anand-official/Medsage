@@ -5,7 +5,11 @@ import {
   Button, Divider, TextField, FormControl, InputLabel,
   Select, MenuItem, Chip, Alert, CircularProgress, 
   Paper, List, ListItem, ListItemText, Collapse,
-  useTheme
+  useTheme,
+  FormLabel,
+  FormGroup,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -17,6 +21,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
 
 import { useStudyContext } from '../contexts/StudyContext';
 import { ThemeContext } from '../App';
@@ -61,7 +68,8 @@ const StudyPlannerPage = () => {
     generateStudyPlan: contextGenerateStudyPlan,
     isGenerating,
     studyPlan,
-    loading
+    loading,
+    error
   } = useStudyContext();
   
   // State
@@ -86,13 +94,21 @@ const StudyPlannerPage = () => {
   };
 
   // Handle subject selection
-  const handleSubjectChange = (event) => {
-    setSelectedSubjects(event.target.value);
+  const handleSubjectChange = (subject) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(subject)
+        ? prev.filter((s) => s !== subject)
+        : [...prev, subject]
+    );
   };
 
   // Handle weak subject selection
-  const handleWeakSubjectChange = (event) => {
-    setWeakSubjects(event.target.value);
+  const handleWeakSubjectChange = (subject) => {
+    setWeakSubjects((prev) =>
+      prev.includes(subject)
+        ? prev.filter((s) => s !== subject)
+        : [...prev, subject]
+    );
   };
 
   // Mark topic as complete
@@ -179,12 +195,15 @@ const StudyPlannerPage = () => {
   };
 
   // Handle generate plan
-  const handleGeneratePlan = (e) => {
-    e.preventDefault();
-    if (!isGenerating && isFormValid()) {
-      contextGenerateStudyPlan();
+  const handleGeneratePlan = async () => {
+    try {
+      await contextGenerateStudyPlan();
+    } catch (err) {
+      console.error('Failed to generate study plan:', err);
     }
   };
+
+  const todaySchedule = getTodaySchedule();
 
   return (
     <Container 
@@ -282,7 +301,7 @@ const StudyPlannerPage = () => {
                 width: '100%'
               }}
             >
-              <TodaySchedule schedule={getTodaySchedule()} />
+              <TodaySchedule schedule={todaySchedule} />
             </motion.div>
 
             <motion.div 
@@ -356,89 +375,41 @@ const StudyPlannerPage = () => {
                       />
                     </LocalizationProvider>
                     
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>Subjects to Study</InputLabel>
-                      <Select
-                        multiple
-                        value={selectedSubjects}
-                        onChange={handleSubjectChange}
-                        renderValue={(selected) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {selected.map((value) => (
-                              <Chip 
-                                key={value} 
-                                label={value} 
-                                size="small"
-                                sx={{
-                                  borderRadius: 1,
-                                  bgcolor: `${theme.palette.primary.main}15`,
-                                  borderColor: `${theme.palette.primary.main}30`,
-                                  '&:hover': {
-                                    bgcolor: `${theme.palette.primary.main}25`
-                                  }
-                                }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                        sx={{
-                          borderRadius: 2,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: theme.palette.mode === 'dark' 
-                              ? 'rgba(255, 255, 255, 0.2)' 
-                              : 'rgba(0, 0, 0, 0.2)'
-                          }
-                        }}
-                      >
+                    <FormControl component="fieldset" sx={{ mt: 2 }}>
+                      <FormLabel component="legend">Select Subjects</FormLabel>
+                      <FormGroup>
                         {SUBJECTS.map((subject) => (
-                          <MenuItem key={subject} value={subject}>
-                            {subject}
-                          </MenuItem>
+                          <FormControlLabel
+                            key={subject}
+                            control={
+                              <Checkbox
+                                checked={selectedSubjects.includes(subject)}
+                                onChange={() => handleSubjectChange(subject)}
+                              />
+                            }
+                            label={subject}
+                          />
                         ))}
-                      </Select>
+                      </FormGroup>
                     </FormControl>
                     
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>Weak Areas (Priority)</InputLabel>
-                      <Select
-                        multiple
-                        value={weakSubjects}
-                        onChange={handleWeakSubjectChange}
-                        renderValue={(selected) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {selected.map((value) => (
-                              <Chip 
-                                key={value} 
-                                label={value} 
-                                size="small"
-                                color="secondary"
-                                sx={{
-                                  borderRadius: 1,
-                                  bgcolor: `${theme.palette.secondary.main}15`,
-                                  borderColor: `${theme.palette.secondary.main}30`,
-                                  '&:hover': {
-                                    bgcolor: `${theme.palette.secondary.main}25`
-                                  }
-                                }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                        sx={{
-                          borderRadius: 2,
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: theme.palette.mode === 'dark' 
-                              ? 'rgba(255, 255, 255, 0.2)' 
-                              : 'rgba(0, 0, 0, 0.2)'
-                          }
-                        }}
-                      >
+                    <FormControl component="fieldset" sx={{ mt: 2 }}>
+                      <FormLabel component="legend">Weak Subjects (Optional)</FormLabel>
+                      <FormGroup>
                         {SUBJECTS.map((subject) => (
-                          <MenuItem key={subject} value={subject}>
-                            {subject}
-                          </MenuItem>
+                          <FormControlLabel
+                            key={subject}
+                            control={
+                              <Checkbox
+                                checked={weakSubjects.includes(subject)}
+                                onChange={() => handleWeakSubjectChange(subject)}
+                                disabled={!selectedSubjects.includes(subject)}
+                              />
+                            }
+                            label={subject}
+                          />
                         ))}
-                      </Select>
+                      </FormGroup>
                     </FormControl>
 
                     <Button
@@ -446,16 +417,27 @@ const StudyPlannerPage = () => {
                       variant="contained"
                       color="primary"
                       size="large"
-                      onClick={contextGenerateStudyPlan}
+                      onClick={handleGeneratePlan}
                       sx={{
                         mt: 3,
                         py: 1.5,
                         borderRadius: 2
                       }}
+                      disabled={!isFormValid()}
                     >
-                      Generate Study Plan
+                      {isGenerating ? (
+                        <CircularProgress size={24} color="inherit" />
+                      ) : (
+                        'Generate Study Plan'
+                      )}
                     </Button>
                   </Box>
+
+                  {error && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      {error}
+                    </Alert>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
