@@ -1,5 +1,5 @@
 import React, { useState, createContext, useMemo, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { 
   ThemeProvider, 
   CssBaseline 
@@ -15,13 +15,26 @@ import QuestionPage from './pages/QuestionPage';
 import StudyPlannerPage from './pages/StudyPlannerPage';
 import BookReferencePage from './pages/BookReferencePage';
 import NotFoundPage from './pages/NotFoundPage';
+import SignIn from './components/SignIn';
 
 // Import contexts and theme
 import { StudyContextProvider } from './contexts/StudyContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getTheme } from './theme';
 
 // Export the theme context
 export const ThemeContext = createContext({ toggleColorMode: () => {} });
+
+// Protected Route component
+function ProtectedRoute({ children }) {
+  const { currentUser } = useAuth();
+  
+  if (!currentUser) {
+    return <Navigate to="/signin" />;
+  }
+
+  return children;
+}
 
 function App() {
   // State for theme mode
@@ -74,19 +87,38 @@ function App() {
       <ThemeProvider theme={appTheme}>
         <CssBaseline />
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <StudyContextProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<HomePage />} />
-                  <Route path="question" element={<QuestionPage />} />
-                  <Route path="planner" element={<StudyPlannerPage />} />
-                  <Route path="books" element={<BookReferencePage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Route>
-              </Routes>
-            </Router>
-          </StudyContextProvider>
+          <AuthProvider>
+            <StudyContextProvider>
+              <Router>
+                <Routes>
+                  <Route path="/signin" element={<SignIn />} />
+                  <Route path="/" element={<Layout />}>
+                    <Route index element={
+                      <ProtectedRoute>
+                        <HomePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="question" element={
+                      <ProtectedRoute>
+                        <QuestionPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="planner" element={
+                      <ProtectedRoute>
+                        <StudyPlannerPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="books" element={
+                      <ProtectedRoute>
+                        <BookReferencePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Route>
+                </Routes>
+              </Router>
+            </StudyContextProvider>
+          </AuthProvider>
         </LocalizationProvider>
       </ThemeProvider>
     </ThemeContext.Provider>

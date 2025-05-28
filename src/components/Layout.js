@@ -60,11 +60,13 @@ import {
 import { motion } from 'framer-motion';
 import { ThemeContext } from '../App';
 import { StudyContext } from '../contexts/StudyContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const Layout = () => {
   const { mode, toggleColorMode } = useContext(ThemeContext);
   const theme = useTheme();
   const { currentSyllabus, examDate, studyProgress, setSyllabus } = useContext(StudyContext);
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -103,6 +105,15 @@ const Layout = () => {
     }
   ]);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/signin');
+    } catch (error) {
+      console.error('Failed to log out:', error);
+    }
+  };
+
   const handleSyllabusChange = (event) => {
     setSyllabus(event.target.value);
   };
@@ -112,11 +123,11 @@ const Layout = () => {
   };
   
   const handleProfileMenu = (event) => {
-    setAnchorEl(event.currentTarget);
+    setProfileAnchorEl(event.currentTarget);
   };
   
   const handleProfileClose = () => {
-    setAnchorEl(null);
+    setProfileAnchorEl(null);
   };
   
   const toggleSidebar = () => {
@@ -935,8 +946,8 @@ const Layout = () => {
             </Tooltip>
 
             <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
+              anchorEl={profileAnchorEl}
+              open={Boolean(profileAnchorEl)}
               onClose={handleProfileClose}
               PaperProps={{
                 sx: {
@@ -968,15 +979,16 @@ const Layout = () => {
                       bgcolor: 'primary.main',
                       border: `2px solid ${theme.palette.primary.main}`
                     }}
+                    src={currentUser?.photoURL}
                   >
                     <AccountIcon sx={{ fontSize: 32 }} />
                   </Avatar>
                   <Box>
                     <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                      Shagun Vyas
+                      {currentUser?.displayName || 'User'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      john.doe@example.com
+                      {currentUser?.email}
                     </Typography>
                   </Box>
                 </Box>
@@ -1023,7 +1035,7 @@ const Layout = () => {
                 <Divider sx={{ my: 1 }} />
 
                 <MenuItem 
-                  onClick={handleProfileClose}
+                  onClick={handleLogout}
                   sx={{
                     py: 1.5,
                     px: 2,
