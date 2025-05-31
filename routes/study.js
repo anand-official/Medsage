@@ -193,6 +193,16 @@ router.patch('/query/:id/rate', auth, [
   }
 });
 
+// Get study plan
+router.get('/plan', (req, res) => {
+  res.json({ message: 'Get study plan endpoint' });
+});
+
+// Generate study plan
+router.post('/plan', (req, res) => {
+  res.json({ message: 'Generate study plan endpoint' });
+});
+
 // Helper functions
 function detectSubjectFromQuestion(question) {
   const subjectKeywords = {

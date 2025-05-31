@@ -8,8 +8,7 @@ const studyQuerySchema = new mongoose.Schema({
   },
   question: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   answer: {
     type: String,
@@ -29,12 +28,17 @@ const studyQuerySchema = new mongoose.Schema({
     default: 'conceptual'
   },
   references: [{
-    book: String,
-    chapter: String,
-    page: String
+    type: String
   }],
-  citations: [String],
-  tags: [String],
+  citations: [{
+    type: String
+  }],
+  keyPoints: [{
+    type: String
+  }],
+  clinicalRelevance: {
+    type: String
+  },
   difficulty: {
     type: String,
     enum: ['basic', 'intermediate', 'advanced'],
