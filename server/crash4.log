@@ -1,0 +1,262 @@
+
+> medsage-server@1.0.0 dev
+> nodemon index.js
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node index.js`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\anand\Desktop\medsage.ai\Medsage\server\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\Users\anand\Desktop\medsage.ai\Medsage\server\index.js:56:5)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.16.0
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+Server running on port 3001
+Health check available at http://localhost:3001/health
+[MongoDB] Connected successfully
+[Syllabus Agent] Generating standard curriculum for United States Year 1 using AI...
+OpenAI call failed: {
+  error: {
+    message: 'Incorrect API key provided: sk-proj-********************************************************************************************************************************************************IP4A. You can find your API key at https://platform.openai.com/account/api-keys.',
+    type: 'invalid_request_error',
+    code: 'invalid_api_key',
+    param: null
+  },
+  status: 401
+}
+[Syllabus Agent] Failed to generate curriculum for United States: Request failed with status code 401
+OpenAI call failed: {
+  error: {
+    message: 'Incorrect API key provided: sk-proj-********************************************************************************************************************************************************IP4A. You can find your API key at https://platform.openai.com/account/api-keys.',
+    type: 'invalid_request_error',
+    code: 'invalid_api_key',
+    param: null
+  },
+  status: 401
+}
+AI generation failed, using fallback: Request failed with status code 401
+[0mPOST /api/study/generate [32m200[0m 817.291 ms - -[0m
+(node:36388) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[0mPOST /auth/user [32m200[0m 843.693 ms - 506[0m
+[0mGET /api/study/plan [32m200[0m 63.638 ms - 28[0m
+[0mGET /api/study/plan [36m304[0m 44.036 ms - -[0m
+[0mGET /api/study/today [32m200[0m 478.601 ms - 28[0m
+[0mGET /api/study/analytics [32m200[0m 514.650 ms - 28[0m
+[0mGET /api/study/today [36m304[0m 43.541 ms - -[0m
+[0mGET /api/study/analytics [36m304[0m 42.850 ms - -[0m
+[0mGET /api/study/plan [36m304[0m 45.469 ms - -[0m
+[0mGET /api/study/plan [36m304[0m 49.417 ms - -[0m
+(node:36388) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+[0mPOST /auth/user [32m200[0m 67.385 ms - 506[0m
+(node:36388) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+[0mPOST /auth/user [32m200[0m 55.760 ms - 506[0m
+[0mGET /api/study/plan [36m304[0m 41.487 ms - -[0m
+[0mGET /api/study/plan [36m304[0m 41.699 ms - -[0m
+(node:36388) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+[0mPOST /auth/user [32m200[0m 43.992 ms - 506[0m
+[0mGET /api/study/plan [36m304[0m 42.603 ms - -[0m
+[0mGET /api/study/plan [36m304[0m 39.242 ms - -[0m
+[Syllabus Agent] Generating standard curriculum for India Year 2 using AI...
+OpenAI call failed: {
+  error: {
+    message: 'Incorrect API key provided: sk-proj-********************************************************************************************************************************************************IP4A. You can find your API key at https://platform.openai.com/account/api-keys.',
+    type: 'invalid_request_error',
+    code: 'invalid_api_key',
+    param: null
+  },
+  status: 401
+}
+[Syllabus Agent] Failed to generate curriculum for India: Request failed with status code 401
+Error: No topics found for the selected subjects and year.
+    at StudyService.generatePlanWithAI (C:\Users\anand\Desktop\medsage.ai\Medsage\server\services\studyService.js:63:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateStudyPlan (C:\Users\anand\Desktop\medsage.ai\Medsage\server\controllers\studyController.js:20:25)
+[0mPOST /api/study/generate [31m500[0m 1255.460 ms - 515[0m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+Server running on port 3001
+Health check available at http://localhost:3001/health
+[MongoDB] Connected successfully
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\anand\Desktop\medsage.ai\Medsage\server\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\Users\anand\Desktop\medsage.ai\Medsage\server\index.js:56:5)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.16.0
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+Server running on port 3001
+Health check available at http://localhost:3001/health
+[32m[nodemon] starting `node index.js`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\anand\Desktop\medsage.ai\Medsage\server\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\Users\anand\Desktop\medsage.ai\Medsage\server\index.js:56:5)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.16.0
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\anand\Desktop\medsage.ai\Medsage\server\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\Users\anand\Desktop\medsage.ai\Medsage\server\index.js:56:5)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.16.0
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\anand\Desktop\medsage.ai\Medsage\server\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\Users\anand\Desktop\medsage.ai\Medsage\server\index.js:56:5)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.16.0
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node index.js`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at Server.listen (node:net:2101:7)
+    at Function.listen (C:\Users\anand\Desktop\medsage.ai\Medsage\server\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\Users\anand\Desktop\medsage.ai\Medsage\server\index.js:56:5)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.16.0
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

@@ -1,0 +1,654 @@
+{
+  "lastUpdated": "2026-03-07T21:51:16.891Z",
+  "totalBooks": 10,
+  "yearBreakdown": {
+    "mbbs": 10,
+    "bds": 0,
+    "year1": 10,
+    "year2": 0,
+    "year3": 0,
+    "year4": 0
+  },
+  "books": [
+    {
+      "id": "e4a44256-b1c1-4564-802e-2d0423692f41",
+      "title": "Human Anatomy (Vol 1–3)",
+      "author": "B.D. Chaurasia",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Anatomy",
+      "description": "Human Anatomy (Vol 1–3) by B.D. Chaurasia. A comprehensive Anatomy textbook for MBBS students. Essential reading for mastering key concepts in anatomy.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.7,
+      "pageCount": null,
+      "categories": [
+        "Anatomy"
+      ],
+      "subjects": [
+        "Anatomy",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://www.google.com/search?q=Human%20Anatomy%20(Vol%201%E2%80%933)%20Chaurasia%20PDF%20free%20download",
+      "pdfSearch": "https://www.google.com/search?q=Human%20Anatomy%20(Vol%201%E2%80%933)%20Chaurasia%20PDF%20free%20download",
+      "hasDirectPdf": false,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Human%20Anatomy%20(Vol%201%E2%80%933)%20Chaurasia&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Human%20Anatomy%20(Vol%201%E2%80%933)%20Chaurasia&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Human+Anatomy+(Vol+1%E2%80%933)+Chaurasia",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Human%20Anatomy%20(Vol%201%E2%80%933)%20Chaurasia",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Human+Anatomy+(Vol+1%E2%80%933)+Chaurasia&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Human%20Anatomy%20(Vol%201%E2%80%933)%20Chaurasia",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:20.173Z"
+    },
+    {
+      "id": "10655be8-a57f-4a80-888d-6fe7b3dac385",
+      "title": "Gray's Anatomy for Students",
+      "author": "Richard L. Drake, Wayne Vogl, A.W.M. Mitchell",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Anatomy",
+      "description": "Gray's Anatomy for Students by Richard L. Drake, Wayne Vogl, A.W.M. Mitchell. A comprehensive Anatomy textbook for MBBS students. Essential reading for mastering key concepts in anatomy.",
+      "coverUrl": null,
+      "isbn": "9780323393041",
+      "rating": 4.7,
+      "pageCount": null,
+      "categories": [
+        "Anatomy"
+      ],
+      "subjects": [
+        "Anatomy",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL13209115W",
+      "pdfSearch": "https://www.google.com/search?q=Grays%20Anatomy%20for%20Students%20Drake%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Grays%20Anatomy%20for%20Students%20Drake&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Grays%20Anatomy%20for%20Students%20Drake&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Grays+Anatomy+for+Students+Drake",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Grays%20Anatomy%20for%20Students%20Drake",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Grays+Anatomy+for+Students+Drake&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Grays%20Anatomy%20for%20Students%20Drake",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:22.807Z"
+    },
+    {
+      "id": "71b126fb-6450-4913-a238-ff569ecfd000",
+      "title": "Human Embryology",
+      "author": "Inderbir Singh",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Anatomy",
+      "description": "Human Embryology by Inderbir Singh. A comprehensive Anatomy textbook for MBBS students. Essential reading for mastering key concepts in anatomy.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.2,
+      "pageCount": null,
+      "categories": [
+        "Anatomy"
+      ],
+      "subjects": [
+        "Anatomy",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL20912956W",
+      "pdfSearch": "https://www.google.com/search?q=Human%20Embryology%20Singh%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Human%20Embryology%20Singh&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Human%20Embryology%20Singh&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Human+Embryology+Singh",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Human%20Embryology%20Singh",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Human+Embryology+Singh&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Human%20Embryology%20Singh",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:32.998Z"
+    },
+    {
+      "id": "3f9076c3-34bd-4d09-859a-2ac2354c31e6",
+      "title": "Textbook of Histology",
+      "author": "Inderbir Singh",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Anatomy",
+      "description": "Textbook of Histology by Inderbir Singh. A comprehensive Anatomy textbook for MBBS students. Essential reading for mastering key concepts in anatomy.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.7,
+      "pageCount": null,
+      "categories": [
+        "Anatomy"
+      ],
+      "subjects": [
+        "Anatomy",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL22323258W",
+      "pdfSearch": "https://www.google.com/search?q=Textbook%20of%20Histology%20Singh%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Textbook%20of%20Histology%20Singh&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Textbook%20of%20Histology%20Singh&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Textbook+of+Histology+Singh",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Textbook%20of%20Histology%20Singh",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Textbook+of+Histology+Singh&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Textbook%20of%20Histology%20Singh",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:34.768Z"
+    },
+    {
+      "id": "63a0eb04-53c4-482b-813a-289e22ebb6c9",
+      "title": "Harper's Illustrated Biochemistry",
+      "author": "Murray, Bender",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Biochemistry",
+      "description": "Harper's Illustrated Biochemistry by Murray, Bender. A comprehensive Biochemistry textbook for MBBS students. Essential reading for mastering key concepts in biochemistry.",
+      "coverUrl": null,
+      "isbn": "9781260288421",
+      "rating": 4.9,
+      "pageCount": null,
+      "categories": [
+        "Biochemistry"
+      ],
+      "subjects": [
+        "Biochemistry",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL18384974W",
+      "pdfSearch": "https://www.google.com/search?q=Harpers%20Illustrated%20Biochemistry%20Murray%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Harpers%20Illustrated%20Biochemistry%20Murray&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Harpers%20Illustrated%20Biochemistry%20Murray&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Harpers+Illustrated+Biochemistry+Murray",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Harpers%20Illustrated%20Biochemistry%20Murray",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Harpers+Illustrated+Biochemistry+Murray&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Harpers%20Illustrated%20Biochemistry%20Murray",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:51:00.005Z"
+    },
+    {
+      "id": "a438f568-7d67-46f1-85aa-f832f3750e9c",
+      "title": "Biochemistry",
+      "author": "U. Satyanarayana",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Biochemistry",
+      "description": "Biochemistry by U. Satyanarayana. A comprehensive Biochemistry textbook for MBBS students. Essential reading for mastering key concepts in biochemistry.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.6,
+      "pageCount": null,
+      "categories": [
+        "Biochemistry"
+      ],
+      "subjects": [
+        "Biochemistry",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL26351965W",
+      "pdfSearch": "https://www.google.com/search?q=Biochemistry%20Satyanarayana%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Biochemistry%20Satyanarayana&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Biochemistry%20Satyanarayana&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Biochemistry+Satyanarayana",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Biochemistry%20Satyanarayana",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Biochemistry+Satyanarayana&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Biochemistry%20Satyanarayana",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:51:15.201Z"
+    },
+    {
+      "id": "1e824447-4aaf-4c74-b532-95b2e7015dc6",
+      "title": "Textbook of Biochemistry",
+      "author": "D.M. Vasudevan",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Biochemistry",
+      "description": "Textbook of Biochemistry by D.M. Vasudevan. A comprehensive Biochemistry textbook for MBBS students. Essential reading for mastering key concepts in biochemistry.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.1,
+      "pageCount": null,
+      "categories": [
+        "Biochemistry"
+      ],
+      "subjects": [
+        "Biochemistry",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL17408601W",
+      "pdfSearch": "https://www.google.com/search?q=Textbook%20of%20Biochemistry%20Vasudevan%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Textbook%20of%20Biochemistry%20Vasudevan&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Textbook%20of%20Biochemistry%20Vasudevan&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Textbook+of+Biochemistry+Vasudevan",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Textbook%20of%20Biochemistry%20Vasudevan",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Textbook+of+Biochemistry+Vasudevan&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Textbook%20of%20Biochemistry%20Vasudevan",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:51:16.730Z"
+    },
+    {
+      "id": "093e8791-cbe8-4669-a8e5-6d75da8df82d",
+      "title": "Textbook of Physiology",
+      "author": "A.K. Jain",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Physiology",
+      "description": "Textbook of Physiology by A.K. Jain. A comprehensive Physiology textbook for MBBS students. Essential reading for mastering key concepts in physiology.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.4,
+      "pageCount": null,
+      "categories": [
+        "Physiology"
+      ],
+      "subjects": [
+        "Physiology",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://archive.org/details/bwb_S0-BPR-190",
+      "pdfSearch": "https://www.google.com/search?q=Textbook%20of%20Physiology%20Jain%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Textbook%20of%20Physiology%20Jain&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Textbook%20of%20Physiology%20Jain&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Textbook+of+Physiology+Jain",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Textbook%20of%20Physiology%20Jain",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Textbook+of+Physiology+Jain&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Textbook%20of%20Physiology%20Jain",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:45.973Z"
+    },
+    {
+      "id": "09494543-b608-4a9d-8917-d0028497732e",
+      "title": "Guyton & Hall Textbook of Medical Physiology",
+      "author": "Arthur C. Guyton, John E. Hall",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Physiology",
+      "description": "Guyton & Hall Textbook of Medical Physiology by Arthur C. Guyton, John E. Hall. A comprehensive Physiology textbook for MBBS students. Essential reading for mastering key concepts in physiology.",
+      "coverUrl": null,
+      "isbn": "9781455770052",
+      "rating": 4.8,
+      "pageCount": null,
+      "categories": [
+        "Physiology"
+      ],
+      "subjects": [
+        "Physiology",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://openlibrary.org/works/OL17627866W",
+      "pdfSearch": "https://www.google.com/search?q=Guyton%20%26%20Hall%20Textbook%20of%20Medical%20Physiology%20Guyton%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Guyton%20%26%20Hall%20Textbook%20of%20Medical%20Physiology%20Guyton&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Guyton%20%26%20Hall%20Textbook%20of%20Medical%20Physiology%20Guyton&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Guyton+%26+Hall+Textbook+of+Medical+Physiology+Guyton",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Guyton%20%26%20Hall%20Textbook%20of%20Medical%20Physiology%20Guyton",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Guyton+%26+Hall+Textbook+of+Medical+Physiology+Guyton&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Guyton%20%26%20Hall%20Textbook%20of%20Medical%20Physiology%20Guyton",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:46.750Z"
+    },
+    {
+      "id": "97a3ea1d-2266-4e68-82c8-5133af6e1a5d",
+      "title": "Review of Physiology",
+      "author": "G.K. Pal",
+      "course": "MBBS",
+      "year": 1,
+      "category": "Physiology",
+      "description": "Review of Physiology by G.K. Pal. A comprehensive Physiology textbook for MBBS students. Essential reading for mastering key concepts in physiology.",
+      "coverUrl": null,
+      "isbn": null,
+      "rating": 4.2,
+      "pageCount": null,
+      "categories": [
+        "Physiology"
+      ],
+      "subjects": [
+        "Physiology",
+        "MBBS"
+      ],
+      "previewLink": null,
+      "pdfLink": "https://archive.org/details/annualreviewofph0063unse_s4t5",
+      "pdfSearch": "https://www.google.com/search?q=Review%20of%20Physiology%20Pal%20PDF%20free%20download",
+      "hasDirectPdf": true,
+      "freeLinks": [
+        {
+          "name": "Open Library",
+          "url": "https://openlibrary.org/search?q=Review%20of%20Physiology%20Pal&mode=everything",
+          "icon": "OL",
+          "description": "Borrow or read free (Internet Archive)"
+        },
+        {
+          "name": "Internet Archive",
+          "url": "https://archive.org/search?query=Review%20of%20Physiology%20Pal&and[]=mediatype%3A%22texts%22",
+          "icon": "IA",
+          "description": "Free digital texts and PDFs"
+        },
+        {
+          "name": "Z-Library",
+          "url": "https://z-lib.id/s/Review+of+Physiology+Pal",
+          "icon": "ZL",
+          "description": "World's largest free ebook library"
+        },
+        {
+          "name": "Anna's Archive",
+          "url": "https://annas-archive.org/search?q=Review%20of%20Physiology%20Pal",
+          "icon": "AA",
+          "description": "Free access to millions of books"
+        },
+        {
+          "name": "Library Genesis",
+          "url": "https://libgen.is/search.php?req=Review+of+Physiology+Pal&open=0&res=25&view=simple&phrase=1&column=def",
+          "icon": "LG",
+          "description": "Free scientific papers and books"
+        },
+        {
+          "name": "Google Books",
+          "url": "https://books.google.com/books?q=Review%20of%20Physiology%20Pal",
+          "icon": "GB",
+          "description": "Preview and sometimes full text"
+        }
+      ],
+      "source": "curated",
+      "lastVerified": "2026-03-07T21:50:59.290Z"
+    }
+  ]
+}

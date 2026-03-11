@@ -1,0 +1,57 @@
+﻿node : C:\Users\anand\Desktop\
+medsage.ai\Medsage\server\serv
+ices\chunker.js:3
+At line:1 char:1
++ node 
+scripts/ingest_pathology.js > 
+error.log 2>&1 ; cat error.log
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (C:\Users\  
+  anand\...es\chunker.js:3:   
+ String) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 
+const enc = 
+get_encoding("cl100k_base"); 
+// Used by 
+text-embedding-3-large
+            ^
+
+TypeError: get_encoding is 
+not a function
+    at Object.<anonymous> (C:\
+Users\anand\Desktop\medsage.ai
+\Medsage\server\services\chunk
+er.js:3:13)
+    at Module._compile (node:i
+nternal/modules/cjs/loader:173
+0:14)
+    at Object..js (node:intern
+al/modules/cjs/loader:1895:10)
+    at Module.load (node:inter
+nal/modules/cjs/loader:1465:32
+)
+    at Function._load (node:in
+ternal/modules/cjs/loader:1282
+:12)
+    at 
+TracingChannel.traceSync (node
+:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:in
+ternal/modules/cjs/loader:235:
+24)
+    at Module.require (node:in
+ternal/modules/cjs/loader:1487
+:12)
+    at require (node:internal/
+modules/helpers:135:16)
+    at Object.<anonymous> (C:\
+Users\anand\Desktop\medsage.ai
+\Medsage\server\scripts\ingest
+_pathology.js:6:23)
+
+Node.js v22.16.0

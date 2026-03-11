@@ -1,0 +1,93 @@
+{
+    "curriculum": {
+        "country": "India",
+        "degree": "MBBS",
+        "regulator": "NMC",
+        "year": "2nd",
+        "subject": "Pathology",
+        "primary_textbook": {
+            "title": "Robbins and Cotran Pathologic Basis of Disease",
+            "edition": "10th"
+        }
+    },
+    "modules": [
+        {
+            "id": "PATH_GEN",
+            "name": "General Pathology",
+            "topics": [
+                {
+                    "id": "PATH_INF_01",
+                    "name": "Acute Inflammation",
+                    "textbook_ref": {
+                        "chapter": 3,
+                        "starting_page": 69
+                    },
+                    "nmc_outcomes": [
+                        "PA2.1",
+                        "PA2.2",
+                        "PA2.3"
+                    ],
+                    "weights": {
+                        "exam_frequency_norm": 0.92,
+                        "clinical_priority_norm": 0.85,
+                        "faculty_weight_norm": 0.80
+                    },
+                    "high_yield_score": 0.87
+                },
+                {
+                    "id": "PATH_INF_02",
+                    "name": "Chronic Inflammation",
+                    "textbook_ref": {
+                        "chapter": 3,
+                        "starting_page": 101
+                    },
+                    "nmc_outcomes": [
+                        "PA2.4",
+                        "PA2.5"
+                    ],
+                    "weights": {
+                        "exam_frequency_norm": 0.75,
+                        "clinical_priority_norm": 0.70,
+                        "faculty_weight_norm": 0.75
+                    },
+                    "high_yield_score": 0.73
+                }
+            ]
+        },
+        {
+            "id": "PATH_HEM",
+            "name": "Hematology",
+            "topics": [
+                {
+                    "id": "PATH_ANEMIA_01",
+                    "name": "Iron Deficiency Anemia",
+                    "textbook_ref": {
+                        "chapter": 14,
+                        "starting_page": 632
+                    },
+                    "nmc_outcomes": [
+                        "PA13.1"
+                    ],
+                    "weights": {
+                        "exam_frequency_norm": 0.95,
+                        "clinical_priority_norm": 0.98,
+                        "faculty_weight_norm": 0.90
+                    },
+                    "high_yield_score": 0.95
+                }
+            ]
+        }
+    ],
+    "formula_metadata": {
+        "version": "1.0",
+        "normalization_range": [
+            0,
+            1
+        ],
+        "coefficients": {
+            "exam_frequency": 0.5,
+            "clinical_priority": 0.3,
+            "faculty_weight": 0.2
+        }
+    }
+}

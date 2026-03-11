@@ -1,0 +1,65 @@
+{
+  "name": "medsage-backend",
+  "version": "1.0.0",
+  "description": "AI-powered medical study companion backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev:backend": "nodemon server/index.js",
+    "start:frontend": "set PORT=3002 && react-scripts start",
+    "build:frontend": "react-scripts build",
+    "test:backend": "jest"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@google/generative-ai": "^0.24.1",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/material": "^7.1.0",
+    "@mui/x-date-pickers": "^8.27.2",
+    "@qdrant/js-client-rest": "^1.17.0",
+    "axios": "^1.13.5",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dompurify": "^3.3.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.8.1",
+    "express-validator": "^7.0.1",
+    "firebase": "^12.9.0",
+    "framer-motion": "^12.15.0",
+    "helmet": "^7.0.0",
+    "js-tiktoken": "^1.0.21",
+    "jsonwebtoken": "^9.0.2",
+    "lodash.debounce": "^4.0.8",
+    "mongoose": "^7.5.0",
+    "multer": "^1.4.5-lts.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^6.30.3",
+    "socket.io": "^4.7.2",
+    "web-vitals": "^5.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.6.4",
+    "nodemon": "^3.0.1",
+    "react-scripts": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
