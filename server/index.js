@@ -69,10 +69,27 @@ app.use('/api/medical/query', aiLimiter); // Apply stricter rate limit to AI que
 app.use('/api/sm2', sm2Routes);
 app.use('/api/library', libraryRoutes);
 
-// Basic route
-app.get('/', (req, res) => {
+// Basic route for API verification (could move to /api)
+app.get('/api', (req, res) => {
   res.send('Welcome to the MedSage API. All systems operational.');
 });
+
+// Serve frontend in production
+const path = require('path');
+if (process.env.NODE_ENV === 'production') {
+  // Serve any static files
+  app.use(express.static(path.join(__dirname, '../build')));
+  
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../build', 'index.html'));
+  });
+} else {
+  // Dev fallback
+  app.get('/', (req, res) => {
+    res.send('MedSage backend running in development mode.');
+  });
+}
 
 // Health check + Prometheus metrics
 registerMonitoringRoutes(app);
