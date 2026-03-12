@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: medsage-app
+    env: node
+    plan: free
+    buildCommand: "npm install && npm run build:frontend"
+    startCommand: "npm start"
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.1
+      - key: NODE_ENV
+        value: production
+      # To prevent React from crashing out of memory on the free tier:
+      - key: NODE_OPTIONS
+        value: "--max_old_space_size=400"
+      - key: PORT
+        value: 10000
+      
+      # ----------------------------------------
+      # NOTE: Make sure to add the following 
+      # variables in your Render Dashboard!
+      # ----------------------------------------
+      # - GEMINI_API_KEY
+      # - SUPABASE_URL
+      # - SUPABASE_ANON_KEY
+      # - GEMINI_API_KEY_SECONDARY (if any)
