@@ -112,14 +112,14 @@ class AuthController {
                 return res.status(401).json({ success: false, error: 'Unauthorized: No UID provided' });
             }
 
-            const { subjects_weak, subjects_strong } = req.body;
+            const { subjects_weak, subjects_strong, topics_weak, topics_strong } = req.body;
 
             const user = await UserProfile.findOneAndUpdate(
                 { uid },
                 {
                     $set: {
-                        ...(subjects_weak && { subjects_weak }),
-                        ...(subjects_strong && { subjects_strong })
+                        ...(topics_weak ?? subjects_weak) && { topics_weak: topics_weak ?? subjects_weak },
+                        ...(topics_strong ?? subjects_strong) && { topics_strong: topics_strong ?? subjects_strong }
                     }
                 },
                 { new: true }

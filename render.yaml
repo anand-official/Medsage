@@ -1,26 +1,34 @@
 services:
   - type: web
-    name: medsage-app
+    name: medsage-backend
     env: node
+    rootDir: server
     plan: free
-    buildCommand: "npm install && npm run build:frontend"
+    buildCommand: "npm install"
     startCommand: "npm start"
     envVars:
       - key: NODE_VERSION
         value: 18.17.1
       - key: NODE_ENV
         value: production
-      # To prevent React from crashing out of memory on the free tier:
-      - key: NODE_OPTIONS
-        value: "--max_old_space_size=400"
       - key: PORT
         value: 10000
-      
+
       # ----------------------------------------
-      # NOTE: Make sure to add the following 
-      # variables in your Render Dashboard!
+      # Add ALL of the following in your Render Dashboard
+      # under Environment → Environment Variables:
       # ----------------------------------------
-      # - GEMINI_API_KEY
-      # - SUPABASE_URL
-      # - SUPABASE_ANON_KEY
-      # - GEMINI_API_KEY_SECONDARY (if any)
+      # MONGODB_URI              — MongoDB Atlas connection string
+      # JWT_SECRET               — Strong random secret (use: openssl rand -base64 32)
+      # GEMINI_API_KEY           — Google Gemini API key
+      # GEMINI_MODEL             — gemini-2.5-flash (optional, this is the default)
+      # HF_API_TOKEN             — HuggingFace API token (for embeddings)
+      # HF_EMBEDDING_MODEL       — BAAI/bge-large-en-v1.5 (optional, this is the default)
+      # GOOGLE_BOOKS_API_KEY     — Google Books API key
+      # FIREBASE_PROJECT_ID      — From Firebase console → Project Settings
+      # FIREBASE_CLIENT_EMAIL    — From Firebase service account JSON
+      # FIREBASE_PRIVATE_KEY     — From Firebase service account JSON (include the full key with \n)
+      # QDRANT_URL               — Qdrant Cloud cluster URL (e.g. https://xxx.qdrant.io)
+      # QDRANT_API_KEY           — Qdrant Cloud API key
+      # ALLOWED_ORIGINS          — Comma-separated list: https://medsage.ai,https://www.medsage.ai
+      # ----------------------------------------

@@ -26,10 +26,20 @@ mongoose.connect(MONGODB_URI)
 const app = express();
 
 // CORS configuration
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? (process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['https://medsage.ai'])
+  : ['http://localhost:3000', 'http://localhost:3002'];
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://medsage.ai'])
-    : ['http://localhost:3000', 'http://localhost:3002'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, Render health checks)
+    if (!origin) return callback(null, true);
+    // Allow any Vercel preview deployment URL
+    if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
@@ -64,8 +74,8 @@ const aiLimiter = rateLimit({
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/study', studyRoutes);
+app.use('/api/medical/query', aiLimiter); // Apply stricter rate limit to AI query endpoint
 app.use('/api/medical', medicalRoutes);
-app.use('/api/medical/query', aiLimiter); // Apply stricter rate limit to AI queries
 app.use('/api/sm2', sm2Routes);
 app.use('/api/library', libraryRoutes);
 
@@ -74,22 +84,10 @@ app.get('/api', (req, res) => {
   res.send('Welcome to the MedSage API. All systems operational.');
 });
 
-// Serve frontend in production
-const path = require('path');
-if (process.env.NODE_ENV === 'production') {
-  // Serve any static files
-  app.use(express.static(path.join(__dirname, '../build')));
-  
-  // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../build', 'index.html'));
-  });
-} else {
-  // Dev fallback
-  app.get('/', (req, res) => {
-    res.send('MedSage backend running in development mode.');
-  });
-}
+// Root route
+app.get('/', (req, res) => {
+  res.json({ name: 'MedSage API', status: 'ok', version: '2.0.0' });
+});
 
 // Health check + Prometheus metrics
 registerMonitoringRoutes(app);

@@ -2,11 +2,11 @@
   "name": "medsage-backend",
   "version": "1.0.0",
   "description": "AI-powered medical study companion backend",
-  "main": "server.js",
+  "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev:backend": "nodemon server/index.js",
-    "start:frontend": "set PORT=3002 && react-scripts start",
+    "start:frontend": "react-scripts start",
     "build:frontend": "react-scripts build",
     "test:backend": "jest"
   },
