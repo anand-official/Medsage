@@ -89,6 +89,13 @@ class SM2Service {
             return null;
         }
 
+        // ── Deduplication Check ──────────────────────────────────────────────
+        const existing = await Flashcard.findOne({ user_id: userId, question: question }).lean();
+        if (existing) {
+            console.log(`[SM-2] ↩ Duplicate skipped | topic=${pipelineResponse.meta?.topic_id} | existing_id=${existing._id}`);
+            return null;
+        }
+
         // ── Citation Anchors ─────────────────────────────────────────────────
         const claims = pipelineResponse.claims || [];
         const chunkIds = [...new Set(claims.flatMap(c => c.chunk_ids || []).filter(Boolean))];
@@ -102,7 +109,7 @@ class SM2Service {
         const card = await Flashcard.create({
             user_id: userId,
             topic_id: meta.topic_id || 'UNKNOWN',
-            subject: 'Pathology',
+            subject: meta.subject || 'General',
             chapter: firstChunk?.chapter || meta.topic_id || 'Unknown Chapter',
             question: question,
             answer_summary: answerSummary,

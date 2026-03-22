@@ -9,8 +9,9 @@ module.exports = {
     credentials: true
   },
   data: {
-    chatHistoryPath: process.env.CHAT_HISTORY_PATH || './data/chat_history.json',
-    maxHistorySize: 1000 // Maximum number of messages to store
+    // Chat history is now stored in MongoDB (ChatSession model) — not file-based
+    maxSessionsPerUser: 50,
+    maxMessagesPerSession: 200,
   },
   ai: {
     model: process.env.AI_MODEL || 'gpt-3.5-turbo',

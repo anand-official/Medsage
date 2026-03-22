@@ -1,4 +1,6 @@
-require('dotenv').config();
+// Load server/.env first (has all keys), then root .env as fallback
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+require('dotenv').config(); // root .env fallback (won't overwrite already-set vars)
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -16,9 +18,10 @@ const studyRoutes = require('./routes/study');
 const medicalRoutes = require('./routes/medical');
 const sm2Routes = require('./routes/sm2');
 const libraryRoutes = require('./routes/library');
+const chatRoutes = require('./routes/chat');
 
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/medsage';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/cortex';
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('[MongoDB] Connected successfully'))
   .catch(err => console.error('[MongoDB] Connection error:', err.message));
@@ -62,7 +65,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Stricter rate limiting for AI queries
+// Stricter rate limiting for AI queries — per-user (uid preferred, falls back to IP for unauthenticated)
+// Note: req.user is populated by verifyToken which runs inside the route, so the uid is available
+// because express-rate-limit runs BEFORE the route handler but AFTER body parsing and our verifyToken
+// interceptor. For the uid to be available here, verifyToken must be run first on the same path.
+// Since verifyToken is inside the router, we use a two-layer approach: IP-based here, uid enforced inside routes.
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 10, // 10 AI queries per minute per IP
@@ -71,22 +78,34 @@ const aiLimiter = rateLimit({
   message: { success: false, error: 'Too many AI queries, please slow down' }
 });
 
+// Vision-specific limiter — image queries are more expensive
+const visionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 2, // 2 vision queries per minute per user
+  keyGenerator: (req) => `vision:${req.user?.uid || req.ip}`,
+  skip: (req) => !req.body?.imageBase64, // only apply when image is present
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Vision query limit reached. Please wait before sending another image.' }
+});
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/study', studyRoutes);
-app.use('/api/medical/query', aiLimiter); // Apply stricter rate limit to AI query endpoint
+app.use('/api/medical/query', aiLimiter, visionLimiter); // Apply rate limits to AI query endpoint (includes /stream)
 app.use('/api/medical', medicalRoutes);
 app.use('/api/sm2', sm2Routes);
 app.use('/api/library', libraryRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Basic route for API verification (could move to /api)
 app.get('/api', (req, res) => {
-  res.send('Welcome to the MedSage API. All systems operational.');
+  res.send('Welcome to the Cortex API. All systems operational.');
 });
 
 // Root route
 app.get('/', (req, res) => {
-  res.json({ name: 'MedSage API', status: 'ok', version: '2.0.0' });
+  res.json({ name: 'Cortex API', status: 'ok', version: '2.0.0' });
 });
 
 // Health check + Prometheus metrics

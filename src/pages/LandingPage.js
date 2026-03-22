@@ -6,6 +6,18 @@ import '../animations.css';
 import CanvasParticles from '../components/landing/CanvasParticles';
 import TeamSection from '../components/landing/TeamSection';
 
+// ─── Mobile detection hook ──────────────────────────────────────────────────
+function useIsMobile(breakpoint = 768) {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+    useEffect(() => {
+        const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+        const handler = (e) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, [breakpoint]);
+    return isMobile;
+}
+
 // ─── Icons (SVG inline for zero-dependency) ────────────────────────────────
 const IconBrain = () => (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -193,6 +205,7 @@ function LivingBackground() {
 // Inspired by Glint: minimal, airy, transparent-first. Logo left, links center, CTA right.
 function Navbar({ onSignIn }) {
     const [scrolled, setScrolled] = useState(false);
+    const isMobile = useIsMobile();
 
     useEffect(() => {
         const handler = () => setScrolled(window.scrollY > 30);
@@ -215,7 +228,9 @@ function Navbar({ onSignIn }) {
             <div style={{
                 maxWidth: scrolled ? '100%' : 1160,
                 margin: '0 auto',
-                padding: scrolled ? '14px 48px' : '16px 40px',
+                padding: scrolled
+                    ? (isMobile ? '12px 16px' : '14px 48px')
+                    : (isMobile ? '14px 16px' : '16px 40px'),
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 background: scrolled ? 'rgba(4,4,6,0.82)' : 'transparent',
                 borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : 'none',
@@ -254,8 +269,8 @@ function Navbar({ onSignIn }) {
                     }}>Medsage</span>
                 </motion.div>
 
-                {/* Center nav links — Glint places them dead center */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
+                {/* Center nav links — hidden on mobile */}
+                <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 40 }}>
                     {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Testimonials', '#testimonials']].map(([label, href]) => (
                         <a key={label} href={href} style={{
                             color: 'rgba(255,255,255,0.5)', textDecoration: 'none',
@@ -274,7 +289,7 @@ function Navbar({ onSignIn }) {
                     whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.12)' }}
                     whileTap={{ scale: 0.97 }}
                     style={{
-                        padding: '9px 22px', borderRadius: 100,
+                        padding: isMobile ? '10px 18px' : '9px 22px', borderRadius: 100,
                         background: 'rgba(255,255,255,0.07)',
                         border: '1px solid rgba(255,255,255,0.12)',
                         color: '#f1f5f9', fontFamily: 'Inter, sans-serif',
@@ -283,6 +298,7 @@ function Navbar({ onSignIn }) {
                         display: 'flex', alignItems: 'center', gap: 7,
                         backdropFilter: 'blur(8px)',
                         transition: 'background 0.2s',
+                        minHeight: 44,
                     }}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -299,6 +315,7 @@ function Navbar({ onSignIn }) {
 
 // ─── HERO ─────────────────────────────────────────────────────────────────
 function HeroSection({ onSignIn }) {
+    const isMobile = useIsMobile();
     const words = ['Faster.', 'Smarter.', 'Better.'];
     const [wordIdx, setWordIdx] = useState(0);
 
@@ -310,7 +327,8 @@ function HeroSection({ onSignIn }) {
     return (
         <section style={{
             minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative', overflow: 'hidden', padding: '120px 32px 80px',
+            position: 'relative', overflow: 'hidden',
+            padding: isMobile ? '100px 16px 60px' : '120px 32px 80px',
         }}>
             {/* Background handled globally by LivingBackground */}
 
@@ -346,7 +364,7 @@ function HeroSection({ onSignIn }) {
                 >
                     <h1 style={{
                         fontFamily: 'Inter, sans-serif', fontWeight: 900, margin: 0, lineHeight: 1.05,
-                        fontSize: 'clamp(54px, 8vw, 90px)', letterSpacing: '-3px', color: '#f8fafc',
+                        fontSize: 'clamp(36px, 8vw, 90px)', letterSpacing: isMobile ? '-1.5px' : '-3px', color: '#f8fafc',
                     }}>
                         Master Medicine,
                         <br />
@@ -390,14 +408,15 @@ function HeroSection({ onSignIn }) {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}
+                    style={{ display: 'flex', gap: isMobile ? 12 : 16, justifyContent: 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center' }}
                 >
                     <motion.button
                         onClick={onSignIn}
                         whileHover={{ scale: 1.04, boxShadow: '0 20px 50px rgba(99,102,241,0.5)' }}
                         whileTap={{ scale: 0.98 }}
                         style={{
-                            padding: '18px 40px', borderRadius: 16,
+                            padding: isMobile ? '16px 32px' : '18px 40px', borderRadius: 16,
+                            width: isMobile ? '100%' : 'auto', minHeight: 48,
                             background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
                             color: 'white', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 17,
                             border: 'none', cursor: 'pointer',
@@ -412,12 +431,13 @@ function HeroSection({ onSignIn }) {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         style={{
-                            padding: '18px 36px', borderRadius: 16,
+                            padding: isMobile ? '14px 28px' : '18px 36px', borderRadius: 16,
                             background: 'rgba(255,255,255,0.04)',
                             border: '1px solid rgba(255,255,255,0.12)',
-                            color: 'rgba(255,255,255,0.8)', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 17,
-                            textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8,
-                            backdropFilter: 'blur(12px)',
+                            color: 'rgba(255,255,255,0.8)', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: isMobile ? 15 : 17,
+                            textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            backdropFilter: 'blur(12px)', minHeight: 48,
+                            width: isMobile ? '100%' : 'auto',
                         }}
                     >
                         See Features
@@ -431,14 +451,15 @@ function HeroSection({ onSignIn }) {
 
 // ─── VISION SECTION ───────────────────────────────────────────────────────
 function VisionSection() {
+    const isMobile = useIsMobile();
     return (
-        <section id="vision" style={{ padding: '40px 32px 100px', position: 'relative', zIndex: 10 }}>
+        <section id="vision" style={{ padding: isMobile ? '24px 16px 60px' : '40px 32px 100px', position: 'relative', zIndex: 10 }}>
             <FadeUp>
                 <div style={{
                     maxWidth: 1100, margin: '0 auto', textAlign: 'center',
                     background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
                     border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 32, padding: '70px 40px',
+                    borderRadius: isMobile ? 20 : 32, padding: isMobile ? '40px 20px' : '70px 40px',
                     backdropFilter: 'blur(20px)',
                     boxShadow: '0 30px 60px rgba(0,0,0,0.2)',
                 }}>
@@ -463,7 +484,7 @@ function VisionSection() {
                         One of our closest friends, a medical student, used to tell us how overwhelming it was to prepare for exams with limited guidance. She’d struggle with last-minute doubts and couldn’t find any AI-based tool tailored specifically to her needs.
                         Her repeated frustration made us realize how underserved medical students are when it comes to intelligent academic support.
                         <br /><br />
-                        <strong style={{ color: '#f1f5f9', fontWeight: 600 }}>That’s what inspired us to create MedSage—an AI-powered study companion built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we’re committed to making that vision real.
+                        <strong style={{ color: ‘#f1f5f9’, fontWeight: 600 }}>That’s what inspired us to build Cortex—an AI-powered study companion built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we’re committed to making that vision real.
                     </p>
                 </div>
             </FadeUp>
@@ -473,6 +494,7 @@ function VisionSection() {
 
 // ─── STATS BAR ────────────────────────────────────────────────────────────
 function StatsBar() {
+    const isMobile = useIsMobile();
     const stats = [
         { value: 24, suffix: '/7', label: 'Availability' },
         { value: 10000, suffix: '+', label: 'Practice Questions' },
@@ -481,15 +503,15 @@ function StatsBar() {
     ];
 
     return (
-        <section style={{ padding: '0 32px 80px', position: 'relative' }}>
+        <section style={{ padding: isMobile ? '0 16px 48px' : '0 32px 80px', position: 'relative' }}>
             <FadeUp>
                 <div style={{
                     maxWidth: 1100, margin: '0 auto',
                     background: 'rgba(99,102,241,0.04)',
                     border: '1px solid rgba(99,102,241,0.15)',
-                    borderRadius: 24, padding: '40px 60px',
+                    borderRadius: isMobile ? 16 : 24, padding: isMobile ? '24px 16px' : '40px 60px',
                     backdropFilter: 'blur(20px)',
-                    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+                    display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
                     gap: 16,
                 }}>
                     {stats.map((s, i) => (
@@ -555,8 +577,9 @@ const features = [
 ];
 
 function FeaturesSection() {
+    const isMobile = useIsMobile();
     return (
-        <section id="features" style={{ padding: '100px 32px', position: 'relative' }}>
+        <section id="features" style={{ padding: isMobile ? '60px 16px' : '100px 32px', position: 'relative' }}>
             <div style={{ maxWidth: 1140, margin: '0 auto' }}>
                 <FadeUp>
                     <div style={{ textAlign: 'center', marginBottom: 72 }}>
@@ -586,22 +609,22 @@ function FeaturesSection() {
 
                 {/* Bento grid */}
                 <div style={{
-                    display: 'grid', gap: 20,
-                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    display: 'grid', gap: isMobile ? 16 : 20,
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                     gridTemplateRows: 'auto',
                 }}>
                     {features.map((f, i) => (
                         <FadeUp key={i} delay={i * 0.07}>
                             <motion.div
-                                whileHover={{ y: -6, scale: 1.01 }}
+                                whileHover={isMobile ? {} : { y: -6, scale: 1.01 }}
                                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                                 style={{
-                                    padding: '36px', borderRadius: 24,
+                                    padding: isMobile ? '24px' : '36px', borderRadius: isMobile ? 16 : 24,
                                     background: f.gradient,
                                     border: `1px solid rgba(255,255,255,0.07)`,
                                     backdropFilter: 'blur(20px)',
                                     height: '100%', display: 'flex', flexDirection: 'column',
-                                    gridColumn: f.wide ? 'span 2' : 'span 1',
+                                    gridColumn: (f.wide && !isMobile) ? 'span 2' : 'span 1',
                                     cursor: 'default',
                                 }}
                             >
@@ -666,8 +689,9 @@ const steps = [
 ];
 
 function HowItWorksSection() {
+    const isMobile = useIsMobile();
     return (
-        <section id="how-it-works" style={{ padding: '100px 32px', position: 'relative', overflow: 'hidden' }}>
+        <section id="how-it-works" style={{ padding: isMobile ? '60px 16px' : '100px 32px', position: 'relative', overflow: 'hidden' }}>
             <div style={{
                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                 width: 800, height: 800,
@@ -696,12 +720,13 @@ function HowItWorksSection() {
                     </div>
                 </FadeUp>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32, position: 'relative' }}>
-                    {/* Connecting line */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? 40 : 32, position: 'relative' }}>
+                    {/* Connecting line — hidden on mobile */}
                     <div style={{
                         position: 'absolute', top: 44, left: '17%', right: '17%', height: 1,
                         background: 'linear-gradient(90deg, #6366f1, #a855f7, #10b981)',
                         opacity: 0.3, zIndex: 0,
+                        display: isMobile ? 'none' : 'block',
                     }} />
 
                     {steps.map((s, i) => (
@@ -762,8 +787,9 @@ const testimonials = [
 ];
 
 function TestimonialsSection() {
+    const isMobile = useIsMobile();
     return (
-        <section id="testimonials" style={{ padding: '100px 32px' }}>
+        <section id="testimonials" style={{ padding: isMobile ? '60px 16px' : '100px 32px' }}>
             <div style={{ maxWidth: 1140, margin: '0 auto' }}>
                 <FadeUp>
                     <div style={{ textAlign: 'center', marginBottom: 72 }}>
@@ -785,14 +811,14 @@ function TestimonialsSection() {
                     </div>
                 </FadeUp>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? 16 : 24 }}>
                     {testimonials.map((t, i) => (
                         <FadeUp key={i} delay={i * 0.1}>
                             <motion.div
-                                whileHover={{ y: -6 }}
+                                whileHover={isMobile ? {} : { y: -6 }}
                                 transition={{ duration: 0.25 }}
                                 style={{
-                                    padding: '36px', borderRadius: 24,
+                                    padding: isMobile ? '24px' : '36px', borderRadius: isMobile ? 16 : 24,
                                     background: 'rgba(255,255,255,0.02)',
                                     border: '1px solid rgba(255,255,255,0.07)',
                                     backdropFilter: 'blur(20px)',
@@ -861,12 +887,13 @@ function ExamsStrip() {
 
 // ─── FINAL CTA ────────────────────────────────────────────────────────────
 function FinalCTA({ onSignIn }) {
+    const isMobile = useIsMobile();
     return (
-        <section style={{ padding: '120px 32px' }}>
+        <section style={{ padding: isMobile ? '60px 16px' : '120px 32px' }}>
             <FadeUp>
                 <div style={{
                     maxWidth: 900, margin: '0 auto', textAlign: 'center',
-                    padding: '80px 60px', borderRadius: 32, position: 'relative', overflow: 'hidden',
+                    padding: isMobile ? '48px 20px' : '80px 60px', borderRadius: isMobile ? 20 : 32, position: 'relative', overflow: 'hidden',
                     background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.08) 100%)',
                     border: '1px solid rgba(99,102,241,0.2)',
                 }}>
@@ -900,12 +927,13 @@ function FinalCTA({ onSignIn }) {
                             whileHover={{ scale: 1.04, boxShadow: '0 24px 60px rgba(99,102,241,0.55)' }}
                             whileTap={{ scale: 0.97 }}
                             style={{
-                                padding: '20px 52px', borderRadius: 18,
+                                padding: isMobile ? '16px 36px' : '20px 52px', borderRadius: 18,
                                 background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                                color: 'white', fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 18,
+                                color: 'white', fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: isMobile ? 16 : 18,
                                 border: 'none', cursor: 'pointer',
                                 boxShadow: '0 12px 40px rgba(99,102,241,0.45)',
                                 display: 'inline-flex', alignItems: 'center', gap: 12,
+                                minHeight: 48, width: isMobile ? '100%' : 'auto', justifyContent: 'center',
                             }}
                         >
                             Start Studying Free<IconArrow />
@@ -925,6 +953,7 @@ function FinalCTA({ onSignIn }) {
 
 // ─── FOOTER ───────────────────────────────────────────────────────────────
 function Footer() {
+    const isMobile = useIsMobile();
     return (
         <footer style={{
             position: 'relative',
@@ -935,7 +964,7 @@ function Footer() {
             <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.25), transparent)' }} />
 
             <div style={{
-                padding: '80px 32px 40px',
+                padding: isMobile ? '48px 16px 32px' : '80px 32px 40px',
                 maxWidth: 1200, margin: '0 auto', fontFamily: 'Inter, sans-serif'
             }}>
                 <div style={{
@@ -980,7 +1009,7 @@ function Footer() {
                     </div>
 
                     {/* Links - Horizontal row */}
-                    <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: isMobile ? 24 : 40, flexWrap: 'wrap' }}>
                         {['Privacy', 'Terms', 'Contact'].map(link => (
                             <a key={link} href="#" style={{
                                 fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.55)',

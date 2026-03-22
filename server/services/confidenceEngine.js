@@ -50,10 +50,11 @@
  */
 
 // Weights — must sum to 1.0
+// Configurable via env vars: CONF_WEIGHT_TOPIC, CONF_WEIGHT_RETRIEVAL, CONF_WEIGHT_CITATION
 const WEIGHTS = {
-    topic: 0.4,
-    retrieval: 0.4,
-    citation: 0.2
+    topic:     parseFloat(process.env.CONF_WEIGHT_TOPIC     || '0.4'),
+    retrieval: parseFloat(process.env.CONF_WEIGHT_RETRIEVAL || '0.4'),
+    citation:  parseFloat(process.env.CONF_WEIGHT_CITATION  || '0.2'),
 };
 
 // Broadening penalty: when context was only achievable by widening filters,

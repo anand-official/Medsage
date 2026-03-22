@@ -27,8 +27,6 @@ import {
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
   LocalHospital as LocalHospitalIcon,
-  Bolt as ReviewIcon,
-  Settings as SettingsIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
   Dashboard as DashboardIcon
@@ -36,6 +34,10 @@ import {
 import { ThemeContext } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import '../animations.css';
+
+const APPBAR_HEIGHT_MOBILE = 64;
+const APPBAR_HEIGHT_DESKTOP = 80;
+const BOTTOM_DOCK_HEIGHT = 72;
 
 const Layout = () => {
   const { mode, toggleColorMode } = useContext(ThemeContext);
@@ -47,8 +49,7 @@ const Layout = () => {
 
   const navigationItems = [
     { label: 'Dashboard', icon: <HomeIcon />, path: '/' },
-    { label: 'AI Assistant', icon: <QuestionIcon />, path: '/question' },
-    { label: 'Review', icon: <ReviewIcon />, path: '/review' },
+    { label: 'Cortex', icon: <QuestionIcon />, path: '/question' },
     { label: 'Study Plan', icon: <DateRangeIcon />, path: '/planner' },
     { label: 'Library', icon: <BookIcon />, path: '/books' },
   ];
@@ -87,20 +88,27 @@ const Layout = () => {
           background: 'rgba(5, 5, 5, 0.4)',
           backdropFilter: 'blur(20px)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          pt: 'env(safe-area-inset-top, 0px)',
         }}
       >
         <Toolbar sx={{
           justifyContent: 'space-between',
-          px: { xs: 2, md: 6 },
-          height: 80,
+          px: { xs: 1.5, sm: 2, md: 6 },
+          height: { xs: APPBAR_HEIGHT_MOBILE, md: APPBAR_HEIGHT_DESKTOP },
+          minHeight: { xs: APPBAR_HEIGHT_MOBILE, md: APPBAR_HEIGHT_DESKTOP },
         }}>
           {/* Logo Section */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer' }} onClick={() => navigate('/')}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', minWidth: 0 }}
+            onClick={() => navigate('/')}
+            role="button"
+            aria-label="Go to dashboard"
+          >
             <Box sx={{
-              position: 'relative', width: 36, height: 36,
+              position: 'relative', width: 32, height: 32, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="3" fill="#ec4899" filter="drop-shadow(0 0 8px rgba(236,72,153,0.8))" />
                 <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#nav-logo-grad-1)" strokeWidth="2.5" strokeLinecap="round" />
                 <path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M19.07 4.93l-4.24 4.24M9.17 14.83l-4.24 4.24" stroke="url(#nav-logo-grad-2)" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
@@ -116,14 +124,19 @@ const Layout = () => {
                 </defs>
               </svg>
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-1.5px', display: { xs: 'none', sm: 'block' } }}>
+            <Typography variant="h6" sx={{
+              fontWeight: 900,
+              letterSpacing: '-1px',
+              display: { xs: 'none', sm: 'block' },
+              fontSize: { sm: '1.1rem', md: '1.25rem' },
+            }}>
               Medsage
             </Typography>
           </Box>
 
           {/* Desktop Navigation - Horizontal Links */}
           {!isMobile && (
-            <Stack direction="row" spacing={1} sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+            <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
               {navigationItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
@@ -132,10 +145,10 @@ const Layout = () => {
                     onClick={() => navigate(item.path)}
                     startIcon={item.icon}
                     sx={{
-                      px: 3,
+                      px: { md: 2, lg: 3 },
                       py: 1,
                       borderRadius: 3,
-                      fontSize: '0.9rem',
+                      fontSize: '0.85rem',
                       fontWeight: isActive ? 800 : 500,
                       color: isActive ? 'primary.main' : 'text.secondary',
                       bgcolor: isActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
@@ -158,9 +171,16 @@ const Layout = () => {
           )}
 
           {/* Actions Section */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 2 } }}>
             <Tooltip title="Toggle Theme">
-              <IconButton onClick={toggleColorMode} sx={{ bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <IconButton
+                onClick={toggleColorMode}
+                aria-label="Toggle dark mode"
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                }}
+              >
                 {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
               </IconButton>
             </Tooltip>
@@ -172,18 +192,18 @@ const Layout = () => {
                 aria-controls={openMenu ? 'account-menu' : undefined}
                 aria-haspopup="true"
                 aria-expanded={openMenu ? 'true' : undefined}
+                aria-label="Account menu"
               >
                 <Avatar
                   src={userProfile?.photoURL || currentUser?.photoURL}
                   sx={{
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     border: '2px solid rgba(99, 102, 241, 0.3)',
                     bgcolor: 'primary.main',
                     transition: 'all 0.3s ease',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      transform: 'scale(1.05)'
+                    '&:active': {
+                      transform: 'scale(0.95)'
                     }
                   }}
                 />
@@ -241,20 +261,16 @@ const Layout = () => {
               </Box>
               <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
 
-              <MenuItem onClick={() => { handleCloseMenu(); navigate('/'); }} sx={{ py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
+              <MenuItem onClick={() => { handleCloseMenu(); navigate('/'); }} sx={{ py: 1.5, minHeight: 48, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
                 <ListItemIcon><DashboardIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
                 Dashboard
               </MenuItem>
-              <MenuItem onClick={() => { handleCloseMenu(); navigate('/profile'); }} sx={{ py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
+              <MenuItem onClick={() => { handleCloseMenu(); navigate('/profile'); }} sx={{ py: 1.5, minHeight: 48, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
                 <ListItemIcon><PersonIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                Profile & Metrics
-              </MenuItem>
-              <MenuItem onClick={() => { handleCloseMenu(); navigate('/profile'); }} sx={{ py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
-                <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} /></ListItemIcon>
-                Account Settings
+                Profile & Settings
               </MenuItem>
               <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
-              <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: '#ef4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}>
+              <MenuItem onClick={handleLogout} sx={{ py: 1.5, minHeight: 48, color: '#ef4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}>
                 <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ef4444' }} /></ListItemIcon>
                 Sign Out Securely
               </MenuItem>
@@ -268,67 +284,99 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 3, md: 6 },
-          pt: { xs: 12, md: 16 },
-          pb: isMobile ? 14 : 6,
+          px: { xs: 2, sm: 3, md: 4, lg: 6 },
+          pt: {
+            xs: `${APPBAR_HEIGHT_MOBILE + 16}px`,
+            md: `${APPBAR_HEIGHT_DESKTOP + 32}px`,
+          },
+          pb: isMobile ? `${BOTTOM_DOCK_HEIGHT + 40}px` : 6,
           minHeight: '100vh',
           zIndex: 1,
           width: '100%',
           maxWidth: 1600,
-          mx: 'auto'
+          mx: 'auto',
         }}
       >
         <Outlet />
       </Box>
 
-      {/* Mobile Bottom Dock - Kept as requested previously for premium mobile flow */}
+      {/* Mobile Bottom Dock Navigation */}
       {isMobile && (
-        <Box sx={{
-          position: 'fixed',
-          bottom: 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '90%',
-          maxWidth: 400,
-          height: 72,
-          bgcolor: 'rgba(15, 15, 15, 0.7)',
-          backdropFilter: 'blur(30px) saturate(180%)',
-          borderRadius: 8,
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          zIndex: 1000,
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          px: 2
-        }}>
+        <Box
+          component="nav"
+          role="navigation"
+          aria-label="Main navigation"
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            pb: 'env(safe-area-inset-bottom, 8px)',
+            pt: 1,
+            px: 1,
+            bgcolor: 'rgba(10, 10, 15, 0.85)',
+            backdropFilter: 'blur(30px) saturate(180%)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+          }}
+        >
           {navigationItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <Box key={item.path} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <IconButton
-                  onClick={() => navigate(item.path)}
+              <Box
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                role="button"
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  minWidth: 56,
+                  minHeight: 48,
+                  pt: 0.5,
+                  pb: 0.5,
+                  borderRadius: 2,
+                  transition: 'all 0.2s ease',
+                  '&:active': {
+                    transform: 'scale(0.9)',
+                  },
+                }}
+              >
+                <Box sx={{
+                  color: isActive ? 'primary.main' : 'text.secondary',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 40,
+                  height: 32,
+                  borderRadius: 3,
+                  bgcolor: isActive ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                  '& .MuiSvgIcon-root': {
+                    fontSize: 22,
+                  },
+                }}>
+                  {item.icon}
+                </Box>
+                <Typography
+                  variant="caption"
                   sx={{
+                    fontSize: '0.6rem',
+                    fontWeight: isActive ? 800 : 500,
                     color: isActive ? 'primary.main' : 'text.secondary',
-                    transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    transform: isActive ? 'scale(1.3) translateY(-8px)' : 'scale(1)',
-                    p: 1.5,
-                    bgcolor: isActive ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                    borderRadius: 4
+                    lineHeight: 1,
+                    mt: 0.25,
                   }}
                 >
-                  {item.icon}
-                </IconButton>
-                {isActive && (
-                  <Box sx={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: '50%',
-                    bgcolor: 'primary.main',
-                    mt: -0.5,
-                    boxShadow: '0 0 8px #6366f1'
-                  }} />
-                )}
+                  {item.label}
+                </Typography>
               </Box>
             );
           })}

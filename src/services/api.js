@@ -98,29 +98,11 @@ export const authAPI = {
   },
 
   deleteAccount: () => apiCall('/auth/profile', { method: 'DELETE' }),
-
-  login: (credentials) => api.post('/auth/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
-  logout: () => api.post('/auth/logout'),
 };
 
-// Study API calls
-export const studyAPI = {
-  generateStudyPlan: (data) => api.post('/api/study/generate', data),
-  getStudyPlan: () => api.get('/api/study/plan'),
-  updateStudyPlan: (data) => api.put('/api/study/plan', data),
-};
 
-// Questions API calls
-export const questionAPI = {
-  getQuestions: () => api.get('/api/questions'),
-  createQuestion: (data) => api.post('/api/questions', data),
-  updateQuestion: (id, data) => api.put(`/api/questions/${id}`, data),
-  deleteQuestion: (id) => api.delete(`/api/questions/${id}`),
-};
-
-export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = 'Indian MBBS', history = [], imageBase64 = null, signal = null) => {
-  return apiCall('/api/medical/query', {
+export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = 'Indian MBBS', history = [], imageBase64 = null, signal = null, subject = null) => {
+  const response = await apiCall('/api/medical/query', {
     method: 'POST',
     data: {
       message: query,
@@ -128,29 +110,114 @@ export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = '
       syllabus,
       history,
       ...(imageBase64 ? { imageBase64 } : {}),
+      ...(subject ? { subject } : {}),
     },
     signal
   });
+
+  const payload = response?.data ?? response ?? {};
+  const responseType = payload?.type || 'ANSWER';
+
+  return {
+    success: Boolean(response?.success ?? true),
+    type: responseType,
+    data: {
+      type: responseType,
+      text: payload?.text || payload?.answer || payload?.short_note || '',
+      keyPoints: payload?.keyPoints || payload?.high_yield_summary || payload?.key_bullets || [],
+      clinicalRelevance: payload?.clinicalRelevance || payload?.clinical_correlation || payload?.exam_tips || '',
+      citations: payload?.citations || payload?.bookReferences || [],
+      bookReferences: payload?.bookReferences || payload?.citations || [],
+      followUpOptions: payload?.followUpOptions || [],
+      meta: payload?.meta || {},
+      topicId: payload?.topicId || payload?.meta?.topic_id || null,
+      subject: payload?.subject || payload?.meta?.subject || null,
+      timestamp: payload?.timestamp || new Date().toISOString(),
+    }
+  };
 };
 
 
-export const syncUserWithBackend = async (user) => {
-  return apiCall('/auth/user', {
+
+
+/**
+ * streamMedicalQuery — streams Cortex tokens via SSE.
+ *
+ * @param {string}   query      - The medical question
+ * @param {object}   options    - { mode, history, subject }
+ * @param {function} onToken    - Called with each text chunk as it arrives
+ * @param {function} onDone     - Called when stream completes
+ * @param {function} onError    - Called on stream error
+ * @param {AbortSignal} signal  - Optional AbortController signal to cancel
+ */
+export const streamMedicalQuery = async (query, options = {}, onToken, onDone, onError, signal = null) => {
+  const { mode = 'conceptual', history = [], subject = null } = options;
+
+  // Get Firebase token
+  let authHeader = '';
+  try {
+    const { auth } = await import('../firebase');
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      authHeader = `Bearer ${token}`;
+    }
+  } catch (e) {
+    // proceed without auth header
+  }
+
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
+  const response = await fetch(`${API_URL}/api/medical/query/stream`, {
     method: 'POST',
-    data: user
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authHeader ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify({
+      message: query,
+      mode,
+      history: (history || []).slice(-20),
+      ...(subject ? { subject } : {}),
+    }),
+    signal,
   });
+
+  if (!response.ok) {
+    if (onError) onError(new Error(`HTTP ${response.status}`));
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.token && onToken) onToken(payload.token);
+          } catch (_) { /* skip malformed */ }
+        } else if (line.startsWith('event: done')) {
+          if (onDone) onDone();
+        } else if (line.startsWith('event: error')) {
+          if (onError) onError(new Error('Stream error from server'));
+        }
+      }
+    }
+    if (onDone) onDone();
+  } catch (err) {
+    if (err.name !== 'AbortError' && onError) onError(err);
+  }
 };
 
-export const chatAPI = {
-  sendMessage: async (message) => {
-    const response = await api.post('/chat', { message });
-    return response.data;
-  },
-};
-
-export const sm2API = {
-  getDueCards: (limit = 20) => apiCall(`/api/sm2/due?limit=${limit}`),
-  submitReview: (cardId, quality) => apiCall('/api/sm2/review', { method: 'POST', data: { card_id: cardId, quality } })
-};
-
-export default api; 
+export default api;

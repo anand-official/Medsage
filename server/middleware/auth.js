@@ -3,7 +3,7 @@ let firebaseEnabled = false;
 
 try {
   admin = require('firebase-admin');
-  
+
   // Initialize Firebase Admin only if credentials are available
   if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
     if (!admin.apps.length) {
@@ -18,11 +18,21 @@ try {
     firebaseEnabled = true;
     console.log('[Auth] Firebase Admin initialized successfully');
   } else {
+    // PRODUCTION GUARD: Firebase credentials are required in production.
+    // Fail at startup — never allow an unauthenticated bypass in prod.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Auth] FATAL: Firebase credentials missing in production. Set FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL.');
+      process.exit(1);
+    }
     console.warn('[Auth] Firebase credentials missing - running in DEV BYPASS MODE (INSECURE)');
     console.warn('[Auth] DO NOT USE IN PRODUCTION');
   }
 } catch (err) {
   console.error('[Auth] Firebase Admin init failed:', err.message);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[Auth] FATAL: Cannot initialize Firebase in production. Exiting.');
+    process.exit(1);
+  }
 }
 
 /**
@@ -52,15 +62,19 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // If Firebase is not configured, use DEV BYPASS MODE
+    // If Firebase is not configured, use DEV BYPASS MODE (development only)
     if (!firebaseEnabled) {
+      if (process.env.NODE_ENV === 'production') {
+        // Should never reach here due to startup guard, but fail-safe
+        return res.status(503).json({ success: false, error: 'Authentication service unavailable' });
+      }
       console.warn('[Auth] DEV BYPASS MODE - extracting UID from token locally (INSECURE)');
       // Extract a mock UID from the token for development purposes
       try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-        
+
         req.user = {
           uid: payload.user_id || payload.uid || 'dev-user-001',
           email: payload.email || 'dev@medsage.ai',
@@ -70,9 +84,9 @@ const verifyToken = async (req, res, next) => {
         return next();
       } catch (parseErr) {
         console.error('[Auth] Token parse failed:', parseErr.message);
-        return res.status(401).json({ 
-          success: false, 
-          error: 'Unauthorized: Invalid token format' 
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized: Invalid token format'
         });
       }
     }
@@ -126,20 +140,22 @@ const optionalAuth = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     
     if (!firebaseEnabled) {
-      // DEV BYPASS MODE
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-        
-        req.user = {
-          uid: payload.user_id || payload.uid || 'dev-user-001',
-          email: payload.email || 'dev@medsage.ai',
-          displayName: payload.name || 'Dev User',
-          photoURL: payload.picture || null,
-        };
-      } catch (e) {
-        // Continue without user on parse error
+      // DEV BYPASS MODE (development only)
+      if (process.env.NODE_ENV !== 'production') {
+        try {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
+
+          req.user = {
+            uid: payload.user_id || payload.uid || 'dev-user-001',
+            email: payload.email || 'dev@medsage.ai',
+            displayName: payload.name || 'Dev User',
+            photoURL: payload.picture || null,
+          };
+        } catch (e) {
+          // Continue without user on parse error
+        }
       }
       return next();
     }
