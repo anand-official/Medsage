@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   signInWithPopup,
   signOut,
@@ -17,42 +17,47 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  // Track the last UID we synced so token refreshes don't re-trigger backend sync
+  const lastSyncedUidRef = useRef(null);
 
   useEffect(() => {
-    console.log('Setting up auth state listener...');
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user);
       setCurrentUser(user);
 
       if (user) {
-        try {
-          // Sync with backend — creates/updates user profile in MongoDB
-          const profile = await authAPI.createOrUpdateUser({
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            uid: user.uid
-          });
-          // apiCall() returns response.data (the full body: {success, data})
-          // so we need .data to get the actual user object
-          const userObj = profile?.data ?? profile;
-          setUserProfile(userObj);
-        } catch (error) {
-          console.error('Backend sync failed — using Firebase user as fallback:', error);
-          // ✅ FALLBACK: build a minimal userProfile from Firebase so UI doesn't go blank
-          setUserProfile({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || user.email?.split('@')[0] || 'Student',
-            photoURL: user.photoURL || '',
-            mbbs_year: '',
-            college: '',
-            country: 'India',
-            onboarded: true, // treat existing Google users as onboarded — they've already signed in before
-            _fallback: true,
-          });
+        // Only sync with backend when the user actually changes (sign-in),
+        // not on every token refresh (which fires onAuthStateChanged hourly).
+        if (user.uid !== lastSyncedUidRef.current) {
+          lastSyncedUidRef.current = user.uid;
+          try {
+            const profile = await authAPI.createOrUpdateUser({
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              uid: user.uid
+            });
+            const userObj = profile?.data ?? profile;
+            setUserProfile(userObj);
+          } catch (error) {
+            console.error('Backend sync failed — using Firebase user as fallback:', error);
+            // Fallback: build a minimal profile from Firebase so UI doesn't go blank.
+            // onboarded:true in fallback to suppress onboarding — saving would fail anyway
+            // since the backend is unreachable.
+            setUserProfile({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || user.email?.split('@')[0] || 'Student',
+              photoURL: user.photoURL || '',
+              mbbs_year: '',
+              college: '',
+              country: 'India',
+              onboarded: true,
+              _fallback: true,
+            });
+          }
         }
       } else {
+        lastSyncedUidRef.current = null;
         setUserProfile(null);
       }
 
@@ -64,9 +69,7 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = async () => {
     try {
-      console.log('Initiating Google sign in...');
       const result = await signInWithPopup(auth, googleProvider);
-      console.log('Google sign in successful:', result.user);
       return result;
     } catch (error) {
       console.error('Error in signInWithGoogle:', error);
@@ -79,9 +82,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      console.log('Logging out...');
       await signOut(auth);
-      console.log('Logout successful');
     } catch (error) {
       console.error('Error logging out:', error);
       throw error;
@@ -113,7 +114,6 @@ export function AuthProvider({ children }) {
   const deleteAccount = async () => {
     try {
       await authAPI.deleteAccount();
-      // Proceed to logout
       await logout();
     } catch (error) {
       console.error('Error deleting account:', error);
@@ -136,4 +136,4 @@ export function AuthProvider({ children }) {
       {!loading && children}
     </AuthContext.Provider>
   );
-} 
+}

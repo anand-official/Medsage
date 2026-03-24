@@ -33,6 +33,7 @@ import {
   OpenInNew as OpenInNewIcon,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
+import api from "../services/api";
 import "../animations.css";
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -103,6 +104,75 @@ const CATEGORY_GRADIENTS = {
 function getCoverGradient(category) {
   const pair = CATEGORY_GRADIENTS[category] || ["#6366f1", "#c084fc"];
   return `linear-gradient(145deg, ${pair[0]}, ${pair[1]})`;
+}
+
+// Resolve best cover image URL for a book
+function getCoverSrc(book) {
+  if (book.coverUrl) return book.coverUrl;
+  if (book.isbn) {
+    const clean = book.isbn.replace(/[^0-9X]/gi, '');
+    if (clean.length >= 10) return `https://covers.openlibrary.org/b/isbn/${clean}-L.jpg`;
+  }
+  return null;
+}
+
+// Best primary link for a book — prefer IA/OL direct links, fall back to Z-Lib search
+function getPrimaryLink(book) {
+  if (book.pdfLink && !book.pdfLink.includes('google.com/search')) return book.pdfLink;
+  if (book.isbn) {
+    const clean = book.isbn.replace(/[^0-9X]/gi, '');
+    return `https://openlibrary.org/isbn/${clean}`;
+  }
+  // Z-Library search is the most reliably available free source
+  const q = encodeURIComponent(`${book.title} ${(book.author || '').split(/[,;]/)[0].trim()}`);
+  return `https://z-library.sk/s/${q.replace(/%20/g, '+')}`;
+}
+
+// Build fresh reliable free links (overrides stored URLs with current working domains)
+function getReliableFreeLinks(book) {
+  const title = book.title.replace(/['"]/g, '');
+  const authorSurname = (book.author || '').split(/[,;]/)[0].trim().split(/\s+/).pop() || '';
+  const q = encodeURIComponent(`${title} ${authorSurname}`);
+  const qPlus = q.replace(/%20/g, '+');
+
+  return [
+    {
+      name: 'Open Library',
+      url: `https://openlibrary.org/search?q=${q}&mode=everything`,
+      icon: 'OL',
+      description: 'Borrow or read free (Internet Archive)',
+    },
+    {
+      name: 'Internet Archive',
+      url: `https://archive.org/search?query=${q}&and[]=mediatype%3A%22texts%22`,
+      icon: 'IA',
+      description: 'Free digital texts and PDFs',
+    },
+    {
+      name: "Anna's Archive",
+      url: `https://annas-archive.org/search?q=${q}`,
+      icon: 'AA',
+      description: 'Free access to millions of books',
+    },
+    {
+      name: 'Z-Library',
+      url: `https://z-library.sk/s/${qPlus}`,
+      icon: 'ZL',
+      description: 'World\'s largest free ebook library',
+    },
+    {
+      name: 'Library Genesis',
+      url: `https://libgen.rs/search.php?req=${qPlus}&open=0&res=25&view=simple&phrase=1&column=def`,
+      icon: 'LG',
+      description: 'Free scientific papers and books',
+    },
+    {
+      name: 'Google Books',
+      url: `https://books.google.com/books?q=${q}`,
+      icon: 'GB',
+      description: 'Preview and sometimes full text',
+    },
+  ];
 }
 
 // Custom Debounce Hook
@@ -182,14 +252,18 @@ const BookReferencePage = () => {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      const res = await fetch(`${API_BASE}/api/library/refresh`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (data.success) {
+      const res = await api.post('/api/library/refresh');
+      // 202 = crawl started in background, 200 = done immediately
+      if (res.status === 202) {
         setSnackbar({
           open: true,
-          message: `Library refreshed! Resync complete.`,
+          message: "Library refresh started in the background. Check back in a few minutes.",
+          severity: "info",
+        });
+      } else if (res.data?.success) {
+        setSnackbar({
+          open: true,
+          message: `Library refreshed. Reloading books...`,
           severity: "success",
         });
         await fetchBooks();
@@ -258,8 +332,8 @@ const BookReferencePage = () => {
       <Box
         sx={{
           // Bleed out of the Layout container padding
-          mt: { xs: -12, md: -16 },
-          mx: { xs: -3, md: -6 },
+          mt: { xs: -10, md: -16 },
+          mx: { xs: -2, sm: -3, md: -6 },
           mb: 6,
           background: isDark
             ? "linear-gradient(135deg, rgba(30,27,75,0.8), rgba(15,23,42,0.95))"
@@ -331,14 +405,11 @@ const BookReferencePage = () => {
                 sx={{
                   fontWeight: 900,
                   mb: 1.5,
-                  letterSpacing: "-1.5px",
-                  fontSize: { xs: "2.5rem", md: "3.5rem" },
+                  letterSpacing: { xs: "-0.5px", md: "-1.5px" },
+                  fontSize: { xs: "1.75rem", sm: "2.5rem", md: "3.5rem" },
                   background: "linear-gradient(90deg, #6366f1, #c084fc)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
                 }}
               >
                 Academy Library
@@ -765,18 +836,34 @@ const BookReferencePage = () => {
                     mb: 2,
                   }}
                 />
-                <Typography
-                  variant="h5"
-                  sx={{
-                    color: isDark ? "#cbd5e1" : "#64748b",
-                    fontWeight: 600,
-                  }}
-                >
-                  No books found.
-                </Typography>
-                <Typography sx={{ color: theme.palette.text.secondary }}>
-                  Try clearing your search or switching courses/years.
-                </Typography>
+                {books.length === 0 ? (
+                  <>
+                    <Typography variant="h5" sx={{ color: isDark ? "#cbd5e1" : "#64748b", fontWeight: 700, mb: 1 }}>
+                      Library not populated yet
+                    </Typography>
+                    <Typography sx={{ color: theme.palette.text.secondary, mb: 3, maxWidth: 440, mx: "auto" }}>
+                      The book library hasn't been set up. Click "Refresh Library" above to crawl and populate it. This may take a few minutes.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<RefreshIcon />}
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      sx={{ borderRadius: 3, fontWeight: 700 }}
+                    >
+                      {refreshing ? "Starting..." : "Refresh Library"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="h5" sx={{ color: isDark ? "#cbd5e1" : "#64748b", fontWeight: 600 }}>
+                      No books found.
+                    </Typography>
+                    <Typography sx={{ color: theme.palette.text.secondary }}>
+                      Try clearing your search or switching courses/years.
+                    </Typography>
+                  </>
+                )}
               </Box>
             ) : (
               <Box
@@ -826,6 +913,10 @@ const BookReferencePage = () => {
                             borderColor: "rgba(99,102,241,0.3)",
                             "& .book-cover-img": { transform: "scale(1.05)" },
                           },
+                          "@media (hover: none)": {
+                            "&:hover": { transform: "none" },
+                          },
+                          "&:active": { transform: "scale(0.98)" },
                         }}
                       >
                         {/* Course/Category Badge */}
@@ -921,11 +1012,11 @@ const BookReferencePage = () => {
                             bgcolor: isDark ? "#0f172a" : "#f8fafc",
                           }}
                         >
-                          {book.coverUrl ? (
+                          {getCoverSrc(book) ? (
                             <Box
                               className="book-cover-img"
                               component="img"
-                              src={book.coverUrl}
+                              src={getCoverSrc(book)}
                               alt={book.title}
                               sx={{
                                 position: "absolute",
@@ -938,9 +1029,16 @@ const BookReferencePage = () => {
                                 opacity: isDark ? 0.95 : 1,
                               }}
                               onError={(e) => {
-                                e.target.src = isDark
-                                  ? "https://via.placeholder.com/300x400/1e293b/94a3b8?text=Cover+Not+Found"
-                                  : "https://via.placeholder.com/300x400/e2e8f0/64748b?text=Cover+Not+Found";
+                                // On image load failure, hide img and show gradient placeholder
+                                e.target.style.display = 'none';
+                                const parent = e.target.parentElement;
+                                if (parent && !parent.querySelector('.cover-fallback')) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'cover-fallback';
+                                  fallback.style.cssText = `position:absolute;inset:0;background:${getCoverGradient(book.category)};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;text-align:center;`;
+                                  fallback.innerHTML = `<span style="font-size:2.8rem;font-weight:900;color:rgba(255,255,255,0.25);line-height:1">${book.title.charAt(0)}</span><span style="color:rgba(255,255,255,0.92);font-weight:800;font-size:0.65rem;line-height:1.3;margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${book.title}</span>`;
+                                  parent.appendChild(fallback);
+                                }
                               }}
                             />
                           ) : (
@@ -1179,10 +1277,10 @@ const BookReferencePage = () => {
                             <Button
                               size="small"
                               variant="contained"
-                              href={book.pdfLink}
+                              href={getPrimaryLink(book)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              startIcon={book.hasDirectPdf ? <DownloadIcon sx={{ fontSize: 14 }} /> : <SearchIcon sx={{ fontSize: 14 }} />}
+                              startIcon={book.hasVerifiedLink ? <DownloadIcon sx={{ fontSize: 14 }} /> : <OpenInNewIcon sx={{ fontSize: 14 }} />}
                               sx={{
                                 flexGrow: 1,
                                 borderRadius: 2,
@@ -1190,24 +1288,16 @@ const BookReferencePage = () => {
                                 fontWeight: 700,
                                 fontSize: "0.7rem",
                                 py: 0.6,
-                                background: book.hasDirectPdf
-                                  ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                                  : isDark
-                                    ? "rgba(255,255,255,0.1)"
-                                    : "rgba(99,102,241,0.08)",
-                                color: book.hasDirectPdf ? "#fff" : isDark ? "#fff" : "#4f46e5",
-                                boxShadow: book.hasDirectPdf ? "0 3px 10px rgba(99,102,241,0.35)" : "none",
+                                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                                color: "#fff",
+                                boxShadow: "0 3px 10px rgba(99,102,241,0.35)",
                                 "&:hover": {
-                                  background: book.hasDirectPdf
-                                    ? "linear-gradient(135deg, #4f46e5, #7c3aed)"
-                                    : isDark
-                                      ? "rgba(255,255,255,0.18)"
-                                      : "rgba(99,102,241,0.14)",
-                                  boxShadow: book.hasDirectPdf ? "0 5px 16px rgba(99,102,241,0.45)" : "none",
+                                  background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                                  boxShadow: "0 5px 16px rgba(99,102,241,0.45)",
                                 },
                               }}
                             >
-                              {book.hasDirectPdf ? "Read Free" : "Find PDF"}
+                              {book.hasVerifiedLink ? "Read Free" : "Find Book"}
                             </Button>
 
                             {/* Free downloads dropdown */}
@@ -1267,7 +1357,7 @@ const BookReferencePage = () => {
                               >
                                 Free Resources
                               </Typography>
-                              {(book.freeLinks || []).map((link) => (
+                              {getReliableFreeLinks(book).map((link) => (
                                 <MenuItem
                                   key={link.name}
                                   component="a"

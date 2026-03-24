@@ -31,8 +31,8 @@ It also generates personalized, auto-adjusting study plans based on your syllabu
 We engineered MedSage with a robust and modern tech stack:
 - **Frontend Stack:** React 18, Material-UI (MUI) v5, Framer Motion (for fluid animations), React Router v6, and Workbox for PWA features.
 - **Backend Stack:** Node.js with Express.js powers our scalable and resilient API layer.
-- **AI Engine:** Powered by the **Perplexity Sonar API**, supercharged with dynamic prompt engineering meticulously tailored for medical contexts.
-- **Database & Caching:** MongoDB for persistent user data structuring and Redis for ultra-fast response caching.
+- **AI Engine:** Powered by **Google Gemini** with a grounded medical answer pipeline for retrieval, citations, and confidence scoring.
+- **Database & Caching:** MongoDB for persistent user data plus an in-process query cache for fast repeat responses.
 - **Offline Resiliency:** Progressive Web App (PWA) architecture ensures your learning never stops—even in a hospital basement without a signal.
 
 ---
@@ -47,7 +47,7 @@ We engineered MedSage with a robust and modern tech stack:
 
 ## 🚧 Challenges We Ran Into
 
-The journey wasn't easy. During development, restricted early access to the Sonar API meant we couldn't immediately test our AI bot with real-world, real-time queries. Furthermore, creating a study planner capable of unifying diverse curricula (e.g., Indian MBBS, US MD) demanded rigorous and meticulous data structuring.
+The journey wasn't easy. During development, reliable access to the right LLM and grounding stack meant we couldn't immediately test every medical workflow with real-world, real-time queries. Furthermore, creating a study planner capable of unifying diverse curricula (e.g., Indian MBBS, US MD) demanded rigorous and meticulous data structuring.
 
 Optimizing for speed and offline availability under strict timelines tested our engineering limits, while designing a UI that flawlessly balances complex functionality with the simplicity a stressed-out student needs tested our empathy.
 
@@ -75,7 +75,7 @@ We are just getting started! Our immediate roadmap includes:
 - Node.js (v16+)
 - npm or yarn
 - MongoDB (optional for full features)
-- Redis (optional for caching)
+- No external cache is required for local development
 
 ### Installation & Run
 

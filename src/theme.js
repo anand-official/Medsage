@@ -5,6 +5,15 @@ const getTheme = (mode) => {
   const isDark = mode === 'dark';
 
   let theme = createTheme({
+    breakpoints: {
+      values: {
+        xs: 0,
+        sm: 375,
+        md: 768,
+        lg: 1024,
+        xl: 1280,
+      },
+    },
     palette: {
       mode: mode,
       primary: {
@@ -87,6 +96,12 @@ const getTheme = (mode) => {
                 boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
                 transform: 'translateY(-4px)',
               },
+              // Disable hover transform on touch devices
+              '@media (hover: none)': {
+                '&:hover': {
+                  transform: 'none',
+                },
+              },
             }),
           },
         },
@@ -96,7 +111,11 @@ const getTheme = (mode) => {
           root: {
             borderRadius: 12,
             padding: '10px 24px',
+            minHeight: 44, // Apple HIG minimum touch target
             transition: 'all 0.2s ease',
+            '&:active': {
+              transform: 'scale(0.97)',
+            },
           },
           contained: {
             boxShadow: 'none',
@@ -104,6 +123,30 @@ const getTheme = (mode) => {
               boxShadow: '0 8px 16px rgba(99, 102, 241, 0.3)',
               transform: 'translateY(-1px)',
             },
+            '@media (hover: none)': {
+              '&:hover': {
+                transform: 'none',
+                boxShadow: 'none',
+              },
+            },
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            minWidth: 44,
+            minHeight: 44,
+            '&:active': {
+              transform: 'scale(0.92)',
+            },
+          },
+        },
+      },
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            minHeight: 48,
           },
         },
       },
@@ -131,9 +174,40 @@ const getTheme = (mode) => {
             '& .MuiOutlinedInput-root': {
               borderRadius: 14,
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+              // Prevent iOS zoom on focus
+              '& input': {
+                fontSize: '16px',
+              },
               '&:hover': {
                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
               },
+            },
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            margin: 16,
+            maxHeight: 'calc(100% - 32px)',
+            width: 'calc(100% - 32px)',
+            '@media (max-width: 768px)': {
+              margin: 0,
+              maxHeight: '100%',
+              width: '100%',
+              maxWidth: '100% !important',
+              borderRadius: '24px 24px 0 0',
+              position: 'fixed',
+              bottom: 0,
+            },
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            '&.MuiChip-clickable': {
+              minHeight: 36,
             },
           },
         },

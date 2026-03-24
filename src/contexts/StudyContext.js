@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { plannerAPI } from '../services/plannerService';
 import { useAuth } from './AuthContext';
 
@@ -13,7 +13,7 @@ export const useStudyContext = () => {
 };
 
 export const StudyProvider = ({ children }) => {
-  const { userProfile } = useAuth(); // Access user profile from auth context
+  const { userProfile } = useAuth();
 
   // Core Data
   const [studyPlan, setStudyPlan] = useState(null);
@@ -26,58 +26,71 @@ export const StudyProvider = ({ children }) => {
   const [weakTopics, setWeakTopics] = useState([]);
   const [strongTopics, setStrongTopics] = useState([]);
 
-  // UI State
-  const [loading, setLoading] = useState(false);
+  // Per-operation loading states (no more shared flicker)
+  const [planLoading, setPlanLoading] = useState(false);
+  const [todayLoading, setTodayLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Data Fetching actions
+  // Per-operation error states
+  const [planError, setPlanError] = useState(null);
+  const [todayError, setTodayError] = useState(null);
+  const [analyticsError, setAnalyticsError] = useState(null);
+  const [generateError, setGenerateError] = useState(null);
+
+  // Derived: true if ANY fetch is in-flight (used by pages that just need a spinner)
+  const loading = planLoading || todayLoading || analyticsLoading;
+  // Derived: surface the most recent error to pages that use a single error slot
+  const error = generateError || planError || todayError || analyticsError;
+
   const fetchToday = useCallback(async () => {
     if (!userProfile) return;
+    setTodayLoading(true);
+    setTodayError(null);
     try {
-      setLoading(true); setError(null);
       const res = await plannerAPI.getTodayDashboard();
       if (res.data) setTodayData(res.data);
     } catch (err) {
-      setError(err.message || 'Failed to fetch today dashboard');
+      setTodayError(err.message || 'Failed to fetch today dashboard');
     } finally {
-      setLoading(false);
+      setTodayLoading(false);
     }
   }, [userProfile]);
 
   const getStudyPlan = useCallback(async () => {
     if (!userProfile) return;
+    setPlanLoading(true);
+    setPlanError(null);
     try {
-      setLoading(true); setError(null);
       const res = await plannerAPI.getStudyPlan();
       setStudyPlan(res.data);
       return res.data;
     } catch (err) {
-      setError(err.message || 'Failed to fetch study plan');
+      setPlanError(err.message || 'Failed to fetch study plan');
     } finally {
-      setLoading(false);
+      setPlanLoading(false);
     }
   }, [userProfile]);
 
   const fetchAnalytics = useCallback(async () => {
     if (!userProfile) return;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
     try {
-      setLoading(true); setError(null);
       const res = await plannerAPI.getAnalytics();
       setAnalyticsData(res.data);
       return res.data;
     } catch (err) {
-      setError(err.message || 'Failed to fetch analytics');
+      setAnalyticsError(err.message || 'Failed to fetch analytics');
     } finally {
-      setLoading(false);
+      setAnalyticsLoading(false);
     }
   }, [userProfile]);
 
-  // Action methods
   const generateStudyPlan = async (year) => {
+    setIsGenerating(true);
+    setGenerateError(null);
     try {
-      setIsGenerating(true);
-      setError(null);
       const res = await plannerAPI.generateStudyPlan({
         year,
         country: userProfile?.country || 'India',
@@ -90,7 +103,8 @@ export const StudyProvider = ({ children }) => {
       await fetchToday();
       return res.data;
     } catch (err) {
-      setError(err.message || 'Failed to generate study plan');
+      const msg = err.message || 'Failed to generate study plan';
+      setGenerateError(msg);
       throw err;
     } finally {
       setIsGenerating(false);
@@ -99,13 +113,58 @@ export const StudyProvider = ({ children }) => {
 
   const tickTask = async (dateStr, taskId, completedStatus) => {
     try {
-      // Optimistic update for UI feel could be added here
       const res = await plannerAPI.tickTask(dateStr, taskId, completedStatus);
-      if (res.data) setTodayData(res.data);
+      if (res.data) {
+        setTodayData(res.data);
+        // Keep studyPlan.daily_plan in sync so the calendar view updates too
+        setStudyPlan(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            daily_plan: prev.daily_plan.map(d =>
+              d.date === dateStr ? { ...d, tasks: res.data.tasks } : d
+            )
+          };
+        });
+      }
       return res.data;
     } catch (err) {
       console.error('Error ticking task:', err);
-      setError('Failed to update task status');
+      setTodayError('Failed to update task status');
+    }
+  };
+
+  const tickGoal = async (goalType, goalId) => {
+    // Optimistic toggle
+    setStudyPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        goals: {
+          ...prev.goals,
+          [goalType]: (prev.goals?.[goalType] || []).map(g =>
+            g.id === goalId ? { ...g, done: !g.done } : g
+          )
+        }
+      };
+    });
+    try {
+      await plannerAPI.tickGoal(goalType, goalId);
+    } catch (err) {
+      console.error('Error ticking goal:', err);
+      // Revert on failure
+      setStudyPlan(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          goals: {
+            ...prev.goals,
+            [goalType]: (prev.goals?.[goalType] || []).map(g =>
+              g.id === goalId ? { ...g, done: !g.done } : g
+            )
+          }
+        };
+      });
     }
   };
 
@@ -116,7 +175,7 @@ export const StudyProvider = ({ children }) => {
       return res.data;
     } catch (err) {
       console.error('Error adding new task:', err);
-      setError('Failed to add new task');
+      setTodayError('Failed to add new task');
       throw err;
     }
   };
@@ -128,13 +187,13 @@ export const StudyProvider = ({ children }) => {
       return res.data;
     } catch (err) {
       console.error('Error updating task text:', err);
-      setError('Failed to update task text');
+      setTodayError('Failed to update task text');
       throw err;
     }
   };
 
   const value = {
-    userProfile, // Extracted user profile for direct access via study context
+    userProfile,
     studyPlan,
     todayData,
     analyticsData,
@@ -144,15 +203,22 @@ export const StudyProvider = ({ children }) => {
     weakTopics, setWeakTopics,
     strongTopics, setStrongTopics,
 
+    // Granular loading/error for components that need them
+    planLoading, todayLoading, analyticsLoading,
+    planError, todayError, analyticsError, generateError,
+
+    // Derived combined states for backward-compat with pages using loading/error
     loading,
     isGenerating,
     error,
+    setError: setGenerateError, // backward compat
 
     fetchToday,
     getStudyPlan,
     fetchAnalytics,
     generateStudyPlan,
     tickTask,
+    tickGoal,
     addNewTask,
     updateTaskText,
   };

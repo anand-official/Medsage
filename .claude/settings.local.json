@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(npm run:*)",
+      "Bash(sleep:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 34112 -Force\" 2>&1)",
+      "Bash(powershell -Command \"Start-Process -Verb RunAs -WindowStyle Hidden -FilePath 'taskkill' -ArgumentList '/PID','34112','/F'\" 2>&1; sleep 2; netstat -ano | grep ':3001' | head -3)",
+      "Bash(npx react-scripts:*)",
+      "Bash(find:*)",
+      "Bash(cd:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"taskkill /PID 22296 /F\")",
+      "Bash(cmd //c \"taskkill /PID 1176 /F\")",
+      "Bash(wc:*)",
+      "Bash(cmd /c \"taskkill /PID 24724 /F\")",
+      "Bash(powershell -Command \"Stop-Process -Id 24724 -Force\")",
+      "Bash(powershell -Command \"Get-Process -Id 33856,18904 | Select-Object Id, ProcessName, MainWindowTitle\")",
+      "Bash(powershell -Command \"Get-WmiObject Win32_Process -Filter 'ProcessId=33856' | Select-Object CommandLine\")",
+      "Bash(tasklist /fi 'pid eq 24408')"
+    ]
+  }
+}

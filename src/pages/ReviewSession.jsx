@@ -28,7 +28,7 @@ import sm2API from '../services/sm2Service';
 function StatWidget({ label, value, unit = '', color = '#6366f1', loading }) {
     return (
         <Card elevation={0} sx={{
-            p: 2.5, borderRadius: 3, flex: 1, minWidth: 110,
+            p: { xs: 2, md: 2.5 }, borderRadius: 3, flex: '1 1 auto', minWidth: { xs: '45%', sm: 110 },
             border: '1px solid rgba(255,255,255,0.07)',
             background: 'rgba(255,255,255,0.03)',
             textAlign: 'center',
@@ -152,7 +152,7 @@ export default function ReviewSession() {
                     <DoneIcon sx={{ fontSize: 40, color: '#fff' }} />
                 </Box>
 
-                <Typography variant="h4" fontWeight={800} sx={{ mb: 1 }}>
+                <Typography variant="h4" fontWeight={800} sx={{ mb: 1, fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
                     {sessionResults.length === 0 ? 'Nothing due today!' : 'Session Complete!'}
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
@@ -163,7 +163,7 @@ export default function ReviewSession() {
 
                 {/* Session stats */}
                 {sessionResults.length > 0 && (
-                    <Stack direction="row" spacing={2} sx={{ mb: 4, flexWrap: 'wrap' }} useFlexGap>
+                    <Stack direction="row" spacing={1.5} sx={{ mb: 4, flexWrap: 'wrap', justifyContent: 'center' }} useFlexGap>
                         <StatWidget label="Reviewed" value={sessionResults.length} color="#6366f1" />
                         <StatWidget label="Correct" value={correct} color="#22c55e" />
                         <StatWidget label="Session Retention" value={retention} unit="%" color="#a855f7" />
@@ -178,7 +178,7 @@ export default function ReviewSession() {
                         <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                             Your Deck
                         </Typography>
-                        <Stack direction="row" spacing={2} sx={{ mt: 2, mb: 4, flexWrap: 'wrap' }} useFlexGap>
+                        <Stack direction="row" spacing={1.5} sx={{ mt: 2, mb: 4, flexWrap: 'wrap', justifyContent: 'center' }} useFlexGap>
                             <StatWidget label="Total Cards" value={stats.total_cards} color="#6366f1" />
                             <StatWidget label="Due Tomorrow" value={stats.due_now} color="#f97316" />
                             <StatWidget label="Avg Ease Factor" value={stats.avg_ease_factor} color="#22c55e" />
@@ -244,15 +244,7 @@ export default function ReviewSession() {
                 {/* Live deck stats strip */}
                 <Box sx={{ ml: 'auto', display: 'flex', gap: 2 }}>
                     {!statsLoading && stats && (
-                        <>
-                            <Chip value={`${stats.avg_retention}% retention`} />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <StatsIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                <Typography variant="caption" color="text.secondary">
-                                    {stats.avg_retention}% deck retention
-                                </Typography>
-                            </Box>
-                        </>
+                        <StatChip value={`${stats.avg_retention}% retention`} />
                     )}
                 </Box>
             </Box>
@@ -260,6 +252,7 @@ export default function ReviewSession() {
             {/* Active card */}
             {cards.length > 0 && currentIndex < cards.length && (
                 <ReviewCard
+                    key={cards[currentIndex]._id}
                     card={cards[currentIndex]}
                     cardIndex={currentIndex}
                     totalCards={cards.length}
@@ -272,8 +265,8 @@ export default function ReviewSession() {
     );
 }
 
-// Chip helper (inline small stat)
-function Chip({ value }) {
+// StatChip helper (inline small stat)
+function StatChip({ value }) {
     return (
         <Box sx={{
             px: 1.5, py: 0.5,

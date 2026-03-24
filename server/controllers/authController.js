@@ -12,15 +12,19 @@ class AuthController {
                 return res.status(400).json({ success: false, error: 'uid and email are required' });
             }
 
-            // Upsert user profile
+            // Upsert user profile.
+            // Only set displayName/photoURL on initial creation ($setOnInsert) so that
+            // custom names set during onboarding are not overwritten on every login.
             const user = await UserProfile.findOneAndUpdate(
                 { uid },
                 {
                     $set: {
                         email,
+                        lastLoginAt: new Date()
+                    },
+                    $setOnInsert: {
                         displayName: displayName || email.split('@')[0],
                         photoURL: photoURL || '',
-                        lastLoginAt: new Date()
                     }
                 },
                 { new: true, upsert: true }

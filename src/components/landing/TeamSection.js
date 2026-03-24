@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+
+function useIsMobile(breakpoint = 768) {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+    useEffect(() => {
+        const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+        const handler = (e) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, [breakpoint]);
+    return isMobile;
+}
 
 const FOUNDERS = [
     {
@@ -166,6 +177,7 @@ function FounderCard({ member, index, onClick }) {
 
 // Split-view Modal
 export function SplitModal({ member, onClose }) {
+    const isMobile = useIsMobile();
     if (!member) return null;
 
     return (
@@ -173,30 +185,34 @@ export function SplitModal({ member, onClose }) {
             <div onClick={onClose} style={{
                 position: 'fixed', inset: 0, zIndex: 9999,
                 background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+                display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center',
+                padding: isMobile ? '0' : '24px',
             }}>
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    initial={{ opacity: 0, scale: 0.95, y: isMobile ? 100 : 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    exit={{ opacity: 0, scale: 0.95, y: isMobile ? 100 : 10 }}
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     onClick={e => e.stopPropagation()}
                     style={{
-                        width: '100%', maxWidth: 860,
-                        borderRadius: 24, overflow: 'hidden',
+                        width: '100%', maxWidth: isMobile ? '100%' : 860,
+                        borderRadius: isMobile ? '20px 20px 0 0' : 24, overflow: isMobile ? 'auto' : 'hidden',
                         background: '#0a0a14',
                         border: `1px solid rgba(${member.colorRgb}, 0.25)`,
                         boxShadow: `0 40px 100px rgba(0,0,0,0.8), 0 0 80px rgba(${member.colorRgb},0.15)`,
                         display: 'flex',
-                        position: 'relative'
+                        flexDirection: isMobile ? 'column' : 'row',
+                        position: 'relative',
+                        maxHeight: isMobile ? '90vh' : 'none',
                     }}
                 >
-                    {/* Left side: Photo */}
+                    {/* Left/Top side: Photo */}
                     <div style={{
-                        width: '42%',
-                        minHeight: 450,
+                        width: isMobile ? '100%' : '42%',
+                        minHeight: isMobile ? 240 : 450,
                         position: 'relative',
-                        background: `linear-gradient(135deg, rgba(${member.colorRgb},0.15), #0a0a14)`
+                        background: `linear-gradient(135deg, rgba(${member.colorRgb},0.15), #0a0a14)`,
+                        flexShrink: 0,
                     }}>
                         <img
                             src={member.photo}
@@ -207,18 +223,20 @@ export function SplitModal({ member, onClose }) {
                                 display: 'block'
                             }}
                         />
-                        {/* Right edge fade for seamless blend */}
+                        {/* Edge fade */}
                         <div style={{
-                            position: 'absolute', right: 0, top: 0, bottom: 0, width: 40,
-                            background: `linear-gradient(to right, transparent, #0a0a14)`,
+                            position: 'absolute',
+                            ...(isMobile
+                                ? { left: 0, right: 0, bottom: 0, height: 60, background: `linear-gradient(to bottom, transparent, #0a0a14)` }
+                                : { right: 0, top: 0, bottom: 0, width: 40, background: `linear-gradient(to right, transparent, #0a0a14)` }),
                             pointerEvents: 'none',
                         }} />
                     </div>
 
-                    {/* Right side: Content */}
+                    {/* Right/Bottom side: Content */}
                     <div style={{
                         flex: 1,
-                        padding: '44px 48px',
+                        padding: isMobile ? '24px 20px calc(env(safe-area-inset-bottom, 16px) + 24px)' : '44px 48px',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
@@ -226,8 +244,8 @@ export function SplitModal({ member, onClose }) {
                     }}>
                         {/* Close button */}
                         <button onClick={onClose} style={{
-                            position: 'absolute', top: 20, right: 20,
-                            width: 36, height: 36, borderRadius: '50%',
+                            position: 'absolute', top: isMobile ? 12 : 20, right: isMobile ? 12 : 20,
+                            width: 44, height: 44, borderRadius: '50%',
                             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
                             color: 'rgba(255,255,255,0.6)', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', transition: 'all 0.2s',
@@ -246,7 +264,7 @@ export function SplitModal({ member, onClose }) {
                         }}>{member.tag.toUpperCase()}</span>
 
                         <h3 style={{
-                            fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 32,
+                            fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 24 : 32,
                             color: '#f8fafc', margin: '0 0 6px', letterSpacing: '-1px'
                         }}>{member.name}</h3>
 
@@ -300,9 +318,10 @@ export function SplitModal({ member, onClose }) {
 export default function TeamSection() {
     const navigate = useNavigate();
     const [selected, setSelected] = useState(null);
+    const isMobile = useIsMobile();
 
     return (
-        <section id="team" style={{ padding: '100px 32px 120px' }}>
+        <section id="team" style={{ padding: isMobile ? '60px 16px 80px' : '100px 32px 120px' }}>
             <div style={{ maxWidth: 1140, margin: '0 auto' }}>
 
                 {/* Header */}

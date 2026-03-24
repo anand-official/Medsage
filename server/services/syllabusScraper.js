@@ -105,10 +105,10 @@ Do not include any markdown formatting, backticks, or explanations. Just the JSO
 
         } catch (error) {
             console.error(`[Syllabus Agent] Failed to generate curriculum for ${country}:`, error.message);
-            // 4. Fallback to highly granular curriculum for Spaced Repetition
-            return {
+            // 4. Fallback to highly granular curriculum for Spaced Repetition — filtered by requested year
+            const FULL_FALLBACK = {
                 "Anatomy": ["Upper Limb Bones", "Shoulder Joint & Muscles", "Brachial Plexus", "Hand & Wrist", "Lower Limb Hip & Gluteal", "Knee & Leg", "Ankle & Foot", "Abdominal Wall", "Inguinal Canal", "Peritoneum & GI Tract", "Liver & Biliary", "Kidneys & Pelvis", "Thoracic Cage", "Heart Chambers", "Lungs & Pleura", "Head Osteology", "Neck Triangles", "Cranial Nerves (I-VI)", "Cranial Nerves (VII-XII)", "Brainstem & Cerebellum", "Cerebrum & Meninges", "Embryology 1", "Histology Epithelium"],
-                "Physiology": ["Cell Membrane Dynamics", "Action Potentials", "Skeletal Muscle", "Smooth Muscle", "Cardiac Cycle", "ECG Basics", "Hemodynamics", "Microcirculation", "RBCs & Anemia", "Hemostasis & Coagulation", "WBCs & Immunity", "Pulmonary Mechanics", "Gas Exchange", "Neural Control of Breathing", "Gi Motility", "Gastric Secretion", "Renal GFR", "Renal Tubular Transport", "Acid-Base Balance", "Hypothalamus & Pituitary", "Thyroid & Parathyroid", "Adrenal Gland", "Pancreatic Hormones", "Sensory Receptors", "Motor Cortex", "Basal Ganglia"],
+                "Physiology": ["Cell Membrane Dynamics", "Action Potentials", "Skeletal Muscle", "Smooth Muscle", "Cardiac Cycle", "ECG Basics", "Hemodynamics", "Microcirculation", "RBCs & Anemia", "Hemostasis & Coagulation", "WBCs & Immunity", "Pulmonary Mechanics", "Gas Exchange", "Neural Control of Breathing", "GI Motility", "Gastric Secretion", "Renal GFR", "Renal Tubular Transport", "Acid-Base Balance", "Hypothalamus & Pituitary", "Thyroid & Parathyroid", "Adrenal Gland", "Pancreatic Hormones", "Sensory Receptors", "Motor Cortex", "Basal Ganglia"],
                 "Biochemistry": ["Enzyme Kinetics", "Carbohydrate Metabolism (Glycolysis)", "TCA Cycle", "Gluconeogenesis & Glycogenolysis", "Lipid Metabolism (Beta Oxidation)", "Cholesterol Synthesis", "Lipoproteins", "Amino Acid Catabolism", "Urea Cycle", "Nucleotide Metabolism", "DNA Replication", "Transcription & RNA Processing", "Translation", "Vitamins (Water Soluble)", "Vitamins (Fat Soluble)", "Minerals & Trace Elements", "Heme Synthesis & Porphyrias", "Jaundice & Bilirubin", "Extracellular Matrix", "Signal Transduction"],
                 "Pathology": ["Cell Injury & Death", "Acute Inflammation", "Chronic Inflammation", "Tissue Repair", "Hemodynamics & Thrombosis", "Shock", "Genetic Disorders", "Immunopathology (Hypersensitivity)", "Autoimmune Diseases", "Neoplasia (Benign vs Malignant)", "Molecular Basis of Cancer", "Tumor Markers", "Atherosclerosis", "Ischemic Heart Disease", "Valvular Heart Disease", "Pneumonias", "COPD & Asthma", "GI Ulcers & Inflammatory Bowel", "Hepatitis & Cirrhosis", "Glomerulonephritis", "Breast Pathology", "CNS Tumors", "Leukemias & Lymphomas"],
                 "Pharmacology": ["Pharmacokinetics (ADME)", "Pharmacodynamics (Receptors)", "Cholinergic Agonists", "Anticholinergics", "Adrenergic Agonists", "Alpha/Beta Blockers", "Diuretics", "Anti-hypertensives", "Anti-anginal Drugs", "Heart Failure Drugs", "Anti-arrhythmics", "Coagulation Drugs", "Lipid-lowering Drugs", "Penicillins & Cephalosporins", "Macrolides & Aminoglycosides", "Anti-TB & Anti-Fungal", "Antiviral (HIV/Hep)", "NSAIDs", "Opioids", "Glucocorticoids", "Anti-diabetics", "Anti-epileptics", "Anti-psychotics", "Anti-depressants (SSRIs/SNRIs)", "General & Local Anesthetics"],
@@ -124,6 +124,13 @@ Do not include any markdown formatting, backticks, or explanations. Just the JSO
                 "Pediatrics": ["Normal Growth & Milestones", "Developmental Delay", "Neonatal Resuscitation", "Prematurity & RDS", "Neonatal Jaundice", "Neonatal Sepsis", "SAM (Severe Acute Malnutrition)", "Vitamin Deficiencies (Rickets)", "Breastfeeding & Weaning", "Pediatric Immunization", "Acute Respiratory Infections (CROUP/Pneumonia)", "Acute Diarrheal Disease & ORS", "Congenital Heart Defects (Acyanotic)", "Cyanotic Heart Defects (Tetralogy of Fallot)", "Rheumatic Fever", "Nephrotic Syndrome", "Acute Glomerulonephritis", "Febrile Seizures", "Meningitis & Encephalitis", "Pediatric Asthma", "Bleeding Disorders (Hemophilia)", "Pediatric Leukemias (ALL)", "Childhood Tuberculosis"],
                 "Internship": ["IV Cannulation & Phlebotomy", "Catheterization", "Basic Life Support (BLS)", "Advanced Cardiac Life Support (ACLS)", "Suturing Techniques", "Wound Dressing", "Nasogastric Tube Insertion", "Arterial Blood Gas Interpretation", "Chest X-Ray Interpretation", "ECG Reading in ER", "Management of Shock in ER", "Acute Poisoning Protocol", "Acute Asthma Attack Protocol", "Status Epilepticus Mgmt", "Acute MI Initial Steps", "Post-Op Ward Management", "Discharge Summary Writing", "Blood Transfusion Protocol", "Consent Taking", "Medical Ethics & Communication"]
             };
+            // Only return subjects relevant to the requested year
+            const yearSubjects = EXPECTED_SUBJECTS[year] || [];
+            const filtered = {};
+            for (const sub of yearSubjects) {
+                if (FULL_FALLBACK[sub]) filtered[sub] = FULL_FALLBACK[sub];
+            }
+            return filtered;
         }
     }
 }

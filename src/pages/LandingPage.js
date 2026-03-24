@@ -481,10 +481,10 @@ function VisionSection() {
                         fontFamily: 'Inter, sans-serif', fontSize: 'clamp(17px, 2vw, 20px)', color: 'rgba(255,255,255,0.7)',
                         maxWidth: 780, margin: '0 auto', lineHeight: 1.8,
                     }}>
-                        One of our closest friends, a medical student, used to tell us how overwhelming it was to prepare for exams with limited guidance. She’d struggle with last-minute doubts and couldn’t find any AI-based tool tailored specifically to her needs.
+                        One of our closest friends, a medical student, used to tell us how overwhelming it was to prepare for exams with limited guidance. She'd struggle with last-minute doubts and couldn't find any AI-based tool tailored specifically to her needs.
                         Her repeated frustration made us realize how underserved medical students are when it comes to intelligent academic support.
                         <br /><br />
-                        <strong style={{ color: ‘#f1f5f9’, fontWeight: 600 }}>That’s what inspired us to build Cortex—an AI-powered study companion built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we’re committed to making that vision real.
+                        <strong style={{ color: '#f1f5f9', fontWeight: 600 }}>That&apos;s what inspired us to build Cortex—an AI-powered study companion built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we&apos;re committed to making that vision real.
                     </p>
                 </div>
             </FadeUp>
@@ -571,8 +571,8 @@ const features = [
     {
         icon: <IconBook />, color: '#06b6d4', gradient: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.03))',
         title: 'Textbook Reference Layer', tag: 'Resources',
-        desc: "Every AI response is grounded in real, standard medical references — no hallucinations. You always know which chapter and book it came from.",
-        points: ['Cited to Robbins, Harrison', 'Chapter-level accuracy', 'Zero hallucination guarantee'],
+        desc: 'Verified Cortex answers are grounded in standard medical references with visible chapter-level citations and transparent trust signals.',
+        points: ['Cited to Robbins, Harrison', 'Chapter-level citation details', 'Visible verification status'],
     },
 ];
 

@@ -99,7 +99,7 @@ export default function ReviewCard({ card, onReview, onSuspend, onDelete, cardIn
             >
                 {/* Card header */}
                 <Box sx={{
-                    px: 3, pt: 2.5, pb: 1.5,
+                    px: { xs: 2, md: 3 }, pt: 2.5, pb: 1.5,
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                 }}>
@@ -134,7 +134,7 @@ export default function ReviewCard({ card, onReview, onSuspend, onDelete, cardIn
                     </Stack>
                 </Box>
 
-                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3 }}>
+                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: { xs: 2, md: 3 } }}>
                     {/* Question */}
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="caption" color="primary.light" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1, opacity: 0.8 }}>
@@ -208,7 +208,7 @@ export default function ReviewCard({ card, onReview, onSuspend, onDelete, cardIn
                                                     disabled={submitting}
                                                     onClick={() => handleQuality(quality)}
                                                     sx={{
-                                                        flex: 1, minWidth: 80,
+                                                        flex: '1 1 auto', minWidth: { xs: '45%', sm: 80 },
                                                         borderColor: `${color}50`,
                                                         color: color,
                                                         borderRadius: 2.5,

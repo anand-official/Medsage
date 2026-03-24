@@ -7,6 +7,22 @@
   --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   --surface-glass: rgba(15, 15, 15, 0.7);
   --border-glass: rgba(255, 255, 255, 0.08);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -20,6 +36,9 @@ body {
   color: #f8fafc;
   overflow-x: hidden;
   position: relative;
+  -webkit-overflow-scrolling: touch;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Animated Mesh Gradient Background */
@@ -44,12 +63,40 @@ code {
     monospace;
 }
 
-/* Global Transition */
+/* Global Transition — exclude transform to avoid tap-delay feel */
 * {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Custom Scrollbar - Advanced UI Polish */
+/* ── Mobile Touch Optimization ── */
+button,
+a,
+[role="button"],
+input[type="submit"],
+.MuiIconButton-root,
+.MuiButton-root,
+.MuiTab-root,
+.MuiChip-root,
+.MuiListItemButton-root {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent iOS zoom on input focus (font-size must be >= 16px) */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Images should never overflow */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Custom Scrollbar — Advanced UI Polish ── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -67,7 +114,6 @@ code {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.5);
-  /* Primary Accent */
 }
 
 /* Ensure dark mode adapts naturally */
@@ -78,5 +124,13 @@ code {
 
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(165, 180, 252, 0.5);
+  }
+}
+
+/* ── Mobile-specific utility overrides ── */
+@media screen and (max-width: 480px) {
+  /* Reduce heavy blur filters on low-powered mobile GPUs */
+  .glass-card {
+    backdrop-filter: blur(12px);
   }
 }

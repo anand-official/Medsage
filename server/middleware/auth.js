@@ -93,12 +93,14 @@ const verifyToken = async (req, res, next) => {
 
     // Verify the token with Firebase (PRODUCTION MODE)
     const decodedToken = await admin.auth().verifyIdToken(token);
-    
+
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email,
       displayName: decodedToken.name,
       photoURL: decodedToken.picture,
+      // Custom claim set via Firebase Admin SDK: admin.auth().setCustomUserClaims(uid, { admin: true })
+      admin: decodedToken.admin === true,
     };
 
     next();
@@ -176,8 +178,42 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * Admin guard — must be used after verifyToken (requires req.user to be set).
+ *
+ * Primary check: Firebase custom claim `admin: true`
+ *   Set via: admin.auth().setCustomUserClaims(uid, { admin: true })
+ *   Token must be refreshed by the client before the claim takes effect.
+ *
+ * Fallback: ADMIN_UIDS env var (comma-separated UIDs) for environments
+ *   where custom claims haven't been configured yet.
+ */
+const isAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  // Preferred: Firebase custom claim (hot-revocable via token refresh)
+  if (req.user.admin === true) {
+    return next();
+  }
+
+  // Fallback: env-var allowlist (no hot revocation — remove once custom claims are in place)
+  const adminUids = (process.env.ADMIN_UIDS || '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean);
+  if (adminUids.length > 0 && adminUids.includes(req.user.uid)) {
+    return next();
+  }
+
+  console.warn(`[Auth] isAdmin denied uid=${req.user.uid}`);
+  return res.status(403).json({ success: false, error: 'Forbidden' });
+};
+
 module.exports = {
   verifyToken,
   optionalAuth,
+  isAdmin,
   firebaseEnabled,
 };

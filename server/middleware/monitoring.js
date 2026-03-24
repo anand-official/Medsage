@@ -17,6 +17,8 @@
  */
 
 const os = require('os');
+const { GEMINI_MODEL } = require('../config');
+const { verifyToken, isAdmin } = require('./auth');
 
 // ─── In-memory metrics store ─────────────────────────────────────────────────
 
@@ -29,6 +31,14 @@ const metrics = {
     confidenceTiers: { HIGH: 0, MEDIUM: 0, LOW: 0 },
     ragLatencies: [],
     errorsTotal: {},            // { 'SCHEMA_VALIDATION': count }
+    // Query expansion counters
+    queryExpansionTotal: 0,          // requests where expansion generated alternatives
+    queryExpansionQueriesTotal: 0,   // total queries run (including originals when expanded)
+    queryExpansionAddedChunks: 0,    // total new chunks contributed by expansion
+    // Time-stamped ring buffer for sliding-window error rate (alert system)
+    // Each entry: { ts: number (epoch ms), isError: boolean }
+    // Capped at 2000 entries (~33 req/s sustained for 1 min) to bound memory.
+    requestWindow: [],
     startedAt: new Date().toISOString()
 };
 
@@ -44,6 +54,10 @@ function recordRequest(route, statusCode, durationMs) {
     if (metrics.requestDurations[route].length > 500) {
         metrics.requestDurations[route] = metrics.requestDurations[route].slice(-500);
     }
+
+    // Feed the sliding-window buffer used by the alert system
+    metrics.requestWindow.push({ ts: Date.now(), isError: statusCode >= 500 });
+    if (metrics.requestWindow.length > 2000) metrics.requestWindow.shift();
 }
 
 function recordLLMCall(success = true) {
@@ -72,6 +86,106 @@ function recordRAGLatency(ms) {
 function recordError(type) {
     metrics.errorsTotal[type] = (metrics.errorsTotal[type] || 0) + 1;
 }
+
+/**
+ * Records a query expansion event.
+ * Only called when the expander produced ≥ 1 alternative (queriesCount > 1).
+ * @param {number} queriesCount  - Total queries run (original + alternatives)
+ * @param {number} addedChunks   - New chunks contributed by the alternatives
+ */
+function recordQueryExpansion(queriesCount, addedChunks) {
+    if (queriesCount <= 1) return; // no expansion — nothing to record
+    metrics.queryExpansionTotal++;
+    metrics.queryExpansionQueriesTotal += queriesCount;
+    metrics.queryExpansionAddedChunks  += (addedChunks || 0);
+}
+
+// ─── Alert system ────────────────────────────────────────────────────────────
+
+const ALERT_WINDOW_MS      = 5 * 60 * 1000;  // 5-minute sliding window
+const ALERT_ERROR_THRESHOLD = 0.10;           // 10% error rate
+const ALERT_CHECK_INTERVAL  = 60 * 1000;      // check every 60 seconds
+const ALERT_COOLDOWN_MS     = 5 * 60 * 1000;  // suppress repeat alerts for 5 min
+
+let lastAlertAt = 0;
+
+/**
+ * Returns the current error rate (HTTP 5xx / total) over the last 5 minutes.
+ * Entries older than the window are discarded in place.
+ */
+function computeWindowedErrorRate() {
+    const cutoff = Date.now() - ALERT_WINDOW_MS;
+
+    // Evict stale entries (window is chronologically ordered, so trim from front)
+    let firstFresh = 0;
+    while (firstFresh < metrics.requestWindow.length && metrics.requestWindow[firstFresh].ts < cutoff) {
+        firstFresh++;
+    }
+    if (firstFresh > 0) metrics.requestWindow.splice(0, firstFresh);
+
+    const total  = metrics.requestWindow.length;
+    if (total === 0) return { total: 0, errors: 0, rate: 0 };
+
+    const errors = metrics.requestWindow.filter(e => e.isError).length;
+    return { total, errors, rate: errors / total };
+}
+
+/**
+ * Sends a webhook POST to ALERT_WEBHOOK_URL (Slack-compatible payload).
+ * Silently swallows network failures so the alert system never crashes the server.
+ */
+async function sendWebhookAlert(message) {
+    const url = process.env.ALERT_WEBHOOK_URL;
+    if (!url) return;
+
+    try {
+        const body = JSON.stringify({ text: message });
+        // Use Node's built-in https — no extra dependency
+        const { request } = await import('https');
+        await new Promise((resolve, reject) => {
+            const parsed = new URL(url);
+            const req = request({
+                hostname: parsed.hostname,
+                path:     parsed.pathname + parsed.search,
+                method:   'POST',
+                headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            }, (res) => {
+                res.resume(); // drain so socket is released
+                resolve();
+            });
+            req.on('error', reject);
+            req.setTimeout(5000, () => { req.destroy(); reject(new Error('timeout')); });
+            req.write(body);
+            req.end();
+        });
+    } catch (err) {
+        console.error('[ALERT] Webhook delivery failed:', err.message);
+    }
+}
+
+function runAlertCheck() {
+    const { total, errors, rate } = computeWindowedErrorRate();
+    if (total < 5) return; // not enough traffic to be meaningful
+
+    if (rate <= ALERT_ERROR_THRESHOLD) return;
+
+    const now = Date.now();
+    if (now - lastAlertAt < ALERT_COOLDOWN_MS) return; // suppress during cooldown
+    lastAlertAt = now;
+
+    const pct     = (rate * 100).toFixed(1);
+    const message =
+        `🚨 *Cortex alert* — HTTP 5xx error rate is *${pct}%* ` +
+        `(${errors}/${total} requests in the last 5 minutes). ` +
+        `Threshold: ${ALERT_ERROR_THRESHOLD * 100}%.`;
+
+    console.error(`[ALERT] ${message}`);
+    sendWebhookAlert(message); // fire-and-forget; errors are swallowed internally
+}
+
+// Start the recurring check. Unref so it doesn't keep the process alive during tests.
+const _alertInterval = setInterval(runAlertCheck, ALERT_CHECK_INTERVAL);
+if (_alertInterval.unref) _alertInterval.unref();
 
 // ─── Prometheus text format builder ───────────────────────────────────────────
 
@@ -145,6 +259,21 @@ function buildPrometheusOutput() {
     }
 
     nl();
+    nl('# HELP medsage_query_expansion_total Requests where query expansion generated alternatives');
+    nl('# TYPE medsage_query_expansion_total counter');
+    nl(`medsage_query_expansion_total ${metrics.queryExpansionTotal}`);
+
+    nl();
+    nl('# HELP medsage_query_expansion_queries_total Total queries run across all expansion calls');
+    nl('# TYPE medsage_query_expansion_queries_total counter');
+    nl(`medsage_query_expansion_queries_total ${metrics.queryExpansionQueriesTotal}`);
+
+    nl();
+    nl('# HELP medsage_query_expansion_added_chunks_total Extra unique chunks contributed by expansion');
+    nl('# TYPE medsage_query_expansion_added_chunks_total counter');
+    nl(`medsage_query_expansion_added_chunks_total ${metrics.queryExpansionAddedChunks}`);
+
+    nl();
     nl(`# HELP process_uptime_seconds Server uptime`);
     nl(`# TYPE process_uptime_seconds gauge`);
     nl(`process_uptime_seconds ${process.uptime().toFixed(0)}`);
@@ -156,9 +285,10 @@ function buildPrometheusOutput() {
 
 function requestTrackerMiddleware(req, res, next) {
     const start = Date.now();
-    const route = `${req.method} ${req.path}`;
 
     res.on('finish', () => {
+        const routeKey = req.route?.path || req.path;
+        const route = `${req.method} ${routeKey}`;
         const duration = Date.now() - start;
         recordRequest(route, res.statusCode, duration);
     });
@@ -168,15 +298,31 @@ function requestTrackerMiddleware(req, res, next) {
 
 // ─── Routes: /metrics and /health ────────────────────────────────────────────
 
+// ─── Localhost-only guard (dev) ───────────────────────────────────────────────
+
+function localhostOnly(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress || '';
+    if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {
+        return next();
+    }
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+}
+
+// In development, restrict to localhost only.
+// In production, require a verified admin token.
+const monitoringGuard = process.env.NODE_ENV === 'production'
+    ? [verifyToken, isAdmin]
+    : [localhostOnly];
+
 function registerMonitoringRoutes(app) {
     // Prometheus scrape endpoint
-    app.get('/metrics', (req, res) => {
+    app.get('/metrics', ...monitoringGuard, (req, res) => {
         res.set('Content-Type', 'text/plain; version=0.0.4');
         res.send(buildPrometheusOutput());
     });
 
     // Detailed health check
-    app.get('/health', (req, res) => {
+    app.get('/health', ...monitoringGuard, (req, res) => {
         const compliantCount = metrics.citationWindow.filter(Boolean).length;
         const complianceRate = metrics.citationWindow.length
             ? ((compliantCount / metrics.citationWindow.length) * 100).toFixed(1)
@@ -187,7 +333,7 @@ function registerMonitoringRoutes(app) {
         res.json({
             status: 'ok',
             version: '2.0.0',
-            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            model: GEMINI_MODEL,
             uptime_hours: parseFloat(uptimeHours),
             started_at: metrics.startedAt,
             system: {
@@ -217,5 +363,6 @@ module.exports = {
     recordConfidenceTier,
     recordRAGLatency,
     recordError,
+    recordQueryExpansion,
     metrics
 };

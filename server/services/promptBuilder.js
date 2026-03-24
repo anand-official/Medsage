@@ -16,13 +16,48 @@
  *   - Future: load prompts from a DB for live A/B testing without deploys.
  */
 
+const fs = require('fs');
 const path = require('path');
+
 const citationVerifier = require('./citationVerifier');
-const promptRegistry = require('../data/promptRegistry.json');
+const {
+    buildLearnerContextBlock,
+    formatYearLabel,
+} = require('./cortexRequestUtils');
+
+const REGISTRY_PATH = path.join(__dirname, '../data/promptRegistry.json');
 
 class PromptBuilder {
     constructor() {
-        this.registry = promptRegistry;
+        this._loadRegistry();
+    }
+
+    /**
+     * Read and parse promptRegistry.json from disk.
+     * Called on startup and by reload() for hot-reload without a server restart.
+     * Throws if the file is missing or contains invalid JSON so callers can surface the error.
+     */
+    _loadRegistry() {
+        const raw = fs.readFileSync(REGISTRY_PATH, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            throw new Error('[PROMPT BUILDER] promptRegistry.json must be a non-empty array.');
+        }
+        this.registry = parsed;
+        console.log(`[PROMPT BUILDER] Loaded ${this.registry.length} prompt(s) from disk.`);
+    }
+
+    /**
+     * Hot-reload the prompt registry from disk without restarting the server.
+     * Called by the admin endpoint POST /api/admin/reload-prompts.
+     * Returns a summary object for the HTTP response.
+     */
+    reload() {
+        this._loadRegistry();
+        return {
+            loaded: this.registry.length,
+            versions: this.registry.map(p => ({ id: p.id, mode: p.mode, version: p.version })),
+        };
     }
 
     /**
@@ -35,7 +70,7 @@ class PromptBuilder {
      * @param {string} options.question       - The normalized user question
      * @returns {{ prompt: string, metadata: object, version: string, prompt_id: string }}
      */
-    build({ mode = 'conceptual', syllabusContext = {}, retrieval = {}, question, historyBlock = '' }) {
+    build({ mode = 'conceptual', syllabusContext = {}, retrieval = {}, question, historyBlock = '', persona = null, learnerContext = null }) {
         const promptDef = this._getLatestPrompt(mode);
 
         // Assemble variables for template substitution
@@ -49,11 +84,13 @@ class PromptBuilder {
         const currentHour = new Date().getHours();
         const timeOfDay = currentHour < 12 ? 'morning' : (currentHour < 18 ? 'afternoon' : 'evening');
 
+        const learnerYear = formatYearLabel(learnerContext?.mbbs_year);
         const variables = {
             syllabus: syllabusContext.regulator || 'NMC',
-            year: syllabusContext.year || '2nd',
+            year: learnerYear || syllabusContext.year || '2nd',
             subject: syllabusContext.subject || 'Pathology',
-            country: syllabusContext.country || 'India',
+            country: learnerContext?.country || syllabusContext.country || 'India',
+            syllabus_label: syllabusContext.syllabus || `${learnerContext?.country || syllabusContext.country || 'India'} MBBS`,
             timeOfDay: timeOfDay,
             textbook: retrieval.metadata?.book || retrieval.metadata?.source || 'Robbins',
             chapter: retrieval.metadata?.chapter || '',
@@ -67,16 +104,44 @@ class PromptBuilder {
             chunk_ids_list: realChunkIds.length
                 ? realChunkIds.map(id => `  • ${id}`).join('\n')
                 : '  (no chunks available — do not cite)',
-            // ── KEY FIX: Inject REAL chunk_ids into few-shot examples ──────────
-            // This eliminates the mismatch between hardcoded example IDs and real DB IDs.
-            // Gemini can literally copy these IDs from the example into its response.
-            example_id_1: realChunkIds[0] || 'NO_ID_AVAILABLE',
-            example_id_2: realChunkIds[1] || realChunkIds[0] || 'NO_ID_AVAILABLE',
-            example_id_3: realChunkIds[2] || realChunkIds[0] || 'NO_ID_AVAILABLE',
+            // Inject real chunk IDs into few-shot examples.
+            // Only set when there are enough distinct IDs; the few-shot block is
+            // stripped entirely below when < 2 chunks exist.
+            example_id_1: realChunkIds[0] || '',
+            example_id_2: realChunkIds[1] || '',
+            example_id_3: realChunkIds[2] || realChunkIds[1] || '',
+            reasoning_contract: [
+                'RESPONSE QUALITY CONTRACT:',
+                '1) Prefer textbook-grounded claims over generic background knowledge.',
+                '2) If certainty is limited, state uncertainty explicitly in exam_tips/clinical_correlation.',
+                '3) Keep claims concise, high-signal, and non-redundant.',
+                '4) Do not include unsupported management recommendations.'
+            ].join('\n')
         };
 
 
-        const prompt = this._render(promptDef.template, variables);
+        let prompt = this._render(promptDef.template, variables);
+
+        // When fewer than 2 real chunk IDs exist, strip the entire few-shot example
+        // block so the model never sees 'NO_ID_AVAILABLE' or duplicate IDs as citations.
+        if (realChunkIds.length < 2) {
+            prompt = prompt.replace(
+                /─+\s*FEW-SHOT EXAMPLE\s*─+[\s\S]*?(?=\nNow (generate|answer))/i,
+                ''
+            );
+        }
+
+        const learnerContextBlock = buildLearnerContextBlock(learnerContext);
+
+        if (learnerContextBlock) {
+            prompt = `${learnerContextBlock}\n\n${prompt}`;
+        }
+
+        // Prepend professor persona voice if provided
+        if (persona && persona.voice) {
+            const subjectLine = persona.flavor ? `Teaching subject: ${persona.flavor}\n` : '';
+            prompt = `${subjectLine}${persona.voice}\n\n${prompt}`;
+        }
 
         return {
             prompt,
@@ -99,11 +164,58 @@ class PromptBuilder {
         return matching.sort((a, b) => b.version.localeCompare(a.version))[0];
     }
 
+    /**
+     * Single-pass template renderer.
+     *
+     * Safety guarantees:
+     *   1. The template is scanned exactly once — substituted values are never
+     *      re-scanned, so double-substitution is structurally impossible even if
+     *      a value contains `{{...}}` patterns (e.g. user question, RAG context).
+     *   2. Every value is pre-sanitised: any `{{...}}` sequences inside a value
+     *      are replaced with `[REDACTED]` so they cannot look like live directives
+     *      in the final prompt sent to the LLM.
+     *   3. Unknown placeholders are preserved verbatim and a warning is logged —
+     *      they never silently reach the model.
+     *   4. Variable key names are validated against a safe identifier pattern before
+     *      being used as lookup keys, preventing prototype-pollution attempts.
+     *
+     * @param {string} template  - Template string with {{variable}} placeholders.
+     * @param {object} variables - Map of placeholder name → value.
+     * @returns {string}
+     */
     _render(template, variables) {
-        let result = template;
-        for (const [key, value] of Object.entries(variables)) {
-            result = result.replace(new RegExp(`{{${key}}}`, 'g'), value ?? '');
+        // Step 1 — sanitise values.
+        // Strip any `{{...}}` sequences inside a value so they can never be
+        // treated as template directives by this renderer or the LLM.
+        const safeVars = Object.fromEntries(
+            Object.entries(variables).map(([k, v]) => [
+                k,
+                String(v ?? '').replace(/\{\{[\s\S]*?\}\}/g, '[REDACTED]'),
+            ])
+        );
+
+        // Step 2 — single-pass substitution.
+        // One regex sweep of the original template; the replacement callback
+        // is only ever called on template tokens, never on already-substituted text.
+        const result = template.replace(/\{\{([^{}]+)\}\}/g, (match, key) => {
+            const trimmed = key.trim();
+            // Only accept keys that look like valid identifiers (alphanumeric + underscore).
+            // Anything else is left as-is so it surfaces in the unresolved check below.
+            if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) return match;
+            return Object.prototype.hasOwnProperty.call(safeVars, trimmed)
+                ? safeVars[trimmed]
+                : match; // preserve unknown placeholders verbatim
+        });
+
+        // Step 3 — detect unresolved placeholders.
+        // These indicate a mismatch between the template and the variables map.
+        // They must never reach the LLM silently.
+        const unresolved = [];
+        result.replace(/\{\{([^{}]+)\}\}/g, (_, k) => { unresolved.push(k.trim()); });
+        if (unresolved.length > 0) {
+            console.warn(`[PROMPT BUILDER] Unresolved placeholders — these will reach the LLM: ${unresolved.join(', ')}`);
         }
+
         return result;
     }
 }

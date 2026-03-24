@@ -10,7 +10,7 @@ export default function StreakCounter({ streakData }) {
     const isMilestone = [7, 30, 100].includes(current);
 
     return (
-        <Paper sx={{ p: 4, borderRadius: 4, bgcolor: 'background.paper', position: 'relative', overflow: 'hidden' }}>
+        <Paper sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 4, bgcolor: 'background.paper', position: 'relative', overflow: 'hidden' }}>
             <Box sx={{ position: 'absolute', top: -20, right: -20, opacity: 0.1 }}>
                 <FireIcon sx={{ fontSize: 120, color: '#f97316' }} />
             </Box>

@@ -22,11 +22,19 @@ import {
   AddComment as NewChatIcon,
   KeyboardArrowDown as ChevronIcon,
   AutoAwesome as SparkleIcon,
+  ThumbUpAltOutlined as ThumbUpIcon,
+  ThumbDownAltOutlined as ThumbDownIcon,
+  Replay as RetryIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchMedicalQuery, streamMedicalQuery } from '../services/api';
+import { fetchMedicalQuery, submitFeedback, fetchSessionMessages } from '../services/api';
 import api from '../services/api';
+
+// Number of messages to render per page when viewing a long session
+const RENDER_PAGE_SIZE = 50;
+import { useAuth } from '../contexts/AuthContext';
 import { buildHistoryForRequest } from '../utils/assistantContext';
+import OnboardingTour from '../components/OnboardingTour';
 import '../animations.css';
 
 // ─── Professor personas by topic ─────────────────────────────────────────────
@@ -43,7 +51,11 @@ const PROFESSORS = {
   community:    { name: 'Dr. PSM',        initials: 'CM', specialty: 'Community Med',   color: '#4ade80' },
   psychiatry:   { name: 'Dr. Psychiatry', initials: 'PS', specialty: 'Psychiatry',      color: '#c084fc' },
   radiology:    { name: 'Dr. Radiology',  initials: 'RD', specialty: 'Radiology',       color: '#38bdf8' },
-  default:      { name: 'Cortex',          initials: 'CX', specialty: 'AI Professor',    color: '#818cf8' },
+  obg:          { name: 'Dr. OBG',        initials: 'OB', specialty: 'Obs & Gynae',     color: '#f472b6' },
+  pediatrics:   { name: 'Dr. Pediatrics', initials: 'PD', specialty: 'Pediatrics',      color: '#60a5fa' },
+  ent:          { name: 'Dr. ENT',        initials: 'ET', specialty: 'ENT',             color: '#2dd4bf' },
+  ophthalmology:{ name: 'Dr. Ophthalmology', initials: 'OP', specialty: 'Ophthalmology', color: '#a78bfa' },
+  default:      { name: 'Cortex',         initials: 'CX', specialty: 'AI Professor',    color: '#818cf8' },
 };
 
 const SUBJECT_TO_PROFESSOR = {
@@ -51,6 +63,8 @@ const SUBJECT_TO_PROFESSOR = {
   'Pathology': 'pathology', 'Pharmacology': 'pharmacology', 'Microbiology': 'microbiology',
   'Surgery': 'surgery', 'Medicine': 'medicine', 'Forensic Medicine': 'forensic',
   'Community Medicine': 'community', 'Psychiatry': 'psychiatry', 'Radiology': 'radiology',
+  'Obstetrics & Gynecology': 'obg', 'Pediatrics': 'pediatrics',
+  'ENT': 'ent', 'Ophthalmology': 'ophthalmology',
 };
 
 function getProfessor(topicId, text = '', subject = null) {
@@ -69,6 +83,10 @@ function getProfessor(topicId, text = '', subject = null) {
   if (matches(['community', 'psm', 'epidemiology', 'vaccine schedule', 'public health', 'incidence', 'prevalence', 'odds ratio'])) return PROFESSORS.community;
   if (matches(['psych', 'schizophrenia', 'depression', 'bipolar', 'anxiety', 'hallucination', 'delusion', 'dsm'])) return PROFESSORS.psychiatry;
   if (matches(['radio', 'x-ray', 'xray', 'mri', 'ct scan', 'ultrasound', 'imaging', 'opacity', 'hyperdense'])) return PROFESSORS.radiology;
+  if (matches(['obg', 'obstetric', 'gynae', 'gynecol', 'pregnancy', 'labour', 'labor', 'antenatal', 'eclampsia', 'uterus', 'cervix', 'ovary', 'placenta', 'fetal', 'pcos', 'ectopic', 'fibroid', 'menstrual', 'postpartum'])) return PROFESSORS.obg;
+  if (matches(['pediatric', 'paediatric', 'child', 'infant', 'neonate', 'neonatal', 'toddler', 'milestone', 'congenital', 'kwashiorkor', 'marasmus', 'birth weight', 'preterm'])) return PROFESSORS.pediatrics;
+  if (matches(['ent', 'otitis', 'tinnitus', 'vertigo', 'hearing', 'sinusitis', 'tonsil', 'mastoid', 'cholesteatoma', 'nasal polyp', 'otosclerosis'])) return PROFESSORS.ent;
+  if (matches(['ophthal', 'glaucoma', 'cataract', 'retina', 'cornea', 'fundus', 'visual acuity', 'diabetic retinopathy', 'uveitis', 'conjunctivitis'])) return PROFESSORS.ophthalmology;
   if (matches(['med', 'cardio', 'resp', 'gastro', 'nephro', 'diabetes', 'hypertension', 'disease', 'syndrome', 'heart failure', 'renal'])) return PROFESSORS.medicine;
   return PROFESSORS.default;
 }
@@ -76,33 +94,65 @@ function getProfessor(topicId, text = '', subject = null) {
 function detectSubjectFromText(text) {
   const t = text.toLowerCase();
   const check = (kws) => kws.some(k => t.includes(k));
-  if (check(['anatomy', 'blood supply', 'nerve supply', 'lymphatic', 'triangle', 'canal', 'foramen', 'fossa', 'muscle', 'bone', 'artery', 'vein', 'ligament', 'brachial plexus'])) return 'Anatomy';
-  if (check(['physiology', 'cardiac output', 'action potential', 'cardiac cycle', 'gfr', 'renal clearance', 'surfactant', 'starling', 'depolarization', 'repolarization', 'tidal volume', 'vital capacity'])) return 'Physiology';
-  if (check(['biochemistry', 'enzyme', 'glycolysis', 'krebs cycle', 'fatty acid', 'amino acid', 'dna', 'rna', 'vitamin', 'metabolism', 'pathway', 'michaelis'])) return 'Biochemistry';
-  if (check(['pharmacology', 'drug', 'mechanism of action', 'beta blocker', 'ace inhibitor', 'penicillin', 'pharmacokinetics', 'adverse effect', 'dosage', 'antibiotic', 'antihypertensive'])) return 'Pharmacology';
-  if (check(['microbiology', 'bacteria', 'virus', 'fungus', 'parasite', 'gram positive', 'gram negative', 'virulence', 'culture', 'stain', 'malaria', 'tuberculosis', 'hiv'])) return 'Microbiology';
-  if (check(['pathology', 'necrosis', 'infarction', 'inflammation', 'neoplasia', 'cancer', 'carcinoma', 'apoptosis', 'cell injury', 'edema', 'oedema', 'granuloma'])) return 'Pathology';
-  if (check(['surgery', 'operation', 'incision', 'appendicitis', 'hernia', 'laparoscopy', 'laparotomy', 'anastomosis', 'cholecystitis', 'pancreatitis'])) return 'Surgery';
-  if (check(['psychiatry', 'schizophrenia', 'depression', 'bipolar', 'anxiety', 'hallucination', 'delusion', 'psychosis', 'dsm', 'ssri', 'antipsychotic'])) return 'Psychiatry';
-  if (check(['community medicine', 'public health', 'epidemiology', 'incidence', 'prevalence', 'relative risk', 'odds ratio', 'vaccine schedule', 'psm', 'national health'])) return 'Community Medicine';
-  if (check(['radiology', 'x-ray', 'xray', 'ct scan', 'mri', 'ultrasound', 'imaging', 'opacity', 'consolidation', 'hyperdense', 'hounsfield'])) return 'Radiology';
-  if (check(['forensic', 'autopsy', 'postmortem', 'rigor mortis', 'medicolegal', 'wound', 'death certificate'])) return 'Forensic Medicine';
-  if (check(['diabetes', 'hypertension', 'heart failure', 'myocardial infarction', 'stroke', 'copd', 'asthma', 'chronic kidney', 'nephrotic', 'rheumatoid', 'lupus', 'thyroid'])) return 'Medicine';
+  if (check(['anatomy', 'blood supply', 'nerve supply', 'lymphatic', 'triangle', 'canal', 'foramen', 'fossa', 'muscle', 'bone', 'artery', 'vein', 'ligament', 'brachial plexus', 'dermatome', 'tendon', 'fascia'])) return 'Anatomy';
+  if (check(['physiology', 'cardiac output', 'action potential', 'cardiac cycle', 'gfr', 'renal clearance', 'surfactant', 'starling', 'depolarization', 'repolarization', 'tidal volume', 'vital capacity', 'homeostasis', 'feedback loop'])) return 'Physiology';
+  if (check(['biochemistry', 'enzyme', 'glycolysis', 'krebs cycle', 'fatty acid', 'amino acid', 'dna', 'rna', 'vitamin', 'metabolism', 'pathway', 'michaelis', 'mitochondria', 'organelle', 'cell biology', 'molecular'])) return 'Biochemistry';
+  if (check(['pharmacology', 'drug', 'mechanism of action', 'beta blocker', 'ace inhibitor', 'penicillin', 'pharmacokinetics', 'adverse effect', 'dosage', 'antibiotic', 'antihypertensive', 'pharmacodynamics', 'bioavailability', 'half life'])) return 'Pharmacology';
+  if (check(['microbiology', 'bacteria', 'virus', 'fungus', 'parasite', 'gram positive', 'gram negative', 'virulence', 'culture', 'stain', 'malaria', 'tuberculosis', 'hiv', 'pathogen', 'infection organism', 'antibiotic resistance'])) return 'Microbiology';
+  if (check(['pathology', 'necrosis', 'infarction', 'inflammation', 'neoplasia', 'cancer', 'carcinoma', 'apoptosis', 'cell injury', 'edema', 'oedema', 'granuloma', 'tumor marker', 'biopsy finding', 'histopathology'])) return 'Pathology';
+  if (check(['obstetrics', 'gynecology', 'gynaecology', 'pregnancy', 'labour', 'labor', 'antenatal', 'postnatal', 'eclampsia', 'preeclampsia', 'uterus', 'cervix', 'ovary', 'menstruation', 'menstrual', 'contraception', 'obg', 'pcos', 'ectopic', 'placenta', 'fetal', 'foetal', 'neonatal', 'newborn', 'trimester', 'postpartum', 'fibroid', 'endometriosis'])) return 'Obstetrics & Gynecology';
+  if (check(['pediatrics', 'paediatrics', 'child', 'children', 'infant', 'neonate', 'toddler', 'adolescent', 'milestone', 'vaccination schedule', 'growth chart', 'congenital', 'kwashiorkor', 'marasmus', 'febrile convulsion', 'birth weight', 'preterm'])) return 'Pediatrics';
+  if (check(['surgery', 'operation', 'incision', 'appendicitis', 'hernia', 'laparoscopy', 'laparotomy', 'anastomosis', 'cholecystitis', 'pancreatitis', 'surgical', 'postoperative', 'excision', 'resection'])) return 'Surgery';
+  if (check(['psychiatry', 'schizophrenia', 'depression', 'bipolar', 'anxiety', 'hallucination', 'delusion', 'psychosis', 'dsm', 'ssri', 'antipsychotic', 'mental health', 'cognitive', 'behavioural'])) return 'Psychiatry';
+  if (check(['community medicine', 'public health', 'epidemiology', 'incidence', 'prevalence', 'relative risk', 'odds ratio', 'vaccine schedule', 'psm', 'national health', 'herd immunity', 'screening program', 'attributable risk'])) return 'Community Medicine';
+  if (check(['radiology', 'x-ray', 'xray', 'ct scan', 'mri', 'ultrasound', 'imaging', 'opacity', 'consolidation', 'hyperdense', 'hounsfield', 'radiograph', 'ground glass'])) return 'Radiology';
+  if (check(['ent', 'ear', 'otitis', 'tinnitus', 'vertigo', 'hearing loss', 'nose', 'sinusitis', 'nasal polyp', 'throat', 'tonsil', 'larynx', 'vocal cord', 'cholesteatoma', 'mastoid', 'otosclerosis', 'rhinitis'])) return 'ENT';
+  if (check(['ophthalmology', 'eye', 'retina', 'cornea', 'glaucoma', 'cataract', 'fundus', 'visual acuity', 'optic disc', 'pupil reflex', 'diabetic retinopathy', 'uveitis', 'conjunctivitis', 'strabismus'])) return 'Ophthalmology';
+  if (check(['forensic', 'autopsy', 'postmortem', 'rigor mortis', 'medicolegal', 'wound', 'death certificate', 'cause of death', 'manner of death'])) return 'Forensic Medicine';
+  if (check(['diabetes', 'hypertension', 'heart failure', 'myocardial infarction', 'stroke', 'copd', 'asthma', 'chronic kidney', 'nephrotic', 'rheumatoid', 'lupus', 'thyroid', 'clinical management', 'ward round', 'diagnosis and treatment'])) return 'Medicine';
   return null;
 }
 
 // ─── Quick start prompts ──────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
-  { q: 'Cardiac cycle phases explained',            subject: 'Physiology' },
-  { q: 'Types of necrosis with examples',           subject: 'Pathology' },
-  { q: 'Beta blocker mechanism and clinical uses',  subject: 'Pharmacology' },
-  { q: 'Blood supply of the heart',                 subject: 'Anatomy' },
-  { q: 'Pathophysiology of myocardial infarction',  subject: 'Pathology' },
-  { q: 'Clinical features and management of DKA',  subject: 'Medicine' },
-  { q: 'Gram-positive cocci — key pathogens',       subject: 'Microbiology' },
-  { q: 'Approach to a patient with chest pain',     subject: 'Medicine' },
-  { q: 'Krebs cycle — key enzymes and products',    subject: 'Biochemistry' },
+  { q: 'Cardiac cycle phases and heart sounds explained',     subject: 'Physiology' },
+  { q: 'Classify types of necrosis with examples',            subject: 'Pathology' },
+  { q: 'Beta blocker mechanism, uses and adverse effects',    subject: 'Pharmacology' },
+  { q: 'Blood supply of the heart',                           subject: 'Anatomy' },
+  { q: 'Management of preeclampsia and eclampsia',            subject: 'Obstetrics & Gynecology' },
+  { q: 'Clinical features and management of DKA',             subject: 'Medicine' },
+  { q: 'Developmental milestones in the first 2 years',       subject: 'Pediatrics' },
+  { q: 'Gram-positive cocci — key pathogens and diseases',    subject: 'Microbiology' },
+  { q: 'Krebs cycle — enzymes, products and clinical links',  subject: 'Biochemistry' },
+  { q: 'Approach to a patient with acute red eye',            subject: 'Ophthalmology' },
+  { q: 'Chronic suppurative otitis media — classify and manage', subject: 'ENT' },
+  { q: 'Epidemiology — RR, OR, NNT explained with examples',  subject: 'Community Medicine' },
 ];
+
+
+function getTrustVisuals(trust) {
+  if (trust?.verified) {
+    return {
+      color: '#10b981',
+      background: 'rgba(16,185,129,0.1)',
+      border: 'rgba(16,185,129,0.28)',
+    };
+  }
+
+  if (trust?.verification_level === 'degraded' || trust?.verification_level === 'clarification') {
+    return {
+      color: '#f59e0b',
+      background: 'rgba(245,158,11,0.1)',
+      border: 'rgba(245,158,11,0.28)',
+    };
+  }
+
+  return {
+    color: '#f97316',
+    background: 'rgba(249,115,22,0.1)',
+    border: 'rgba(249,115,22,0.28)',
+  };
+}
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 function inlineFormat(text) {
@@ -179,16 +229,28 @@ function TypingDots({ color }) {
 }
 
 // ─── AI Message Card ──────────────────────────────────────────────────────────
-function AIMessage({ msg, mode, isDark, onCopy }) {
+function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
   const { response, topicId, subject, streaming } = msg;
   if (!response) return null;
 
   const professor = getProfessor(topicId, response.text, subject);
-  const isExam = mode === 'exam';
-  const isClarification = response.type === 'CLARIFICATION';
+  const effectiveMode = msg.modeUsed || mode;
+  const isExam = effectiveMode === 'exam';
+  const isGreeting = response.pipeline === 'greeting';
+  const isClarification = response.type === 'CLARIFICATION' && !isGreeting;
+  const trust = response.trust || null;
+  const trustVisuals = getTrustVisuals(trust);
+  const confidenceLabel = trust?.confidence_label || response.confidence?.tier_label || null;
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [keyPointsExpanded, setKeyPointsExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState(null); // 'up' | 'down' | null
+
+  const handleFeedback = (rating) => {
+    if (feedbackGiven || !response.log_id) return;
+    setFeedbackGiven(rating);
+    onFeedback?.(response.log_id, rating);
+  };
 
   useEffect(() => { return () => { if (isSpeaking) window.speechSynthesis.cancel(); }; }, [isSpeaking]);
 
@@ -255,6 +317,38 @@ function AIMessage({ msg, mode, isDark, onCopy }) {
                 {isExam ? 'Exam' : 'Conceptual'}
               </Typography>
             </Box>
+            {confidenceLabel && (
+              <Box sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                height: 20,
+                px: 1.25,
+                borderRadius: 1.5,
+                background: isDark ? 'rgba(148,163,184,0.1)' : 'rgba(71,85,105,0.08)',
+                border: `1px solid ${isDark ? 'rgba(148,163,184,0.18)' : 'rgba(71,85,105,0.14)'}`,
+              }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: isDark ? '#cbd5e1' : '#475569' }}>
+                  {confidenceLabel}
+                </Typography>
+              </Box>
+            )}
+            {trust?.citation_count > 0 && (
+              <Box sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                height: 20,
+                px: 1.1,
+                borderRadius: 1.5,
+                background: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.06)',
+                border: `1px solid ${isDark ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.12)'}`,
+              }}>
+                <BookmarkIcon sx={{ fontSize: 11, color: isDark ? '#a5b4fc' : '#6366f1' }} />
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: isDark ? '#a5b4fc' : '#6366f1' }}>
+                  {`${trust.citation_count} citations`}
+                </Typography>
+              </Box>
+            )}
             {isClarification && (
               <Box sx={{ display: 'inline-flex', alignItems: 'center', height: 20, px: 1.25, borderRadius: 1.5, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)' }}>
                 <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#fbbf24' }}>
@@ -313,56 +407,86 @@ function AIMessage({ msg, mode, isDark, onCopy }) {
               )}
             </Box>
 
-            {/* Key points */}
-            {response.keyPoints?.length > 0 && (
-              <Box sx={{
-                mx: { xs: 2.5, md: 3 }, mb: 2, borderRadius: 2,
-                background: isDark ? `${c}08` : `${c}07`,
-                border: `1px solid ${c}18`,
-                overflow: 'hidden',
-              }}>
-                <Box
-                  onClick={() => setKeyPointsExpanded(p => !p)}
-                  sx={{
-                    px: 2, py: 1.25, display: 'flex', alignItems: 'center', gap: 1,
-                    cursor: 'pointer', userSelect: 'none',
-                    '&:hover': { background: `${c}0A` },
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: c, flex: 1 }}>
-                    {isExam ? 'High-Yield Points' : 'Key Takeaways'} · {response.keyPoints.length}
-                  </Typography>
-                  <ChevronIcon sx={{
-                    fontSize: 16, color: c, opacity: 0.7,
-                    transition: 'transform 0.2s',
-                    transform: keyPointsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  }} />
+            {/* Key points / Claims */}
+            {(response.claims?.length > 0 || response.keyPoints?.length > 0) && (() => {
+              // Prefer structured claims (with sourcing data) over plain key points
+              const hasClaims = response.claims?.length > 0;
+              const items = hasClaims
+                ? response.claims
+                : (response.keyPoints || []).map(pt => ({ text: pt, is_sourced: null, sourceId: null }));
+              const unsourcedCount = hasClaims ? items.filter(c => !c.is_sourced).length : 0;
+
+              return (
+                <Box sx={{
+                  mx: { xs: 2.5, md: 3 }, mb: 2, borderRadius: 2,
+                  background: isDark ? `${c}08` : `${c}07`,
+                  border: `1px solid ${c}18`,
+                  overflow: 'hidden',
+                }}>
+                  <Box
+                    onClick={() => setKeyPointsExpanded(p => !p)}
+                    sx={{
+                      px: 2, py: 1.25, display: 'flex', alignItems: 'center', gap: 1,
+                      cursor: 'pointer', userSelect: 'none',
+                      '&:hover': { background: `${c}0A` },
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: c, flex: 1 }}>
+                      {isExam ? 'High-Yield Points' : 'Key Takeaways'} · {items.length}
+                      {hasClaims && unsourcedCount > 0 && (
+                        <Box component="span" sx={{ ml: 1, color: '#94a3b8', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>
+                          · {unsourcedCount} unverified
+                        </Box>
+                      )}
+                    </Typography>
+                    <ChevronIcon sx={{
+                      fontSize: 16, color: c, opacity: 0.7,
+                      transition: 'transform 0.2s',
+                      transform: keyPointsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }} />
+                  </Box>
+                  <AnimatePresence initial={false}>
+                    {keyPointsExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <Stack spacing={0.75} sx={{ px: 2, pb: 1.5 }}>
+                          {items.map((item, i) => {
+                            const isUnsourced = hasClaims && item.is_sourced === false;
+                            return (
+                              <Box key={i} sx={{
+                                display: 'flex', gap: 1.5, alignItems: 'flex-start',
+                                ...(isUnsourced && {
+                                  background: isDark ? 'rgba(148,163,184,0.07)' : 'rgba(148,163,184,0.1)',
+                                  borderRadius: 1.5, px: 1, py: 0.5, mx: -1,
+                                }),
+                              }}>
+                                <Box sx={{ width: 5, height: 5, borderRadius: '50%', mt: 0.85, flexShrink: 0, background: isUnsourced ? '#94a3b8' : `${c}BB` }} />
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography sx={{ fontSize: '0.875rem', lineHeight: 1.7, color: isUnsourced ? (isDark ? '#94a3b8' : '#64748b') : (isDark ? '#cbd5e1' : '#334155') }}>
+                                    {item.text}
+                                  </Typography>
+                                  {isUnsourced && (
+                                    <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#94a3b8', mt: 0.25 }}>
+                                      unverified
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                        </Stack>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Box>
-                <AnimatePresence initial={false}>
-                  {keyPointsExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <Stack spacing={0.75} sx={{ px: 2, pb: 1.5 }}>
-                        {response.keyPoints.map((pt, i) => (
-                          <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', mt: 0.85, flexShrink: 0, background: `${c}BB` }} />
-                            <Typography sx={{ fontSize: '0.875rem', lineHeight: 1.7, color: isDark ? '#cbd5e1' : '#334155' }}>
-                              {pt}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Stack>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Box>
-            )}
+              );
+            })()}
 
             {/* Clinical note / Exam pearls */}
             {response.clinicalRelevance && (
@@ -380,6 +504,7 @@ function AIMessage({ msg, mode, isDark, onCopy }) {
               </Box>
             )}
 
+
             {/* Clarification follow-up options */}
             {response.followUpOptions?.length > 0 && (
               <Box sx={{ mx: { xs: 2.5, md: 3 }, mb: 2, px: 2, py: 1.5, borderRadius: 2, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.18)' }}>
@@ -388,7 +513,14 @@ function AIMessage({ msg, mode, isDark, onCopy }) {
                 </Typography>
                 <Stack spacing={0.6}>
                   {response.followUpOptions.map((opt, i) => (
-                    <Box key={i} sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
+                    <Box key={i}
+                      onClick={() => onFollowUp?.(opt)}
+                      sx={{
+                        display: 'flex', gap: 1.25, alignItems: 'flex-start',
+                        cursor: 'pointer', borderRadius: 1, px: 0.5, py: 0.25,
+                        '&:hover': { background: 'rgba(251,191,36,0.1)' },
+                      }}
+                    >
                       <Box sx={{ width: 4, height: 4, borderRadius: '50%', mt: 0.9, flexShrink: 0, background: '#fbbf2499' }} />
                       <Typography sx={{ fontSize: '0.875rem', color: isDark ? '#fef3c7' : '#92400e' }}>{opt}</Typography>
                     </Box>
@@ -442,6 +574,30 @@ function AIMessage({ msg, mode, isDark, onCopy }) {
                   <CopyIcon sx={{ fontSize: 14 }} />
                 </IconButton>
               </Tooltip>
+              {response.log_id && !streaming && (
+                <>
+                  <Tooltip title={feedbackGiven === 'up' ? 'Marked helpful' : 'Helpful'}>
+                    <IconButton size="small" onClick={() => handleFeedback('up')} disabled={Boolean(feedbackGiven)} sx={{
+                      p: 0.75, borderRadius: 1.5,
+                      color: feedbackGiven === 'up' ? '#34d399' : (isDark ? '#334155' : '#cbd5e1'),
+                      '&:hover': { color: '#34d399', bgcolor: isDark ? 'rgba(52,211,153,0.08)' : 'rgba(52,211,153,0.06)' },
+                      transition: 'all 0.15s',
+                    }}>
+                      <ThumbUpIcon sx={{ fontSize: 13 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={feedbackGiven === 'down' ? 'Marked unhelpful' : 'Not helpful'}>
+                    <IconButton size="small" onClick={() => handleFeedback('down')} disabled={Boolean(feedbackGiven)} sx={{
+                      p: 0.75, borderRadius: 1.5,
+                      color: feedbackGiven === 'down' ? '#f87171' : (isDark ? '#334155' : '#cbd5e1'),
+                      '&:hover': { color: '#f87171', bgcolor: isDark ? 'rgba(248,113,113,0.08)' : 'rgba(248,113,113,0.06)' },
+                      transition: 'all 0.15s',
+                    }}>
+                      <ThumbDownIcon sx={{ fontSize: 13 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
             </Box>
           </Box>
         </Box>
@@ -554,7 +710,7 @@ function WelcomeState({ isDark, onPromptClick }) {
         </Typography>
 
         {/* Prompt grid */}
-        <Box sx={{
+        <Box id="tour-quick-prompts" sx={{
           display: 'grid',
           gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
           gap: 1.5, maxWidth: 820, mx: 'auto',
@@ -721,20 +877,25 @@ const QuestionPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
 
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState('conceptual');
   const [messages, setMessages] = useState([]);
+  // renderFromIdx: index into `messages` from which we start rendering.
+  // Data below this index exists in state (for buildHistory / save) but is not mounted in the DOM.
+  const [renderFromIdx, setRenderFromIdx] = useState(0);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const [attachedImage, setAttachedImage] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [savedSessions, setSavedSessions] = useState([]);
   const sessionIdRef = useRef(Date.now().toString());
-  const streamingMsgIdRef = useRef(null); // tracks which message is being streamed
 
   const bottomRef = useRef(null);
+  const topSentinelRef = useRef(null); // IntersectionObserver target at top of message list
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -832,6 +993,7 @@ const QuestionPage = () => {
     const history = buildHistory();
     const imageDataUrl = attachedImage?.dataUrl || null;
     const detectedSubject = imageDataUrl ? null : detectSubjectFromText(q);
+    const syllabusLabel = userProfile?.country ? `${userProfile.country} MBBS` : 'Indian MBBS';
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -842,70 +1004,10 @@ const QuestionPage = () => {
     setAttachedImage(null);
     setLoading(true);
 
-    // ── Streaming path: conceptual mode, no image ─────────────────────────
-    // Tokens arrive in real-time — user sees Cortex "thinking" as text appears.
-    // Exam mode and image queries use the full RAG pipeline instead.
-    const useStreaming = mode === 'conceptual' && !imageDataUrl;
-
-    if (useStreaming) {
-      // Place a placeholder AI message that we'll fill as tokens stream in
-      const streamMsgId = Date.now();
-      streamingMsgIdRef.current = streamMsgId;
-      setMessages(prev => [...prev, {
-        role: 'ai',
-        streaming: true,
-        streamMsgId,
-        response: { type: 'ANSWER', text: '', keyPoints: [], clinicalRelevance: '', bookReferences: [], followUpOptions: [] },
-        topicId: null,
-        subject: detectedSubject,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }]);
-      setLoading(false); // spinner off — user sees streaming text instead
-
-      let accumulatedText = '';
-
-      await streamMedicalQuery(
-        q,
-        { mode, history, subject: detectedSubject },
-        // onToken — append each chunk to the streaming message
-        (token) => {
-          accumulatedText += token;
-          setMessages(prev => prev.map(m =>
-            m.streamMsgId === streamMsgId
-              ? { ...m, response: { ...m.response, text: accumulatedText } }
-              : m
-          ));
-        },
-        // onDone — mark streaming complete
-        () => {
-          setMessages(prev => prev.map(m =>
-            m.streamMsgId === streamMsgId ? { ...m, streaming: false } : m
-          ));
-          streamingMsgIdRef.current = null;
-          inputRef.current?.focus();
-        },
-        // onError
-        (err) => {
-          if (err?.name === 'AbortError') return;
-          // Replace streaming placeholder with error state
-          setMessages(prev => prev.map(m =>
-            m.streamMsgId === streamMsgId
-              ? { ...m, streaming: false, role: 'error', text: 'Stream error. Please try again.' }
-              : m
-          ));
-          streamingMsgIdRef.current = null;
-        },
-        controller.signal
-      );
-
-      setIsListening(false);
-      return;
-    }
-
-    // ── Full pipeline path: exam mode or image queries ────────────────────
+    // ── Full pipeline ──────────────────────────────────────────────────────
     try {
       const result = await fetchMedicalQuery(
-        q || 'Describe this image', mode, 'Indian MBBS', history, imageDataUrl, controller.signal, detectedSubject
+        q || 'Describe this image', mode, syllabusLabel, history, imageDataUrl, controller.signal, detectedSubject
       );
       const raw = result?.data || {};
       const responseData = {
@@ -915,9 +1017,19 @@ const QuestionPage = () => {
         clinicalRelevance: raw?.clinicalRelevance || '',
         bookReferences: raw?.bookReferences || raw?.citations || [],
         followUpOptions: raw?.followUpOptions || [],
+        confidence: raw?.confidence || null,
+        trust: raw?.trust || null,
+        flags: raw?.flags || [],
+        verified: raw?.verified || false,
+        verificationLevel: raw?.verificationLevel || null,
+        pipeline: raw?.pipeline || raw?.trust?.pipeline || raw?.meta?.pipeline || null,
+        log_id: raw?.log_id || null,
+        claims: raw?.claims || null,
+        allClaimsSourced: raw?.allClaimsSourced ?? null,
       };
       setMessages(prev => [...prev, {
         role: 'ai', response: responseData,
+        modeUsed: mode,
         topicId: raw?.topicId || raw?.meta?.topic_id || null,
         subject: raw?.subject || raw?.meta?.subject || detectedSubject || null,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -927,6 +1039,9 @@ const QuestionPage = () => {
       setMessages(prev => [...prev, {
         role: 'error',
         text: err.message || 'Failed to get a response. Is the backend running?',
+        retryable: err.retryable !== false, // default true unless explicitly false
+        queryText: q,
+        imageDataUrl: attachedImage?.dataUrl || null,
         timestamp,
       }]);
     } finally {
@@ -934,7 +1049,7 @@ const QuestionPage = () => {
       setIsListening(false);
       inputRef.current?.focus();
     }
-  }, [question, mode, attachedImage, buildHistory]);
+  }, [question, mode, attachedImage, buildHistory, userProfile]);
 
   useEffect(() => {
     if (location.state?.initialQuery) {
@@ -952,24 +1067,96 @@ const QuestionPage = () => {
     navigator.clipboard.writeText(text || '').then(() => setSnackbar({ open: true, message: 'Copied to clipboard' }));
   };
 
+  const handleFeedback = async (logId, rating) => {
+    try {
+      await submitFeedback(logId, rating);
+      setSnackbar({ open: true, message: rating === 'up' ? 'Thanks for the feedback!' : 'Got it — we\'ll review this response.' });
+    } catch {
+      // silent — don't distract the student with feedback errors
+    }
+  };
+
   const handleClear = () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = null;
-    streamingMsgIdRef.current = null;
     sessionIdRef.current = Date.now().toString();
     setMessages([]);
+    setRenderFromIdx(0);
+    setIsLoadingOlder(false);
     setQuestion('');
     setAttachedImage(null);
     setLoading(false);
     inputRef.current?.focus();
   };
 
-  const handleRestoreSession = (session) => {
+  const handleRestoreSession = useCallback(async (session) => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = null;
     sessionIdRef.current = session.id;
-    setMessages(session.messages);
     setHistoryDrawerOpen(false);
-  };
+
+    let msgs = session.messages || [];
+
+    // Server-loaded sessions (loaded from the list endpoint) have no messages field.
+    // Fetch the full session from the server in that case.
+    if (msgs.length === 0) {
+      try {
+        const data = await fetchSessionMessages(session.id, 1, 200);
+        const raw = data?.session?.messages || [];
+        // Server stores plain { role, text, timestamp }; rebuild minimal AI message shape
+        // so AIMessage can render the text field from response.text.
+        msgs = raw.map(m => ({
+          role: m.role,
+          text: m.text || '',
+          timestamp: m.timestamp,
+          ...(m.role === 'ai' ? { response: { text: m.text || '', type: 'ANSWER' } } : {}),
+        }));
+      } catch {
+        msgs = [];
+      }
+    }
+
+    setMessages(msgs);
+    // Only paginate the render window if the session is large enough to matter
+    setRenderFromIdx(Math.max(0, msgs.length - RENDER_PAGE_SIZE));
+  }, []);
+
+  // ── Load older messages (render-window expansion) ─────────────────────────
+  // Prepends the previous RENDER_PAGE_SIZE messages to the visible window and
+  // preserves the scroll position so the viewport doesn't jump.
+  const handleLoadOlderMessages = useCallback(() => {
+    if (renderFromIdx === 0 || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+
+    // Capture scroll metrics before the DOM update
+    const prevScrollHeight = document.documentElement.scrollHeight;
+    const prevScrollTop = window.scrollY;
+
+    setRenderFromIdx(prev => Math.max(0, prev - RENDER_PAGE_SIZE));
+
+    // After paint: restore relative scroll position so content doesn't jump
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const delta = document.documentElement.scrollHeight - prevScrollHeight;
+        window.scrollTo({ top: prevScrollTop + delta, behavior: 'instant' });
+        setIsLoadingOlder(false);
+      });
+    });
+  }, [renderFromIdx, isLoadingOlder]);
+
+  // Auto-load when the top sentinel enters the viewport
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    if (!sentinel || renderFromIdx === 0) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) handleLoadOlderMessages(); },
+      // Trigger 120px before the sentinel is fully visible so loading feels seamless
+      { rootMargin: '120px 0px 0px 0px', threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [renderFromIdx, handleLoadOlderMessages]);
 
   const handleDeleteSession = (e, sessionId) => {
     e.stopPropagation();
@@ -1006,12 +1193,18 @@ const QuestionPage = () => {
 
   const hasMessages = messages.length > 0;
   const canSend = !loading && (question.trim().length > 0 || !!attachedImage);
+  // Slice of messages currently mounted in the DOM
+  const visibleMessages = renderFromIdx > 0 ? messages.slice(renderFromIdx) : messages;
+  const hasOlderMessages = renderFromIdx > 0;
 
   const inputBg = isDark ? 'rgba(11,18,34,0.92)' : 'rgba(255,255,255,0.96)';
   const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.1)';
 
   return (
     <Box sx={{ maxWidth: 820, mx: 'auto', display: 'flex', flexDirection: 'column', minHeight: '78vh', position: 'relative' }}>
+
+      {/* Onboarding tour — runs once on first login */}
+      <OnboardingTour />
 
       {/* ── Header bar ───────────────────────────────────────────── */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 3, md: 4 }, pt: 1 }}>
@@ -1073,23 +1266,80 @@ const QuestionPage = () => {
           <WelcomeState isDark={isDark} onPromptClick={(q) => handleSubmit(q)} />
         ) : (
           <Box>
-            {messages.map((msg, i) => {
-              if (msg.role === 'user') return <UserMessage key={i} msg={msg} isDark={isDark} />;
+            {/* ── Scroll-up sentinel + load-older banner ────────── */}
+            <div ref={topSentinelRef} style={{ height: 1 }} />
+            {hasOlderMessages && (
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Button
+                  size="small"
+                  onClick={handleLoadOlderMessages}
+                  disabled={isLoadingOlder}
+                  startIcon={
+                    isLoadingOlder
+                      ? <CircularProgress size={12} sx={{ color: 'inherit' }} />
+                      : <ChevronIcon sx={{ transform: 'rotate(180deg)', fontSize: 16 }} />
+                  }
+                  sx={{
+                    fontSize: '0.75rem', fontWeight: 600,
+                    color: isDark ? '#64748b' : '#94a3b8',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                    borderRadius: 5, px: 2, py: 0.6,
+                    '&:hover': {
+                      color: isDark ? '#94a3b8' : '#64748b',
+                      bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                    },
+                  }}
+                >
+                  {isLoadingOlder ? 'Loading…' : `Load older messages (${renderFromIdx} hidden)`}
+                </Button>
+              </Box>
+            )}
+
+            {visibleMessages.map((msg, i) => {
+              // Use renderFromIdx + i so keys are stable when the window shifts
+              const key = renderFromIdx + i;
+              if (msg.role === 'user') return <UserMessage key={key} msg={msg} isDark={isDark} />;
               if (msg.role === 'error') return (
-                <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <Box sx={{
                     mb: 4, p: 2.5, borderRadius: 2.5,
                     border: '1px solid rgba(248,113,113,0.22)',
                     borderLeft: '3px solid #f87171',
                     background: isDark ? 'rgba(248,113,113,0.06)' : 'rgba(254,242,242,0.8)',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2,
                   }}>
-                    <Typography sx={{ fontSize: '0.875rem', color: isDark ? '#fca5a5' : '#dc2626', fontWeight: 600 }}>
+                    <Typography sx={{ fontSize: '0.875rem', color: isDark ? '#fca5a5' : '#dc2626', fontWeight: 600, flex: 1 }}>
                       {msg.text}
                     </Typography>
+                    {msg.retryable !== false && msg.queryText && (
+                      <Button
+                        size="small"
+                        startIcon={<RetryIcon sx={{ fontSize: '14px !important' }} />}
+                        onClick={() => handleSubmit(msg.queryText)}
+                        disabled={loading}
+                        sx={{
+                          flexShrink: 0,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: isDark ? '#fca5a5' : '#dc2626',
+                          borderColor: isDark ? 'rgba(248,113,113,0.35)' : 'rgba(248,113,113,0.4)',
+                          border: '1px solid',
+                          borderRadius: 1.5,
+                          px: 1.25, py: 0.5,
+                          minWidth: 0,
+                          '&:hover': {
+                            background: isDark ? 'rgba(248,113,113,0.1)' : 'rgba(248,113,113,0.08)',
+                            borderColor: '#f87171',
+                          },
+                        }}
+                      >
+                        Retry
+                      </Button>
+                    )}
                   </Box>
                 </motion.div>
               );
-              return <AIMessage key={i} msg={msg} mode={mode} isDark={isDark} onCopy={handleCopy} />;
+              return <AIMessage key={key} msg={msg} mode={mode} isDark={isDark} onCopy={handleCopy} onFollowUp={handleSubmit} onFeedback={handleFeedback} />;
             })}
             {loading && <LoadingRow isDark={isDark} />}
           </Box>
@@ -1155,7 +1405,7 @@ const QuestionPage = () => {
               <Box sx={{ display: 'flex', gap: 0.25, mb: 0.5, flexShrink: 0 }}>
                 <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
                 <Tooltip title="Attach image">
-                  <IconButton size="small" onClick={() => fileInputRef.current?.click()} sx={{
+                  <IconButton id="tour-image-attach" size="small" onClick={() => fileInputRef.current?.click()} sx={{
                     p: 0.75, borderRadius: 1.5, color: isDark ? '#475569' : '#94a3b8',
                     '&:hover': { color: isDark ? '#818cf8' : '#6366f1', bgcolor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.07)' },
                     transition: 'all 0.15s',
@@ -1178,6 +1428,7 @@ const QuestionPage = () => {
 
               {/* Text area */}
               <TextField
+                id="tour-input"
                 inputRef={inputRef}
                 fullWidth multiline maxRows={6}
                 variant="standard"
@@ -1232,37 +1483,40 @@ const QuestionPage = () => {
             </Box>
 
             {/* Toolbar row */}
-            <Box sx={{ px: 2, pb: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              {/* Mode toggle */}
-              <Box sx={{
-                display: 'inline-flex', borderRadius: '10px', overflow: 'hidden',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-                background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-              }}>
-                {[
-                  { val: 'conceptual', label: 'Conceptual', icon: <PsychologyIcon sx={{ fontSize: 13 }} /> },
-                  { val: 'exam',       label: 'Exam',       icon: <LibraryIcon   sx={{ fontSize: 13 }} /> },
-                ].map(({ val, label, icon }) => (
-                  <Button key={val} size="small" startIcon={icon} onClick={() => setMode(val)}
-                    disableElevation disableRipple
-                    sx={{
-                      px: 1.5, py: 0.5, borderRadius: 0, textTransform: 'none',
-                      fontWeight: mode === val ? 700 : 500,
-                      fontSize: '0.73rem', minHeight: 28,
-                      bgcolor: mode === val
-                        ? (isDark ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.1)')
-                        : 'transparent',
-                      color: mode === val
-                        ? (isDark ? '#a5b4fc' : '#4f46e5')
-                        : (isDark ? '#475569' : '#94a3b8'),
-                      transition: 'all 0.15s',
-                      '&:hover': { bgcolor: isDark ? 'rgba(99,102,241,0.14)' : 'rgba(99,102,241,0.07)', color: isDark ? '#c7d2fe' : '#4338ca' },
-                    }}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </Box>
+            <Box sx={{ px: 2, pb: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25, flexWrap: 'wrap' }}>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                {/* Mode toggle */}
+                <Box id="tour-mode-toggle" sx={{
+                  display: 'inline-flex', borderRadius: '10px', overflow: 'hidden',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                }}>
+                  {[
+                    { val: 'conceptual', label: 'Conceptual', icon: <PsychologyIcon sx={{ fontSize: 13 }} /> },
+                    { val: 'exam',       label: 'Exam',       icon: <LibraryIcon   sx={{ fontSize: 13 }} /> },
+                  ].map(({ val, label, icon }) => (
+                    <Button key={val} size="small" startIcon={icon} onClick={() => setMode(val)}
+                      disableElevation disableRipple
+                      sx={{
+                        px: 1.5, py: 0.5, borderRadius: 0, textTransform: 'none',
+                        fontWeight: mode === val ? 700 : 500,
+                        fontSize: '0.73rem', minHeight: 28,
+                        bgcolor: mode === val
+                          ? (isDark ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.1)')
+                          : 'transparent',
+                        color: mode === val
+                          ? (isDark ? '#a5b4fc' : '#4f46e5')
+                          : (isDark ? '#475569' : '#94a3b8'),
+                        transition: 'all 0.15s',
+                        '&:hover': { bgcolor: isDark ? 'rgba(99,102,241,0.14)' : 'rgba(99,102,241,0.07)', color: isDark ? '#c7d2fe' : '#4338ca' },
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </Box>
+
+              </Stack>
 
               {/* Keyboard hint */}
               <Typography sx={{ fontSize: '0.67rem', color: isDark ? '#1e293b' : '#e2e8f0', display: { xs: 'none', md: 'block' }, userSelect: 'none' }}>

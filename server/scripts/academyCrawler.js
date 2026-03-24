@@ -94,6 +94,14 @@ const masterBookList = [
     { title: "Harper's Illustrated Biochemistry", author: "Murray, Bender", course: 'MBBS', year: 1, category: 'Biochemistry', isbn: '9781260288421' },
     { title: "Textbook of Biochemistry", author: "D.M. Vasudevan", course: 'MBBS', year: 1, category: 'Biochemistry', searchHint: "DM Vasudevan Biochemistry medical" },
     { title: "Biochemistry", author: "U. Satyanarayana", course: 'MBBS', year: 1, category: 'Biochemistry', searchHint: "U Satyanarayana Biochemistry" },
+    { title: "Cunningham's Manual of Practical Anatomy Vol 1-3", author: "G.J. Romanes", course: 'MBBS', year: 1, category: 'Anatomy', searchHint: "Cunningham Manual Practical Anatomy" },
+    { title: "Clinical Anatomy by Regions", author: "Richard S. Snell", course: 'MBBS', year: 1, category: 'Anatomy', isbn: '9781451110326' },
+    { title: "Sembulingam's Essentials of Medical Physiology", author: "K. Sembulingam, Prema Sembulingam", course: 'MBBS', year: 1, category: 'Physiology', searchHint: "Sembulingam Essentials Medical Physiology" },
+    { title: "Ganong's Review of Medical Physiology", author: "Kim E. Barrett", course: 'MBBS', year: 1, category: 'Physiology', isbn: '9781259861482' },
+    { title: "Lippincott Illustrated Reviews: Biochemistry", author: "Denise R. Harvey", course: 'MBBS', year: 1, category: 'Biochemistry', isbn: '9781496344496' },
+    { title: "Medical Biochemistry", author: "N.V. Bhagavan", course: 'MBBS', year: 1, category: 'Biochemistry', searchHint: "Bhagavan Medical Biochemistry" },
+    { title: "Snell's Clinical Neuroanatomy", author: "Lawrence E. Ryan", course: 'MBBS', year: 1, category: 'Anatomy', isbn: '9781496345394' },
+    { title: "BD Chaurasia's Handbook of General Anatomy", author: "B.D. Chaurasia", course: 'MBBS', year: 1, category: 'Anatomy', searchHint: "BD Chaurasia Handbook General Anatomy" },
 
     // ═══ MBBS Year 2 ═══
     { title: "Robbins & Cotran Pathologic Basis of Disease", author: "Kumar, Abbas, Aster", course: 'MBBS', year: 2, category: 'Pathology', isbn: '9780323531139' },
@@ -105,6 +113,14 @@ const masterBookList = [
     { title: "Textbook of Microbiology", author: "C.P. Baveja", course: 'MBBS', year: 2, category: 'Microbiology', searchHint: "CP Baveja Microbiology" },
     { title: "Textbook of Forensic Medicine & Toxicology", author: "K.S. Narayan Reddy", course: 'MBBS', year: 2, category: 'Forensic Medicine', searchHint: "Narayan Reddy Forensic Medicine" },
     { title: "Review of Forensic Medicine", author: "Gautam Biswas", course: 'MBBS', year: 2, category: 'Forensic Medicine', searchHint: "Gautam Biswas Review Forensic" },
+    { title: "Mukherjee's Textbook of Pharmacology", author: "Saikat Mukherjee", course: 'MBBS', year: 2, category: 'Pharmacology', searchHint: "Mukherjee Textbook Pharmacology" },
+    { title: "Rang & Dale's Pharmacology", author: "Humphrey P. Rang", course: 'MBBS', year: 2, category: 'Pharmacology', isbn: '9780702074486' },
+    { title: "Robbins Basic Pathology", author: "Vinay Kumar, Abul Abbas", course: 'MBBS', year: 2, category: 'Pathology', isbn: '9780323353175' },
+    { title: "Paniker's Textbook of Medical Parasitology", author: "Rachna Sharma", course: 'MBBS', year: 2, category: 'Microbiology', searchHint: "Paniker Medical Parasitology" },
+    { title: "Textbook of Medical Microbiology", author: "Apurba Sankar Sastry", course: 'MBBS', year: 2, category: 'Microbiology', searchHint: "Sastry Medical Microbiology" },
+    { title: "Principles of Forensic Medicine", author: "A.K. Bhattacharya", course: 'MBBS', year: 2, category: 'Forensic Medicine', searchHint: "Bhattacharya Forensic Medicine" },
+    { title: "Vij's Textbook of Forensic Medicine", author: "Krishan Vij", course: 'MBBS', year: 2, category: 'Forensic Medicine', searchHint: "Krishan Vij Forensic Medicine" },
+    { title: "Clinical Methods in Medicine", author: "Suri, Agarwal, Joshi", course: 'MBBS', year: 2, category: 'Pathology', searchHint: "Suri Agarwal Clinical Methods Medicine" },
 
     // ═══ MBBS Year 3 (Part I) ═══
     { title: "Park's Textbook of Preventive & Social Medicine", author: "K. Park", course: 'MBBS', year: 3, category: 'Community Medicine', searchHint: "K Park Preventive Social Medicine" },
@@ -113,6 +129,15 @@ const masterBookList = [
     { title: "Textbook of ENT", author: "K.K. Hazarika", course: 'MBBS', year: 3, category: 'ENT', searchHint: "Hazarika Textbook ENT" },
     { title: "Parsons' Diseases of the Eye", author: "Ramanjit Sihota", course: 'MBBS', year: 3, category: 'Ophthalmology', searchHint: "Parsons Diseases Eye Sihota" },
     { title: "Comprehensive Ophthalmology", author: "A.K. Khurana", course: 'MBBS', year: 3, category: 'Ophthalmology', searchHint: "AK Khurana Comprehensive Ophthalmology" },
+    { title: "Short Textbook of ENT Diseases", author: "S.K. De", course: 'MBBS', year: 3, category: 'ENT', searchHint: "SK De Short Textbook ENT" },
+    { title: "Kanski's Clinical Ophthalmology", author: "Brad Bowling", course: 'MBBS', year: 3, category: 'Ophthalmology', isbn: '9780702055737' },
+    { title: "Clinical Ophthalmology", author: "Jack J. Kanski", course: 'MBBS', year: 3, category: 'Ophthalmology', searchHint: "Kanski Clinical Ophthalmology" },
+    { title: "Mahajan's Methods in Biostatistics", author: "B.K. Mahajan", course: 'MBBS', year: 3, category: 'Community Medicine', searchHint: "Mahajan Methods Biostatistics" },
+    { title: "ICAR Textbook of Preventive Medicine", author: "R. Beaglehole", course: 'MBBS', year: 3, category: 'Community Medicine', searchHint: "Beaglehole Preventive Medicine" },
+    { title: "Clinical Pharmacology", author: "D.R. Laurence, P.N. Bennett", course: 'MBBS', year: 3, category: 'Pharmacology', searchHint: "Laurence Bennett Clinical Pharmacology" },
+    { title: "Textbook of Dermatology", author: "P.N. Behl, B.B. Srivastava", course: 'MBBS', year: 3, category: 'Dermatology', searchHint: "Behl Srivastava Textbook Dermatology" },
+    { title: "Logan Turner's Diseases of the Nose, Throat & Ear", author: "A.G.D. Maran", course: 'MBBS', year: 3, category: 'ENT', searchHint: "Logan Turner ENT Diseases" },
+    { title: "Textbook of Orthopaedics", author: "S. Natarajan", course: 'MBBS', year: 3, category: 'Orthopedics', searchHint: "Natarajan Textbook Orthopaedics" },
 
     // ═══ MBBS Final Year (Part II) ═══
     { title: "Harrison's Principles of Internal Medicine", author: "J. Larry Jameson et al.", course: 'MBBS', year: 4, category: 'Medicine', isbn: '9781264268504' },
@@ -127,6 +152,18 @@ const masterBookList = [
     { title: "Kaplan & Sadock's Synopsis of Psychiatry", author: "Benjamin J. Sadock et al.", course: 'MBBS', year: 4, category: 'Psychiatry', isbn: '9781975145569' },
     { title: "Essentials of Anaesthesiology", author: "K.K. Tripathi", course: 'MBBS', year: 4, category: 'Anesthesiology', searchHint: "Tripathi Essentials Anaesthesiology" },
     { title: "Textbook of Radiology", author: "Sumer Sethi", course: 'MBBS', year: 4, category: 'Radiology', searchHint: "Sumer Sethi Textbook Radiology" },
+    { title: "Davidson's Principles and Practice of Medicine", author: "Stuart H. Ralston", course: 'MBBS', year: 4, category: 'Medicine', isbn: '9780702070426' },
+    { title: "Kumar and Clark's Clinical Medicine", author: "Parveen Kumar", course: 'MBBS', year: 4, category: 'Medicine', isbn: '9780702066740' },
+    { title: "Das's Clinical Surgery", author: "Sujoy K. Das", course: 'MBBS', year: 4, category: 'Surgery', searchHint: "Das Clinical Surgery" },
+    { title: "SRB's Manual of Surgery", author: "Sriram Bhat M", course: 'MBBS', year: 4, category: 'Surgery', searchHint: "SRB Manual Surgery" },
+    { title: "Dutta's Textbook of Obstetrics", author: "D.C. Dutta", course: 'MBBS', year: 4, category: 'Obstetrics', searchHint: "DC Dutta Textbook Obstetrics" },
+    { title: "Dutta's Textbook of Gynecology", author: "D.C. Dutta", course: 'MBBS', year: 4, category: 'Gynecology', searchHint: "DC Dutta Textbook Gynecology" },
+    { title: "Jeffcoate's Principles of Gynaecology", author: "Shirish N. Daftary, Sudip Chakravarti", course: 'MBBS', year: 4, category: 'Gynecology', searchHint: "Jeffcoate Principles Gynaecology" },
+    { title: "Ghai Essential Pediatrics", author: "O.P. Ghai", course: 'MBBS', year: 4, category: 'Pediatrics', searchHint: "Ghai Essential Pediatrics" },
+    { title: "Forfar and Arneil's Textbook of Pediatrics", author: "Neil McIntosh", course: 'MBBS', year: 4, category: 'Pediatrics', searchHint: "Forfar Arneil Textbook Pediatrics" },
+    { title: "Maheshwari's Textbook of Orthopedics", author: "J. Maheshwari", course: 'MBBS', year: 4, category: 'Orthopedics', searchHint: "Maheshwari Textbook Orthopedics" },
+    { title: "Concise Textbook of Surgery", author: "S. Das", course: 'MBBS', year: 4, category: 'Surgery', searchHint: "S Das Concise Surgery" },
+    { title: "Manual of Practical Medicine", author: "R. Alagappan", course: 'MBBS', year: 4, category: 'Medicine', searchHint: "Alagappan Manual Practical Medicine" },
 
     // ═══ BDS Year 1 ═══
     { title: "Human Anatomy (Vol 1–3)", author: "B.D. Chaurasia", course: 'BDS', year: 1, category: 'General Anatomy', searchHint: "BD Chaurasia Human Anatomy" },
@@ -138,6 +175,13 @@ const masterBookList = [
     { title: "Wheeler's Dental Anatomy, Physiology & Occlusion", author: "Stanley J. Nelson", course: 'BDS', year: 1, category: 'Dental Anatomy', isbn: '9780323263238' },
     { title: "Orban's Oral Histology & Embryology", author: "S. Bhaskar", course: 'BDS', year: 1, category: 'Dental Anatomy', searchHint: "Orban Oral Histology Embryology" },
     { title: "Ten Cate's Oral Histology", author: "Antonio Nanci", course: 'BDS', year: 1, category: 'Dental Anatomy', searchHint: "Ten Cate Oral Histology Nanci" },
+    { title: "Head and Neck Anatomy for Dental Medicine", author: "Thieme", course: 'BDS', year: 1, category: 'General Anatomy', searchHint: "Thieme Head Neck Anatomy Dental" },
+    { title: "Textbook of Physiology for Dental Students", author: "C.C. Chatterjee", course: 'BDS', year: 1, category: 'Physiology', searchHint: "Chatterjee Physiology Dental Students" },
+    { title: "Review of Dental Anatomy", author: "Woelfel, Scheid", course: 'BDS', year: 1, category: 'Dental Anatomy', searchHint: "Woelfel Scheid Dental Anatomy" },
+    { title: "Dental Morphology", author: "James L. Fuller, Gerald E. Denehy", course: 'BDS', year: 1, category: 'Dental Anatomy', searchHint: "Fuller Denehy Dental Morphology" },
+    { title: "Textbook of Biochemistry for Students of Dentistry", author: "Patricia Davison", course: 'BDS', year: 1, category: 'Biochemistry', searchHint: "Patricia Davison Biochemistry Dentistry" },
+    { title: "Illustrated Dental Embryology, Histology, and Anatomy", author: "Bath-Balogh, Fehrenbach", course: 'BDS', year: 1, category: 'Dental Anatomy', searchHint: "Bath-Balogh Fehrenbach Dental Embryology Histology" },
+    { title: "Textbook of Oral Anatomy and Physiology", author: "Satish Chandra, Shaleen Chandra", course: 'BDS', year: 1, category: 'Dental Anatomy', searchHint: "Satish Chandra Oral Anatomy Physiology" },
 
     // ═══ BDS Year 2 ═══
     { title: "Robbins & Cotran Pathologic Basis of Disease", author: "Kumar, Abbas, Aster", course: 'BDS', year: 2, category: 'General Pathology', isbn: '9780323531139' },
@@ -148,6 +192,12 @@ const masterBookList = [
     { title: "Pharmacology for Dentistry", author: "Shanbhag", course: 'BDS', year: 2, category: 'Pharmacology', searchHint: "Shanbhag Pharmacology Dentistry" },
     { title: "Phillips' Science of Dental Materials", author: "Kenneth J. Anusavice", course: 'BDS', year: 2, category: 'Dental Materials', isbn: '9781437724189' },
     { title: "Basic Dental Materials", author: "J.J. Manappallil", course: 'BDS', year: 2, category: 'Dental Materials', searchHint: "Manappallil Basic Dental Materials" },
+    { title: "Essentials of Oral Pathology and Oral Medicine", author: "R.A. Cawson, E.W. Odell", course: 'BDS', year: 2, category: 'Oral Pathology', searchHint: "Cawson Odell Oral Pathology Medicine" },
+    { title: "General Pathology", author: "Robbins", course: 'BDS', year: 2, category: 'General Pathology', searchHint: "Robbins General Pathology" },
+    { title: "Textbook of Medical Pharmacology", author: "Padmaja Udaykumar", course: 'BDS', year: 2, category: 'Pharmacology', searchHint: "Padmaja Udaykumar Medical Pharmacology" },
+    { title: "FGDP Pharmacology for the Dental Team", author: "FGDP UK", course: 'BDS', year: 2, category: 'Pharmacology', searchHint: "FGDP Pharmacology Dental Team" },
+    { title: "Dental Materials at a Glance", author: "J.A. von Fraunhofer", course: 'BDS', year: 2, category: 'Dental Materials', searchHint: "Fraunhofer Dental Materials Glance" },
+    { title: "Craig's Restorative Dental Materials", author: "John M. Powers", course: 'BDS', year: 2, category: 'Dental Materials', isbn: '9780323078467' },
 
     // ═══ BDS Year 3 ═══
     { title: "Textbook of Medicine for Dental Students", author: "S.N. Chugh", course: 'BDS', year: 3, category: 'General Medicine', searchHint: "SN Chugh Medicine Dental" },
@@ -156,6 +206,13 @@ const masterBookList = [
     { title: "Manipal Manual of Surgery", author: "K. Rajgopal Shenoy", course: 'BDS', year: 3, category: 'General Surgery', searchHint: "Rajgopal Shenoy Manipal Manual Surgery" },
     { title: "Shafer's Textbook of Oral Pathology", author: "Rajendran, Sivapathasundharam", course: 'BDS', year: 3, category: 'Oral Pathology', searchHint: "Shafer Oral Pathology Rajendran" },
     { title: "Oral & Maxillofacial Pathology", author: "Neville, Damm, Allen", course: 'BDS', year: 3, category: 'Oral Pathology', searchHint: "Neville Damm Allen Oral Maxillofacial Pathology" },
+    { title: "Textbook of Surgery for Dental Students", author: "Norman L. Browse", course: 'BDS', year: 3, category: 'General Surgery', searchHint: "Browse Textbook Surgery Dental" },
+    { title: "Regezi's Oral Pathology: Clinical Pathological Correlations", author: "Joseph A. Regezi", course: 'BDS', year: 3, category: 'Oral Pathology', isbn: '9780323297684' },
+    { title: "Color Atlas of Oral Diseases", author: "George Laskaris", course: 'BDS', year: 3, category: 'Oral Pathology', searchHint: "Laskaris Color Atlas Oral Diseases" },
+    { title: "Oral Medicine", author: "H. Scully", course: 'BDS', year: 3, category: 'General Medicine', searchHint: "Scully Oral Medicine" },
+    { title: "Textbook of Medicine for Dental Students", author: "J.W. Sherwood", course: 'BDS', year: 3, category: 'General Medicine', searchHint: "Sherwood Medicine Dental Students" },
+    { title: "Cawson's Essentials of Oral Pathology and Oral Medicine", author: "R.A. Cawson", course: 'BDS', year: 3, category: 'Oral Pathology', searchHint: "Cawson Essentials Oral Pathology" },
+    { title: "Synopsis of Oral Radiology", author: "Grover, Cawson", course: 'BDS', year: 3, category: 'Oral Medicine/Radiology', searchHint: "Grover Synopsis Oral Radiology" },
 
     // ═══ BDS Year 4 ═══
     { title: "Textbook of Oral Medicine & Radiology", author: "Anil Ghom", course: 'BDS', year: 4, category: 'Oral Medicine/Radiology', searchHint: "Anil Ghom Oral Medicine Radiology" },
@@ -175,6 +232,13 @@ const masterBookList = [
     { title: "McDonald & Avery's Dentistry for the Child & Adolescent", author: "Dean, Avery", course: 'BDS', year: 4, category: 'Pedodontics', searchHint: "McDonald Avery Dentistry Child" },
     { title: "Textbook of Public Health Dentistry", author: "Soben Peter", course: 'BDS', year: 4, category: 'Public Health Dentistry', searchHint: "Soben Peter Public Health Dentistry" },
     { title: "Preventive & Community Dentistry", author: "Soben Peter", course: 'BDS', year: 4, category: 'Public Health Dentistry', searchHint: "Soben Peter Preventive Community Dentistry" },
+    { title: "Shillingburg's Fundamentals of Fixed Prosthodontics", author: "Herbert T. Shillingburg", course: 'BDS', year: 4, category: 'Prosthodontics', searchHint: "Shillingburg Fundamentals Fixed Prosthodontics" },
+    { title: "McCracken's Removable Partial Prosthodontics", author: "Alan B. Carr", course: 'BDS', year: 4, category: 'Prosthodontics', isbn: '9780323340267' },
+    { title: "Oral Radiology: Principles and Interpretation", author: "Stuart C. White, Michael J. Pharoah", course: 'BDS', year: 4, category: 'Oral Medicine/Radiology', isbn: '9780323096331' },
+    { title: "Textbook of Endodontics", author: "Nisha Garg, Amit Garg", course: 'BDS', year: 4, category: 'Conservative Dentistry', searchHint: "Nisha Garg Amit Garg Endodontics" },
+    { title: "Advanced Operative Dentistry", author: "Pitt Ford", course: 'BDS', year: 4, category: 'Conservative Dentistry', searchHint: "Pitt Ford Advanced Operative Dentistry" },
+    { title: "Handbook of Orthodontics", author: "Martyn Cobourne, Andrew DiBiase", course: 'BDS', year: 4, category: 'Orthodontics', searchHint: "Cobourne DiBiase Handbook Orthodontics" },
+    { title: "Community Oral Health Practice for the Dental Hygienist", author: "Cynthia C. Gadbury-Amyot", course: 'BDS', year: 4, category: 'Public Health Dentistry', searchHint: "Gadbury-Amyot Community Oral Health" },
 ];
 
 
@@ -277,15 +341,21 @@ async function resolveCoverUrl(book, googleVolume) {
     for (const url of candidates) {
         try {
             const resp = await axios.head(url, {
-                timeout: 5000,
-                maxRedirects: 3,
-                validateStatus: s => s < 400
+                timeout: 8000,
+                maxRedirects: 5,
+                validateStatus: s => s < 400,
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MedSageBot/1.0)' }
             });
             const contentType = resp.headers['content-type'] || '';
-            const contentLength = parseInt(resp.headers['content-length'] || '0', 10);
+            const contentLength = parseInt(resp.headers['content-length'] || '9999', 10);
 
-            // Open Library returns a 1x1 pixel for missing covers (~807 bytes or less)
-            if (contentType.includes('image') && contentLength > 1000) {
+            // Accept image if: content-type is image AND content-length > 1000
+            // (Open Library returns a 1x1 placeholder ~807 bytes for missing covers)
+            // If content-length is missing (many CDNs omit it), accept any image response
+            const hasImageType = contentType.includes('image') && !contentType.includes('gif');
+            const sizeOk = !resp.headers['content-length'] || contentLength > 1000;
+
+            if (hasImageType && sizeOk) {
                 return url;
             }
         } catch {
@@ -294,6 +364,39 @@ async function resolveCoverUrl(book, googleVolume) {
     }
 
     return null; // All candidates failed
+}
+
+
+// ─── LINK VERIFICATION ──────────────────────────────────────────
+// Verifies whether a direct resource URL is alive via HEAD request
+async function verifyLink(url) {
+    const checkedAt = new Date().toISOString();
+
+    if (!url) {
+        return { url: null, alive: false, statusCode: null, checkedAt };
+    }
+
+    try {
+        const resp = await axios.head(url, {
+            timeout: 5000,
+            maxRedirects: 3,
+            validateStatus: () => true,   // never throw on status code
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; MedSageBot/1.0)'
+            }
+        });
+
+        const status = resp.status;
+        // 2xx = alive; 301/302/303/307/308 = redirects (maxRedirects handles chains)
+        // 404/410 = dead; 5xx = server error (treat as dead)
+        // 429 = rate limited (treat as alive — resource exists but throttled)
+        const alive = (status >= 200 && status < 400) || status === 429;
+
+        return { url, alive, statusCode: status, checkedAt };
+    } catch (err) {
+        // Network error, timeout, DNS failure
+        return { url, alive: false, statusCode: null, checkedAt };
+    }
 }
 
 
@@ -328,15 +431,18 @@ async function resolvePdfLinks(book) {
         // OL search failed, continue
     }
 
-    // 2. Internet Archive search for free PDFs
+    // 2. Internet Archive search for free PDFs — prefer over Open Library works pages
     try {
         const iaSearch = await axios.get(
-            `https://archive.org/advancedsearch.php?q=title:("${encodeURIComponent(cleanTitle)}")%20AND%20mediatype:texts&fl=identifier,title&rows=3&output=json`,
+            `https://archive.org/advancedsearch.php?q=title:("${encodeURIComponent(cleanTitle)}")%20AND%20mediatype:texts&fl=identifier,title,downloads&rows=5&output=json`,
             { timeout: 8000 }
         );
         const iaDocs = iaSearch.data?.response?.docs || [];
-        if (iaDocs.length > 0 && !links.primary) {
-            links.primary = `https://archive.org/details/${iaDocs[0].identifier}`;
+        if (iaDocs.length > 0) {
+            // Prefer the item with most downloads (most likely the right edition)
+            const best = iaDocs.sort((a, b) => (b.downloads || 0) - (a.downloads || 0))[0];
+            // IA detail pages offer free PDF/ePub download without login for most texts
+            links.primary = `https://archive.org/details/${best.identifier}`;
         }
     } catch {
         // IA search failed, continue
@@ -363,7 +469,7 @@ async function resolvePdfLinks(book) {
         },
         {
             name: 'Z-Library',
-            url: `https://z-lib.id/s/${encoded.replace(/%20/g, '+')}`,
+            url: `https://z-library.sk/s/${encoded.replace(/%20/g, '+')}`,
             icon: 'ZL',
             description: 'World\'s largest free ebook library'
         },
@@ -375,7 +481,7 @@ async function resolvePdfLinks(book) {
         },
         {
             name: 'Library Genesis',
-            url: `https://libgen.is/search.php?req=${encoded.replace(/%20/g, '+')}&open=0&res=25&view=simple&phrase=1&column=def`,
+            url: `https://libgen.rs/search.php?req=${encoded.replace(/%20/g, '+')}&open=0&res=25&view=simple&phrase=1&column=def`,
             icon: 'LG',
             description: 'Free scientific papers and books'
         },
@@ -407,6 +513,12 @@ async function enrichBook(book, index, total) {
 
     // Step 3: Resolve PDF links
     const { links: pdfLinks, freeLinks } = await resolvePdfLinks(book);
+
+    // Step 3b: Verify the primary PDF link is alive
+    let linkVerification = null;
+    if (pdfLinks.primary) {
+        linkVerification = await verifyLink(pdfLinks.primary);
+    }
 
     // Step 4: Extract description
     const fallbackDesc = `${book.title} by ${book.author}. A comprehensive ${book.category} textbook for ${book.course} students. Essential reading for mastering key concepts in ${book.category.toLowerCase()}.`;
@@ -472,6 +584,8 @@ async function enrichBook(book, index, total) {
         pdfLink: pdfLinks.primary || pdfLinks.search,
         pdfSearch: pdfLinks.search,
         hasDirectPdf: !!pdfLinks.primary,
+        pdfLinkVerification: linkVerification,  // { url, alive, statusCode, checkedAt } or null
+        hasVerifiedLink: linkVerification?.alive ?? false,
         freeLinks,
         // --- Meta ---
         source: googleVolume ? 'google_books' : 'curated',
@@ -486,7 +600,14 @@ function ensureDataDir() {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-async function runCrawler() {
+async function runCrawler(options = {}) {
+    const { courseFilter = 'ALL' } = options; // Default to ALL courses
+
+    // Filter books by course
+    const booksToProcess = courseFilter === 'ALL'
+        ? masterBookList
+        : masterBookList.filter(book => book.course === courseFilter);
+
     console.log('');
     console.log('╔══════════════════════════════════════════════════════════╗');
     console.log('║  MEDSAGE ACADEMY v2.0 — BULLETPROOF CRAWLER             ║');
@@ -495,7 +616,8 @@ async function runCrawler() {
     console.log('╚══════════════════════════════════════════════════════════╝');
     console.log('');
     console.log(`🔑 API Key: ${GOOGLE_API_KEY ? 'Configured ✓' : '⚠ NOT SET (anonymous mode, may rate-limit)'}`);
-    console.log(`📚 Books to process: ${masterBookList.length}`);
+    console.log(`📚 Course Filter: ${courseFilter}`);
+    console.log(`📚 Books to process: ${booksToProcess.length} (out of ${masterBookList.length} total)`);
     console.log('');
 
     ensureDataDir();
@@ -506,9 +628,9 @@ async function runCrawler() {
     let coverCount = 0;
     let directPdfCount = 0;
 
-    const tasks = masterBookList.map((book, index) => limit(async () => {
+    const tasks = booksToProcess.map((book, index) => limit(async () => {
         try {
-            const enriched = await enrichBook(book, index, masterBookList.length);
+            const enriched = await enrichBook(book, index, booksToProcess.length);
             results.push(enriched);
 
             successCount++;
@@ -517,7 +639,7 @@ async function runCrawler() {
 
             // Incremental save every 10 books (crash safety)
             if (results.length % 10 === 0) {
-                saveResults(results);
+                saveResults(results, courseFilter);
                 console.log(`  💾 Checkpoint saved (${results.length} books)\n`);
             }
         } catch (err) {
@@ -535,6 +657,7 @@ async function runCrawler() {
                 pdfLink: `https://www.google.com/search?q=${encodeURIComponent(book.title + ' ' + book.author + ' PDF')}`,
                 pdfSearch: `https://www.google.com/search?q=${encodeURIComponent(book.title + ' PDF')}`,
                 hasDirectPdf: false,
+                freeLinks: [],
                 rating: 4.5,
                 source: 'error_fallback',
                 lastVerified: new Date().toISOString(),
@@ -548,17 +671,18 @@ async function runCrawler() {
     await Promise.all(tasks);
 
     // Final save
-    const output = saveResults(results);
+    const output = saveResults(results, courseFilter);
 
     console.log('');
     console.log('══════════════════════════════════════════════════════════');
     console.log('                    📊 CRAWL SUMMARY');
     console.log('══════════════════════════════════════════════════════════');
+    console.log(`  Course Filter:     ${courseFilter}`);
     console.log(`  Total Books:       ${output.totalBooks}`);
+    console.log(`  MBBS Books:        ${output.courseBreakdown.MBBS}`);
+    console.log(`  BDS Books:         ${output.courseBreakdown.BDS}`);
     console.log(`  With Cover Image:  ${coverCount}/${output.totalBooks} (${Math.round(coverCount / output.totalBooks * 100)}%)`);
     console.log(`  Direct PDF Links:  ${directPdfCount}/${output.totalBooks}`);
-    console.log(`  MBBS Books:        ${output.yearBreakdown.mbbs}`);
-    console.log(`  BDS Books:         ${output.yearBreakdown.bds}`);
     console.log(`  Year 1: ${output.yearBreakdown.year1} | Year 2: ${output.yearBreakdown.year2} | Year 3: ${output.yearBreakdown.year3} | Year 4: ${output.yearBreakdown.year4}`);
     console.log(`  Saved to:          ${OUTPUT_PATH}`);
     console.log('══════════════════════════════════════════════════════════');
@@ -567,20 +691,23 @@ async function runCrawler() {
     return output;
 }
 
-function saveResults(results) {
-    // Sort: MBBS before BDS, then by year, then by category
+function saveResults(results, courseFilter = 'ALL') {
+    // Sort by course (alphabetically), then year, then category
     const sorted = [...results].sort((a, b) => {
-        if (a.course !== b.course) return a.course === 'MBBS' ? -1 : 1;
+        if (a.course !== b.course) return a.course.localeCompare(b.course);
         if (a.year !== b.year) return a.year - b.year;
         return (a.category || '').localeCompare(b.category || '');
     });
 
     const output = {
         lastUpdated: new Date().toISOString(),
+        course: courseFilter,
         totalBooks: sorted.length,
+        courseBreakdown: {
+            MBBS: sorted.filter(b => b.course === 'MBBS').length,
+            BDS: sorted.filter(b => b.course === 'BDS').length,
+        },
         yearBreakdown: {
-            mbbs: sorted.filter(b => b.course === 'MBBS').length,
-            bds: sorted.filter(b => b.course === 'BDS').length,
             year1: sorted.filter(b => b.year === 1).length,
             year2: sorted.filter(b => b.year === 2).length,
             year3: sorted.filter(b => b.year === 3).length,

@@ -142,7 +142,7 @@ export default function SignIn() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          style={{ position: 'absolute', top: 32, left: 32, zIndex: 100 }}
+          style={{ position: 'absolute', top: 'max(env(safe-area-inset-top, 16px), 16px)', left: 16, zIndex: 100 }}
         >
           <div
             onClick={() => navigate('/')}
@@ -242,7 +242,7 @@ export default function SignIn() {
 
         {/* Right Side: Sign In Form */}
         <div style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px',
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 40px)',
           background: 'rgba(0, 0, 0, 0.4)',
           backdropFilter: 'blur(30px)',
           position: 'relative',
@@ -255,7 +255,7 @@ export default function SignIn() {
               width: '100%', maxWidth: 440,
               background: 'rgba(255,255,255,0.02)',
               border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 32, padding: '56px 48px',
+              borderRadius: 32, padding: 'clamp(28px, 5vw, 56px) clamp(24px, 5vw, 48px)',
               backdropFilter: 'blur(24px)',
               boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
               textAlign: 'center',
@@ -320,7 +320,7 @@ export default function SignIn() {
               whileHover={{ scale: loading ? 1 : 1.03, boxShadow: '0 12px 30px rgba(255,255,255,0.25)' }}
               whileTap={{ scale: loading ? 1 : 0.97 }}
               style={{
-                width: '100%', padding: '16px 24px', borderRadius: 16,
+                width: '100%', padding: '16px 24px', borderRadius: 16, minHeight: 52,
                 background: '#ffffff',
                 border: 'none',
                 color: '#090514', fontSize: 17, fontWeight: 700,

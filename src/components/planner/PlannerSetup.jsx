@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Box, Typography, Button, TextField, Chip,
     Paper, CircularProgress, Alert, Grid,
-    Accordion, AccordionSummary, AccordionDetails
+    Accordion, AccordionSummary, AccordionDetails, Collapse
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStudyContext } from '../../contexts/StudyContext';
@@ -32,20 +32,26 @@ export default function PlannerSetup({ onCancel }) {
         setSelectedSubjects,
         weakTopics, setWeakTopics,
         strongTopics, setStrongTopics,
-        generateStudyPlan, isGenerating, error, setError
+        generateStudyPlan, isGenerating, error, setError,
+        studyPlan
     } = useStudyContext();
 
     const [activeStep, setActiveStep] = useState(0);
     const [syllabus, setSyllabus] = useState({});
     const [isLoadingSyllabus, setIsLoadingSyllabus] = useState(false);
-    const [selectedYear, setSelectedYear] = useState(1);
+    const [syllabusError, setSyllabusError] = useState(null);
 
-    // Initialize the selected year based on profile on mount
+    // Initialise year: prefer existing plan's year, then user profile, then default 1
+    const [selectedYear, setSelectedYear] = useState(
+        studyPlan?.mbbs_year || userProfile?.mbbs_year || 1
+    );
+
+    // Keep year in sync if profile loads after mount (only when no existing plan)
     useEffect(() => {
-        if (userProfile?.mbbs_year) {
+        if (!studyPlan && userProfile?.mbbs_year) {
             setSelectedYear(userProfile.mbbs_year);
         }
-    }, [userProfile]);
+    }, [userProfile, studyPlan]);
 
     // Fetch Syllabus when the selectedYear changes
     useEffect(() => {
@@ -60,13 +66,14 @@ export default function PlannerSetup({ onCancel }) {
     }, [selectedYear, setSelectedSubjects, userProfile?.country, setWeakTopics, setStrongTopics]);
 
     const fetchSyllabus = async (year, country) => {
+        setSyllabusError(null);
         try {
             setIsLoadingSyllabus(true);
             const res = await plannerAPI.getSyllabus(year, country);
             if (res.data) setSyllabus(res.data);
         } catch (err) {
             console.error("Failed to load syllabus:", err);
-            // Ignore error for UI simplicity, fallback will not crash
+            setSyllabusError('Could not load syllabus topics. You can still generate a plan — the AI will use broad subject knowledge.');
         } finally {
             setIsLoadingSyllabus(false);
         }
@@ -122,6 +129,10 @@ export default function PlannerSetup({ onCancel }) {
         const isWeak = type === 'weak';
         const activeColor = isWeak ? 'error' : 'success';
         const selectedList = isWeak ? weakTopics : strongTopics;
+
+        if (syllabusError) {
+            return <Alert severity="warning" sx={{ borderRadius: 3 }}>{syllabusError}</Alert>;
+        }
 
         if (Object.keys(syllabus).length === 0) {
             return <Typography color="text.secondary">No detailed topics available for this year. AI will rely on broad subjects.</Typography>;
@@ -274,7 +285,7 @@ export default function PlannerSetup({ onCancel }) {
                         </AnimatePresence>
                     </Box>
 
-                    <Box sx={{ mt: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ mt: { xs: 4, md: 6 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                             <Button 
                                 disabled={activeStep === 0} 

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Box, Typography, Paper, Tabs, Tab, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Box, Typography, Paper, Tabs, Tab, List, ListItem, ListItemIcon, ListItemText, IconButton, Tooltip } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target as TargetIcon, CheckCircle as CheckCircleIcon, RadioButtonUnchecked as UncheckedIcon } from '@mui/icons-material';
+import { CheckCircle as CheckCircleIcon, RadioButtonUnchecked as UncheckedIcon } from '@mui/icons-material';
+import { useStudyContext } from '../../contexts/StudyContext';
 
 export default function GoalTimeline({ goals }) {
+    const { tickGoal } = useStudyContext();
     const [tabIndex, setTabIndex] = useState(0);
+    const [ticking, setTicking] = useState(null); // goalId being processed
 
     const tabs = [
         { label: 'Weekly', key: 'weekly' },
@@ -14,6 +17,13 @@ export default function GoalTimeline({ goals }) {
 
     const currentKey = tabs[tabIndex].key;
     const currentList = goals?.[currentKey] || [];
+
+    const handleTick = async (g) => {
+        if (ticking) return;
+        setTicking(g.id);
+        await tickGoal(currentKey, g.id);
+        setTicking(null);
+    };
 
     return (
         <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, bgcolor: 'background.paper', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -55,15 +65,32 @@ export default function GoalTimeline({ goals }) {
                             {currentList.map((g, idx) => (
                                 <ListItem
                                     key={g.id || idx}
+                                    disablePadding
                                     sx={{
                                         bgcolor: g.done ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.02)',
-                                        borderRadius: 3, mb: 1.5,
+                                        borderRadius: 3, mb: 1.5, p: 1,
                                         border: '1px solid',
-                                        borderColor: g.done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)'
+                                        borderColor: g.done ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': { bgcolor: g.done ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)' }
                                     }}
+                                    onClick={() => handleTick(g)}
                                 >
                                     <ListItemIcon sx={{ minWidth: 40 }}>
-                                        {g.done ? <CheckCircleIcon sx={{ color: '#10b981' }} /> : <UncheckedIcon color="action" />}
+                                        <Tooltip title={g.done ? 'Mark incomplete' : 'Mark complete'}>
+                                            <IconButton
+                                                size="small"
+                                                disabled={ticking === g.id}
+                                                onClick={(e) => { e.stopPropagation(); handleTick(g); }}
+                                                sx={{ p: 0.5 }}
+                                            >
+                                                {g.done
+                                                    ? <CheckCircleIcon sx={{ color: '#10b981' }} />
+                                                    : <UncheckedIcon color="action" />
+                                                }
+                                            </IconButton>
+                                        </Tooltip>
                                     </ListItemIcon>
                                     <ListItemText
                                         primary={g.text}
@@ -71,7 +98,7 @@ export default function GoalTimeline({ goals }) {
                                         primaryTypographyProps={{
                                             fontWeight: 600,
                                             color: g.done ? 'text.secondary' : 'text.primary',
-                                            sx: { textDecoration: g.done ? 'line-through' : 'none' }
+                                            sx: { textDecoration: g.done ? 'line-through' : 'none', transition: 'all 0.2s' }
                                         }}
                                         secondaryTypographyProps={{ variant: 'caption', color: 'primary.main', fontWeight: 600 }}
                                     />

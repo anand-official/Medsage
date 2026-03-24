@@ -81,9 +81,7 @@ export default function Onboarding() {
             // setOpen(false) is handled by the useEffect watching userProfile.onboarded
         } catch (err) {
             console.error('Onboarding save failed:', err);
-            // Backend unreachable — close gracefully anyway
-            setError('');
-            setOpen(false);
+            setError('Could not save your profile. Please check your connection and try again.');
         } finally {
             setLoading(false);
         }
@@ -226,11 +224,23 @@ export default function Onboarding() {
                                         options={collegesData.colleges}
                                         value={formData.college}
                                         onChange={(event, newValue) => {
-                                            setFormData(prev => ({ ...prev, college: newValue || '' }));
+                                            const college = newValue || '';
+                                            const isNepal = college.includes('NMC Nepal') || college.includes('Nepal Medical Council');
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                college,
+                                                country: isNepal ? 'Nepal' : (prev.country === 'Nepal' ? 'India' : prev.country),
+                                            }));
                                             setError('');
                                         }}
                                         onInputChange={(event, newInputValue) => {
-                                            setFormData(prev => ({ ...prev, college: newInputValue || '' }));
+                                            const college = newInputValue || '';
+                                            const isNepal = college.includes('NMC Nepal') || college.includes('Nepal Medical Council');
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                college,
+                                                country: isNepal ? 'Nepal' : (prev.country === 'Nepal' ? 'India' : prev.country),
+                                            }));
                                             setError('');
                                         }}
                                         renderInput={(params) => (
@@ -259,6 +269,7 @@ export default function Onboarding() {
                                         sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
                                     >
                                         <MenuItem value="India">India</MenuItem>
+                                        <MenuItem value="Nepal">Nepal</MenuItem>
                                         <MenuItem value="United States">United States</MenuItem>
                                         <MenuItem value="United Kingdom">United Kingdom</MenuItem>
                                         <MenuItem value="Australia">Australia</MenuItem>

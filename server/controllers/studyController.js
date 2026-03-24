@@ -4,10 +4,10 @@ class StudyController {
   async generateStudyPlan(req, res, next) {
     try {
       const { year, country, examDate, selectedSubjects, weakTopics, strongTopics } = req.body;
-      const uid = req.user?.uid || req.body.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
 
       if (!uid) {
-        return res.status(401).json({ success: false, error: 'Unauthorized: No UID provided' });
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
       if (!year || !examDate || !selectedSubjects || !weakTopics) {
@@ -38,7 +38,7 @@ class StudyController {
 
   async getStudyPlan(req, res, next) {
     try {
-      const uid = req.user?.uid || req.query.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
       if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const studyPlan = await studyService.getStudyPlan(uid);
@@ -53,7 +53,7 @@ class StudyController {
 
   async getTodayTasks(req, res, next) {
     try {
-      const uid = req.user?.uid || req.query.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
       if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const tasksData = await studyService.getTodayTasks(uid);
@@ -68,7 +68,7 @@ class StudyController {
 
   async tickTask(req, res, next) {
     try {
-      const uid = req.user?.uid || req.body.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
       if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const { dateStr, taskId, completed } = req.body;
@@ -85,7 +85,7 @@ class StudyController {
 
   async addTask(req, res, next) {
     try {
-      const uid = req.user?.uid || req.body.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
       if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const { dateStr, text } = req.body;
@@ -100,7 +100,7 @@ class StudyController {
 
   async editTask(req, res, next) {
     try {
-      const uid = req.user?.uid || req.body.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
       if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const { dateStr, taskId, newText } = req.body;
@@ -115,7 +115,7 @@ class StudyController {
 
   async getAnalytics(req, res, next) {
     try {
-      const uid = req.user?.uid || req.query.uid || req.headers['x-user-id'];
+      const uid = req.user.uid;
       if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const analyticsData = await studyService.getAnalytics(uid);
@@ -123,6 +123,21 @@ class StudyController {
         success: true,
         data: analyticsData,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async tickGoal(req, res, next) {
+    try {
+      const uid = req.user.uid;
+      if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+      const { goalType, goalId } = req.body;
+      if (!goalType || !goalId) return res.status(400).json({ success: false, error: 'goalType and goalId required' });
+
+      const updatedGoals = await studyService.tickGoal(uid, goalType, goalId);
+      res.json({ success: true, data: updatedGoals });
     } catch (error) {
       next(error);
     }

@@ -28,14 +28,17 @@ class OutputSchemaValidator {
             return { is_valid: false, parsed, error: 'Missing or invalid "claims" array.' };
         }
 
-        if (parsed.claims.length === 0) {
-            return { is_valid: false, parsed, error: 'The "claims" array is empty.' };
+        if (parsed.claims.length < 2) {
+            return { is_valid: false, parsed, error: 'The "claims" array must include at least 2 claims.' };
         }
 
         for (let i = 0; i < parsed.claims.length; i++) {
             const claim = parsed.claims[i];
             if (!claim.statement || typeof claim.statement !== 'string') {
                 return { is_valid: false, parsed, error: `Claim at index ${i} is missing a "statement" string.` };
+            }
+            if (claim.statement.trim().length < 12) {
+                return { is_valid: false, parsed, error: `Claim at index ${i} has an overly short "statement".` };
             }
             if (!claim.chunk_ids || !Array.isArray(claim.chunk_ids)) {
                 return { is_valid: false, parsed, error: `Claim at index ${i} is missing a "chunk_ids" array.` };

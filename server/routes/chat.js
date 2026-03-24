@@ -20,6 +20,36 @@ const { verifyToken } = require('../middleware/auth');
 const MAX_SESSIONS_PER_USER = 50;
 const MAX_MESSAGES_PER_SESSION = 200;
 
+/**
+ * @swagger
+ * /api/chat/sessions:
+ *   get:
+ *     summary: List user's chat sessions
+ *     description: Returns up to 50 sessions (metadata only, no messages) sorted by most recently updated.
+ *     tags: [Chat]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of session summaries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:  { type: boolean, example: true }
+ *                 sessions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       session_id: { type: string }
+ *                       title:      { type: string }
+ *                       created_at: { type: string, format: date-time }
+ *                       updated_at: { type: string, format: date-time }
+ *       401:
+ *         description: Unauthorized
+ */
 // ── GET /api/chat/sessions ────────────────────────────────────────────────────
 // Returns session list (no messages) for the sidebar
 router.get('/sessions', verifyToken, async (req, res) => {
@@ -37,6 +67,61 @@ router.get('/sessions', verifyToken, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/chat/sessions/{id}:
+ *   get:
+ *     summary: Get a chat session with paginated messages
+ *     tags: [Chat]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: session_id (client-generated UUID)
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50, maximum: 100 }
+ *     responses:
+ *       200:
+ *         description: Session with paginated messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:    { type: boolean }
+ *                 session:    { $ref: '#/components/schemas/ChatSession' }
+ *                 pagination: { $ref: '#/components/schemas/Pagination' }
+ *       404:
+ *         description: Session not found
+ *   delete:
+ *     summary: Delete a chat session
+ *     tags: [Chat]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *       401:
+ *         description: Unauthorized
+ */
 // ── GET /api/chat/sessions/:id ────────────────────────────────────────────────
 // Returns full session with messages
 router.get('/sessions/:id', [
@@ -53,13 +138,73 @@ router.get('/sessions/:id', [
 
         if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
 
-        res.json({ success: true, session });
+        const allMessages = session.messages || [];
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+        const total = allMessages.length;
+        const start = (page - 1) * limit;
+
+        res.json({
+            success: true,
+            session: {
+                ...session,
+                messages: allMessages.slice(start, start + limit),
+            },
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit),
+            },
+        });
     } catch (err) {
         console.error('[Chat] Get session error:', err.message);
         res.status(500).json({ success: false, error: 'Failed to load session' });
     }
 });
 
+/**
+ * @swagger
+ * /api/chat/sessions:
+ *   post:
+ *     summary: Create or update a chat session (upsert)
+ *     description: |
+ *       Upserts a session by `session_id`. If the user already has 50 sessions,
+ *       the oldest one is automatically removed to make room.
+ *     tags: [Chat]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [session_id, messages]
+ *             properties:
+ *               session_id: { type: string, maxLength: 100 }
+ *               title:      { type: string, maxLength: 120 }
+ *               messages:
+ *                 type: array
+ *                 maxItems: 200
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     role: { type: string, enum: [user, ai] }
+ *                     text: { type: string, maxLength: 10000 }
+ *     responses:
+ *       200:
+ *         description: Session saved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:    { type: boolean }
+ *                 session_id: { type: string }
+ *       400:
+ *         description: Validation error
+ */
 // ── POST /api/chat/sessions ───────────────────────────────────────────────────
 // Upsert a session (create or update messages + title)
 router.post('/sessions', [

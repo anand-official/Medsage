@@ -1,11 +1,22 @@
 const mongoose = require('mongoose');
 
+const ResourceSchema = new mongoose.Schema({
+    resourceType: { type: String, enum: ['gold_standard', 'video', 'reference', 'textbook'] },
+    platform: { type: String },
+    title: { type: String },
+    author: { type: String },
+    note: { type: String },
+    type: { type: String },
+    freeLinks: [{ name: String, url: String }]
+}, { _id: false });
+
 const TaskSchema = new mongoose.Schema({
     id: { type: String, required: true },
     text: { type: String, required: true },
     topic: { type: String },
     type: { type: String, enum: ['learning', 'review', 'mock_exam'], default: 'learning' },
-    completed: { type: Boolean, default: false }
+    completed: { type: Boolean, default: false },
+    resources: { type: [ResourceSchema], default: [] }
 });
 
 const DailyPlanSchema = new mongoose.Schema({
@@ -29,7 +40,7 @@ const StudyPlanSchema = new mongoose.Schema({
     weak_topics: [{ type: String }],
     strong_topics: [{ type: String }],
 
-    advisory_text: { type: String }, // AI generated advice paragraph
+    advisory_text: { type: String },
 
     daily_plan: [DailyPlanSchema],
 

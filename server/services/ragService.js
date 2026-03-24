@@ -140,6 +140,106 @@ class RAGService {
         }
     }
 
+    /**
+     * Retrieves context using query expansion: runs retrieveContext for each
+     * expanded query in parallel, then merges unique chunks into one result set.
+     *
+     * Strategy:
+     *  - queries[0] is the primary (original or rewritten) query. It drives the
+     *    full validation / broadening logic and its result is used as the base.
+     *  - queries[1..n] are alternatives from the query expander. They contribute
+     *    only chunks whose chunk_id is NOT already in the primary result, so the
+     *    primary ranking is never disturbed.
+     *  - All queries run in parallel via Promise.allSettled — a failed alternative
+     *    never cancels the primary or sibling searches.
+     *  - Total chunks are capped at 8 to avoid overwhelming the prompt context.
+     *
+     * Telemetry: adds a `query_expansion` block to retrieval.telemetry with counts
+     * for how many extra chunks expansion contributed.
+     *
+     * @param {string}   topicId    - Predicted topic_id from CurriculumMapper
+     * @param {object}   filters    - { subject, country }
+     * @param {string[]} queries    - [primaryQuery, ...alternatives]
+     * @param {number}   confidence - Topic classifier confidence (0–1)
+     * @param {string}   mode       - 'exam' | 'conceptual'
+     * @param {object}   overrides  - { threshold, weights }
+     */
+    async retrieveWithExpansion(topicId, filters, queries, confidence, mode, overrides = {}) {
+        // Single query — delegate directly to avoid any overhead
+        if (!queries || queries.length <= 1) {
+            return this.retrieveContext(topicId, filters, queries?.[0] || '', confidence, mode, overrides);
+        }
+
+        const expansionStart = Date.now();
+
+        // Run all queries concurrently; allSettled ensures one failure doesn't abort others
+        const settled = await Promise.allSettled(
+            queries.map(q => this.retrieveContext(topicId, filters, q, confidence, mode, overrides))
+        );
+
+        // Primary result (queries[0]) — must succeed for the pipeline to continue
+        const primaryOutcome = settled[0];
+        if (primaryOutcome.status !== 'fulfilled') {
+            // Primary failed hard — return an empty invalid result (orchestrator handles fallback)
+            console.error('[RAG:expansion] Primary query failed:', primaryOutcome.reason?.message);
+            return { chunks: [], chunk_payloads: [], metadata: {}, telemetry: {}, is_valid: false };
+        }
+        const primaryResult = primaryOutcome.value;
+
+        // If the primary result itself is invalid, return it — no point merging alt results
+        if (!primaryResult.is_valid || primaryResult.chunks.length === 0) {
+            return primaryResult;
+        }
+
+        // Merge: start with primary chunks, then add unique chunks from alternatives
+        const seenIds = new Set(
+            primaryResult.chunk_payloads.map(p => p.chunk_id).filter(Boolean)
+        );
+        const mergedChunks   = [...primaryResult.chunks];
+        const mergedPayloads = [...primaryResult.chunk_payloads];
+        let addedByExpansion = 0;
+
+        for (const outcome of settled.slice(1)) {
+            if (outcome.status !== 'fulfilled' || !outcome.value.is_valid) continue;
+            const { chunks, chunk_payloads } = outcome.value;
+
+            for (let i = 0; i < chunks.length && mergedChunks.length < 8; i++) {
+                const id = chunk_payloads[i]?.chunk_id;
+                if (id && !seenIds.has(id)) {
+                    mergedChunks.push(chunks[i]);
+                    mergedPayloads.push(chunk_payloads[i]);
+                    seenIds.add(id);
+                    addedByExpansion++;
+                }
+            }
+        }
+
+        const expansionMs = Date.now() - expansionStart;
+
+        console.log(
+            `[RAG:expansion] queries=${queries.length} base=${primaryResult.chunks.length} ` +
+            `merged=${mergedChunks.length} added=${addedByExpansion} latency=${expansionMs}ms`
+        );
+
+        return {
+            ...primaryResult,
+            chunks:        mergedChunks,
+            chunk_payloads: mergedPayloads,
+            // metadata stays as primary's top-chunk metadata (used for source attribution)
+            metadata: primaryResult.metadata,
+            telemetry: {
+                ...primaryResult.telemetry,
+                query_expansion: {
+                    queries_count:        queries.length,
+                    base_chunks:          primaryResult.chunks.length,
+                    merged_unique_chunks: mergedChunks.length,
+                    expansion_added:      addedByExpansion,
+                    latency_ms:           expansionMs,
+                },
+            },
+        };
+    }
+
     // ─── Private Helpers ────────────────────────────────────────────────────────
 
     async _search(vector, mustFilters, limit) {

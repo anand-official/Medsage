@@ -9,13 +9,13 @@ import './App.css';
 
 // Import components
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './pages/HomePage';
 import QuestionPage from './pages/QuestionPage';
 import StudyPlannerPage from './pages/StudyPlannerPage';
 import BookReferencePage from './pages/BookReferencePage';
 import NotFoundPage from './pages/NotFoundPage';
 import SignIn from './components/SignIn';
-import ReviewSession from './pages/ReviewSession';
 import ProfilePage from './pages/ProfilePage';
 import Onboarding from './components/auth/Onboarding';
 import LandingPage from './pages/LandingPage';
@@ -106,7 +106,9 @@ function App() {
                   } />
                   <Route path="question" element={
                     <ProtectedRoute>
-                      <QuestionPage />
+                      <ErrorBoundary>
+                        <QuestionPage />
+                      </ErrorBoundary>
                     </ProtectedRoute>
                   } />
                   <Route path="planner" element={
@@ -117,11 +119,6 @@ function App() {
                   <Route path="books" element={
                     <ProtectedRoute>
                       <BookReferencePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="review" element={
-                    <ProtectedRoute>
-                      <ReviewSession />
                     </ProtectedRoute>
                   } />
                   <Route path="profile" element={

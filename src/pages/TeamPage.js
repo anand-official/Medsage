@@ -2,6 +2,100 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
+// ─── Responsive Styles (injected once) ──────────────────────────────────────
+const RESPONSIVE_STYLE_ID = 'team-page-responsive';
+function useResponsiveStyles() {
+    useEffect(() => {
+        if (document.getElementById(RESPONSIVE_STYLE_ID)) return;
+        const style = document.createElement('style');
+        style.id = RESPONSIVE_STYLE_ID;
+        style.textContent = `
+            .team-card-inner { height: 380px; }
+            .team-back-btn-wrap { padding-top: 40px; margin-bottom: 80px; }
+            .team-header { margin-bottom: 80px; }
+            .team-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 22px;
+                padding-bottom: 100px;
+            }
+            .team-modal-container {
+                position: fixed; inset: 0; z-index: 9999;
+                background: rgba(0,0,0,0.85); backdrop-filter: blur(16px);
+                display: flex; align-items: center; justify-content: center; padding: 24px;
+            }
+            .team-modal-content {
+                width: 100%; max-width: 860px;
+                border-radius: 24px; overflow: hidden;
+                background: #0a0a14;
+                display: flex; position: relative;
+                flex-direction: row;
+            }
+            .team-modal-photo {
+                width: 42%; min-height: 450px; position: relative;
+            }
+            .team-modal-fade {
+                position: absolute; right: 0; bottom: 0;
+                width: 40px; height: 100%;
+                background: linear-gradient(to right, transparent, #0a0a14);
+                pointer-events: none;
+            }
+            .team-modal-body {
+                flex: 1; padding: 44px 48px;
+                display: flex; flex-direction: column; justify-content: center; position: relative;
+            }
+            .team-modal-close {
+                position: absolute; top: 20px; right: 20px;
+                width: 44px; height: 44px; border-radius: 50%;
+                background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+                color: rgba(255,255,255,0.6); font-size: 22px;
+                display: flex; align-items: center; justify-content: center;
+                cursor: pointer; transition: all 0.2s; z-index: 10;
+                min-width: 44px; min-height: 44px;
+            }
+            .team-modal-close:hover {
+                background: rgba(255,255,255,0.1); color: #fff;
+            }
+            .team-modal-name { font-size: 32px; }
+
+            @media (max-width: 900px) {
+                .team-grid { grid-template-columns: repeat(2, 1fr); }
+            }
+            @media (max-width: 768px) {
+                .team-card-inner { height: 300px; }
+                .team-back-btn-wrap { padding-top: 20px; margin-bottom: 40px; }
+                .team-header { margin-bottom: 40px; }
+                .team-modal-container {
+                    align-items: flex-end; padding: 0;
+                }
+                .team-modal-content {
+                    flex-direction: column;
+                    max-height: 90vh; overflow-y: auto;
+                    border-radius: 24px 24px 0 0;
+                    max-width: 100%;
+                }
+                .team-modal-photo {
+                    width: 100%; min-height: 260px;
+                }
+                .team-modal-fade {
+                    width: 100%; height: 40px;
+                    right: 0; bottom: 0; top: auto; left: 0;
+                    background: linear-gradient(to bottom, transparent, #0a0a14);
+                }
+                .team-modal-body {
+                    padding: 24px 20px 32px;
+                }
+                .team-modal-name { font-size: 26px; }
+            }
+            @media (max-width: 560px) {
+                .team-grid { grid-template-columns: 1fr; }
+            }
+        `;
+        document.head.appendChild(style);
+        return () => { style.remove(); };
+    }, []);
+}
+
 // ─── Canvas Particles Background ──────────────────────────────────────────
 function CanvasParticles() {
     const canvasRef = useRef(null);
@@ -203,10 +297,11 @@ function TeamCard({ member, index, onClick }) {
             style={{ cursor: 'pointer', userSelect: 'none' }}
         >
             <motion.div
+                className="team-card-inner"
                 animate={{ y: hovered ? -10 : 0 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                 style={{
-                    borderRadius: 24, overflow: 'hidden', height: 380, position: 'relative',
+                    borderRadius: 24, overflow: 'hidden', position: 'relative',
                     border: `1px solid rgba(${member.colorRgb},${hovered ? '0.35' : '0.1'})`,
                     boxShadow: hovered ? `0 28px 64px rgba(0,0,0,0.5), 0 0 40px rgba(${member.colorRgb},0.15)` : '0 4px 24px rgba(0,0,0,0.4)',
                     transition: 'border-color 0.3s, box-shadow 0.3s', background: '#08080f',
@@ -258,33 +353,21 @@ function Modal({ member, onClose }) {
 
     return (
         <AnimatePresence>
-            <div onClick={onClose} style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
-            }}>
+            <div onClick={onClose} className="team-modal-container">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     onClick={e => e.stopPropagation()}
+                    className="team-modal-content"
                     style={{
-                        width: '100%', maxWidth: 860,
-                        borderRadius: 24, overflow: 'hidden',
-                        background: '#0a0a14',
                         border: `1px solid rgba(${member.colorRgb}, 0.25)`,
                         boxShadow: `0 40px 100px rgba(0,0,0,0.8), 0 0 80px rgba(${member.colorRgb},0.15)`,
-                        display: 'flex',
-                        position: 'relative',
-                        flexDirection: window.innerWidth < 768 ? 'column' : 'row'
                     }}
                 >
                     {/* Left side: Photo */}
-                    <div style={{
-                        width: window.innerWidth < 768 ? '100%' : '42%',
-                        minHeight: window.innerWidth < 768 ? 300 : 450,
-                        position: 'relative',
+                    <div className="team-modal-photo" style={{
                         background: `linear-gradient(135deg, rgba(${member.colorRgb},0.15), #0a0a14)`
                     }}>
                         <img
@@ -296,40 +379,13 @@ function Modal({ member, onClose }) {
                                 display: 'block'
                             }}
                         />
-                        {/* Edge fade for seamless blend */}
-                        <div style={{
-                            position: 'absolute',
-                            right: window.innerWidth < 768 ? 0 : 0,
-                            bottom: window.innerWidth < 768 ? 0 : 0,
-                            width: window.innerWidth < 768 ? '100%' : 40,
-                            height: window.innerWidth < 768 ? 40 : '100%',
-                            background: window.innerWidth < 768
-                                ? `linear-gradient(to bottom, transparent, #0a0a14)`
-                                : `linear-gradient(to right, transparent, #0a0a14)`,
-                            pointerEvents: 'none',
-                        }} />
+                        <div className="team-modal-fade" />
                     </div>
 
                     {/* Right side: Content */}
-                    <div style={{
-                        flex: 1,
-                        padding: window.innerWidth < 768 ? '24px 32px 32px' : '44px 48px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        position: 'relative'
-                    }}>
+                    <div className="team-modal-body">
                         {/* Close button */}
-                        <button onClick={onClose} style={{
-                            position: 'absolute', top: 20, right: 20,
-                            width: 36, height: 36, borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'rgba(255,255,255,0.6)', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', transition: 'all 0.2s', zIndex: 10,
-                        }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
-                        >×</button>
+                        <button onClick={onClose} className="team-modal-close">×</button>
 
                         <span style={{
                             display: 'inline-block', marginBottom: 14, alignSelf: 'flex-start',
@@ -340,9 +396,8 @@ function Modal({ member, onClose }) {
                             color: member.color, letterSpacing: '2px',
                         }}>{member.tag.toUpperCase()}</span>
 
-                        <h3 style={{
+                        <h3 className="team-modal-name" style={{
                             fontFamily: 'Inter, sans-serif', fontWeight: 900,
-                            fontSize: window.innerWidth < 768 ? 26 : 32,
                             color: '#f8fafc', margin: '0 0 6px', letterSpacing: '-1px'
                         }}>{member.name}</h3>
 
@@ -398,6 +453,7 @@ function Modal({ member, onClose }) {
 export default function TeamPage() {
     const navigate = useNavigate();
     const [selected, setSelected] = useState(null);
+    useResponsiveStyles();
 
     return (
         <div style={{ background: '#040406', minHeight: '100vh', color: '#f8fafc', overflowX: 'hidden' }}>
@@ -419,10 +475,10 @@ export default function TeamPage() {
                 }} />
             </div>
 
-            <div style={{ position: 'relative', zIndex: 1, maxWidth: 1140, margin: '0 auto', padding: '0 32px' }}>
+            <div style={{ position: 'relative', zIndex: 1, maxWidth: 1140, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
 
                 {/* Back button */}
-                <div style={{ paddingTop: 40, marginBottom: 80 }}>
+                <div className="team-back-btn-wrap">
                     <motion.button
                         onClick={() => navigate('/landing')}
                         whileHover={{ x: -4 }}
@@ -442,7 +498,8 @@ export default function TeamPage() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ textAlign: 'center', marginBottom: 80 }}
+                    className="team-header"
+                    style={{ textAlign: 'center' }}
                 >
                     <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -474,12 +531,9 @@ export default function TeamPage() {
                     </p>
                 </motion.div>
 
-                {/* 3+2 grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22, marginBottom: 22 }}>
-                    {TEAM.slice(0, 3).map((m, i) => <TeamCard key={m.name} member={m} index={i} onClick={setSelected} />)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 22, maxWidth: 760, margin: '0 auto', paddingBottom: 100 }}>
-                    {TEAM.slice(3).map((m, i) => <TeamCard key={m.name} member={m} index={i + 3} onClick={setSelected} />)}
+                {/* Responsive team grid */}
+                <div className="team-grid">
+                    {TEAM.map((m, i) => <TeamCard key={m.name} member={m} index={i} onClick={setSelected} />)}
                 </div>
 
             </div>

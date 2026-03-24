@@ -9,6 +9,9 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { errorHandler } = require('./middleware/errorHandler');
 const { requestTrackerMiddleware, registerMonitoringRoutes } = require('./middleware/monitoring');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+const { verifyToken, isAdmin } = require('./middleware/auth');
 
 const mongoose = require('mongoose');
 
@@ -19,33 +22,52 @@ const medicalRoutes = require('./routes/medical');
 const sm2Routes = require('./routes/sm2');
 const libraryRoutes = require('./routes/library');
 const chatRoutes = require('./routes/chat');
+const auditRoutes = require('./routes/audit');
+const adminRoutes = require('./routes/admin');
 
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/cortex';
+const { scheduleRetentionJob } = require('./services/auditRetention');
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('[MongoDB] Connected successfully'))
+  .then(() => {
+    console.log('[MongoDB] Connected successfully');
+    scheduleRetentionJob(); // Start audit log retention cron after DB is ready
+  })
   .catch(err => console.error('[MongoDB] Connection error:', err.message));
 
 const app = express();
 
-// CORS configuration
+// Trust first proxy hop so req.ip reflects real client IP behind nginx/Cloudflare
+app.set('trust proxy', 1);
+
+// CORS configuration — explicit allowlist only, no wildcard subdomains
+const PRODUCTION_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : [
+      'https://medsage.ai',
+      'https://www.medsage.ai',
+      'https://medsage-ai.vercel.app', // replace with your actual Vercel deployment URL
+    ];
+
+const DEVELOPMENT_ORIGINS = ['http://localhost:3000', 'http://localhost:3002'];
+
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? (process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['https://medsage.ai'])
-  : ['http://localhost:3000', 'http://localhost:3002'];
+  ? PRODUCTION_ORIGINS
+  : [...DEVELOPMENT_ORIGINS, ...PRODUCTION_ORIGINS];
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g. mobile apps, Render health checks)
     if (!origin) return callback(null, true);
-    // Allow any Vercel preview deployment URL
-    if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
+    console.warn(`[CORS] Blocked origin: ${origin}`);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
 app.use(helmet());
@@ -78,25 +100,16 @@ const aiLimiter = rateLimit({
   message: { success: false, error: 'Too many AI queries, please slow down' }
 });
 
-// Vision-specific limiter — image queries are more expensive
-const visionLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 2, // 2 vision queries per minute per user
-  keyGenerator: (req) => `vision:${req.user?.uid || req.ip}`,
-  skip: (req) => !req.body?.imageBase64, // only apply when image is present
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Vision query limit reached. Please wait before sending another image.' }
-});
-
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/study', studyRoutes);
-app.use('/api/medical/query', aiLimiter, visionLimiter); // Apply rate limits to AI query endpoint (includes /stream)
+app.use('/api/medical/query', aiLimiter); // IP-based AI limiter; per-user + vision limiters run inside the route after auth
 app.use('/api/medical', medicalRoutes);
 app.use('/api/sm2', sm2Routes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Basic route for API verification (could move to /api)
 app.get('/api', (req, res) => {
@@ -110,6 +123,19 @@ app.get('/', (req, res) => {
 
 // Health check + Prometheus metrics
 registerMonitoringRoutes(app);
+
+// ── Swagger / OpenAPI docs ────────────────────────────────────────────────────
+// In production: require admin token. In development: open to localhost.
+const swaggerGuard = process.env.NODE_ENV === 'production'
+  ? [verifyToken, isAdmin]
+  : [];
+app.get('/api-docs/swagger.json', ...swaggerGuard, (req, res) => {
+  res.json(swaggerSpec);
+});
+app.use('/api-docs', ...swaggerGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'Cortex API Docs',
+  swaggerOptions: { persistAuthorization: true },
+}));
 
 // Error handling
 app.use(errorHandler);

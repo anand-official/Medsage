@@ -51,5 +51,13 @@ export const plannerAPI = {
     // Get full analytics (heatmap, performance)
     getAnalytics: async () => {
         return apiCall('/api/study/analytics');
+    },
+
+    // Toggle a goal's done status
+    tickGoal: async (goalType, goalId) => {
+        return apiCall('/api/study/goal/tick', {
+            method: 'POST',
+            data: { goalType, goalId }
+        });
     }
 };
