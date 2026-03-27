@@ -221,9 +221,10 @@ router.post('/sessions', [
     const uid = req.user.uid;
 
     try {
+        // Note: this cap check has a TOCTOU race under concurrent requests — acceptable for a soft UX limit.
         // Enforce per-user session cap before creating a new one
-        const existingCount = await ChatSession.countDocuments({ user_id: uid });
-        const isNew = !(await ChatSession.exists({ user_id: uid, session_id }));
+        const existingCount = await ChatSession.countDocuments({ user_id: uid }, { maxTimeMS: 5000 });
+        const isNew = !(await ChatSession.exists({ user_id: uid, session_id }, { maxTimeMS: 5000 }));
         if (isNew && existingCount >= MAX_SESSIONS_PER_USER) {
             // Delete the oldest session to make room
             const oldest = await ChatSession.findOne({ user_id: uid })

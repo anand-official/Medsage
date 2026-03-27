@@ -143,16 +143,19 @@ class CortexLLMClient {
         }
     }
 
-    async callVision(imageBase64, question, history = [], mode = 'conceptual') {
+    async callVision(imageBase64, question, history = [], mode = 'conceptual', persona = null) {
         try {
             const result = await this._callWithRetry(
                 async () => {
                     const model = this._getModel();
                     const modeSystem = MODE_SYSTEM[mode] || MODE_SYSTEM.conceptual;
                     const historyText = history.length > 0
-                        ? `\nConversation so far:\n${history.map((item) => `[${item.role.toUpperCase()}]: ${item.content}`).join('\n')}\n`
+                        ? `\nConversation so far:\n${history.map((item) => `[${item.role.toUpperCase()}]: ${item.content ?? item.text ?? ''}`).join('\n')}\n`
                         : '';
-                    const prompt = `${modeSystem}\n\nYou are analyzing a medical image or document.${historyText}\n\nDo NOT start with greetings. Analyze directly.\n\nQuestion: ${question || 'Describe and analyze this medical image in detail.'}`;
+                    const personaBlock = (persona && persona.voice)
+                        ? `Teaching subject: ${persona.flavor || 'Medical Science'}\n${persona.voice}\n\n`
+                        : '';
+                    const prompt = `${personaBlock}${modeSystem}\n\nYou are analyzing a medical image or document.${historyText}\n\nDo NOT start with greetings. Analyze directly.\n\nQuestion: ${question || 'Describe and analyze this medical image in detail.'}`;
                     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
 
                     const res = await model.generateContent({

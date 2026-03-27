@@ -18,8 +18,9 @@ class GeminiService {
         return response.text;
     }
 
-    async callVisionLLM(imageBase64, question, history = [], mode = 'conceptual') {
-        const response = await llmClient.callVision(imageBase64, question, history, mode);
+    async callVisionLLM(imageBase64, question, history = [], mode = 'conceptual', persona = null) {
+        const { sanitizeInput } = require('./cortexRequestUtils');
+        const response = await llmClient.callVision(imageBase64, sanitizeInput(question || ''), history, mode, persona);
         return response.text;
     }
 

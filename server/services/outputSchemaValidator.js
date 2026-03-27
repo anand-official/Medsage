@@ -28,8 +28,8 @@ class OutputSchemaValidator {
             return { is_valid: false, parsed, error: 'Missing or invalid "claims" array.' };
         }
 
-        if (parsed.claims.length < 2) {
-            return { is_valid: false, parsed, error: 'The "claims" array must include at least 2 claims.' };
+        if (parsed.claims.length < 3) {
+            return { is_valid: false, parsed, error: 'The "claims" array must include at least 3 claims.' };
         }
 
         for (let i = 0; i < parsed.claims.length; i++) {

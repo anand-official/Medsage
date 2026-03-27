@@ -31,6 +31,7 @@ const visionLimiter = redisRateLimiter(
 
 // ── Learner context cache (avoids 2 MongoDB hits per request) ────────────────
 const LEARNER_CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 300) * 1000;
+const MAX_LEARNER_CACHE_SIZE = 1000;
 const learnerContextCache = new Map();
 
 function getCachedLearnerContext(uid) {
@@ -41,6 +42,10 @@ function getCachedLearnerContext(uid) {
 }
 
 function setCachedLearnerContext(uid, data) {
+  if (learnerContextCache.size >= MAX_LEARNER_CACHE_SIZE) {
+    const oldestKey = learnerContextCache.keys().next().value;
+    learnerContextCache.delete(oldestKey);
+  }
   learnerContextCache.set(uid, { data, expires: Date.now() + LEARNER_CACHE_TTL_MS });
 }
 
@@ -138,7 +143,7 @@ router.post('/query', [
   body('syllabus').optional().isString().isLength({ max: 100 }),
   body('history').optional().isArray({ max: 20 }).withMessage('History must be an array of at most 20 items'),
   body('history.*.role').optional().isIn(['user', 'ai']).withMessage('History item role must be "user" or "ai"'),
-  body('history.*.content').optional().isString().isLength({ max: 2000 }).withMessage('Each history item content must be under 2000 characters'),
+  body('history.*.text').optional().isString().isLength({ max: 2000 }).withMessage('Each history item content must be under 2000 characters'),
   // imageBase64 string-length guard (actual byte size validated below after decode)
   body('imageBase64').optional().isString().isLength({ max: 8 * 1024 * 1024 }).withMessage('Image payload too large'),
   body('subject').optional().isString().isLength({ max: 100 }),
@@ -255,7 +260,7 @@ router.post('/query', [
         is_clarification: Boolean(aiResponse.is_clarification_required),
       });
       await auditEntry.save();
-      logId = auditEntry._id;
+      logId = auditEntry.log_id;
     } catch (err) {
       console.error('[Audit] write failed:', err.message);
       // logId stays null — feedback submission will not be available for this response
@@ -362,7 +367,7 @@ router.post('/query/stream', [
   body('mode').optional().isIn(['exam', 'conceptual']),
   body('history').optional().isArray({ max: 20 }),
   body('history.*.role').optional().isIn(['user', 'ai']),
-  body('history.*.content').optional().isString().isLength({ max: 2000 }),
+  body('history.*.text').optional().isString().isLength({ max: 2000 }),
   body('subject').optional().isString().isLength({ max: 100 }),
 ], verifyToken, uidQueryLimiter, async (req, res) => {
   const errors = validationResult(req);

@@ -7,5 +7,5 @@
  *  - tests can override a single require() rather than patching process.env in many files
  */
 module.exports = {
-    GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
 };

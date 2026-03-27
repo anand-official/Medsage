@@ -7,7 +7,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { errorHandler } = require('./middleware/errorHandler');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { requestTrackerMiddleware, registerMonitoringRoutes } = require('./middleware/monitoring');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -28,7 +28,7 @@ const adminRoutes = require('./routes/admin');
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/cortex';
 const { scheduleRetentionJob } = require('./services/auditRetention');
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000, socketTimeoutMS: 45000 })
   .then(() => {
     console.log('[MongoDB] Connected successfully');
     scheduleRetentionJob(); // Start audit log retention cron after DB is ready
@@ -138,6 +138,7 @@ app.use('/api-docs', ...swaggerGuard, swaggerUi.serve, swaggerUi.setup(swaggerSp
 }));
 
 // Error handling
+app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server

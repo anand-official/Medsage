@@ -31,14 +31,7 @@ function _normalizeContext(context = {}) {
 
 function _makeKey(question, mode, subject, context = {}) {
     const normalizedContext = JSON.stringify(_normalizeContext(context));
-    const raw = `${(question || '').trim().toLowerCase()}::${mode || 'conceptual'}::${subject || ''}::${normalizedContext}`;
-    // Simple djb2 hash — good enough for cache keys
-    let hash = 5381;
-    for (let i = 0; i < raw.length; i++) {
-        hash = ((hash << 5) + hash) ^ raw.charCodeAt(i);
-        hash = hash >>> 0; // keep unsigned 32-bit
-    }
-    return `cq:${hash.toString(36)}`;
+    return `cq::${(question || '').trim().toLowerCase()}::${mode || 'conceptual'}::${subject || ''}::${normalizedContext}`;
 }
 
 function get(question, mode, subject, context = {}) {

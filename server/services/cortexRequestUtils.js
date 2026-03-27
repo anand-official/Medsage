@@ -46,7 +46,7 @@ function truncateHistory(history = [], maxTurns = 10, charBudget = 20000) {
     const kept = [];
 
     for (let i = turns.length - 1; i >= 0; i--) {
-        const content = sanitizeHistoryContent(turns[i].content);
+        const content = sanitizeHistoryContent(turns[i].content ?? turns[i].text);
         if (budget - content.length < 0) break;
 
         budget -= content.length;

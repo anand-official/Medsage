@@ -286,9 +286,10 @@ class CortexOrchestrator {
 
         const visionAnswer = await this.llmClient.callVision(
             ctx.imageBase64,
-            ctx.normalizedQuestion,
+            ctx.sanitizedQuestion,
             ctx.truncatedHistory,
-            ctx.mode
+            ctx.mode,
+            ctx.persona
         );
         recordCitationCompliance(false);
 

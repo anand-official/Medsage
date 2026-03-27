@@ -13,6 +13,7 @@ const mongoose = require('mongoose');
 const AuditLogSchema = new mongoose.Schema({
     // ── Identity ────────────────────────────────────────────────────
     user_id:       { type: String, required: true, index: true },
+    log_id:        { type: String, default: () => require('crypto').randomUUID(), index: true },
     session_id:    { type: String, default: null },          // optional; client may send
 
     // ── Request ─────────────────────────────────────────────────────

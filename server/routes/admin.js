@@ -51,7 +51,7 @@ router.post('/reload-prompts', verifyToken, isAdmin, (req, res) => {
         console.error('[ADMIN] reload-prompts failed:', err.message);
         res.status(500).json({
             success: false,
-            error: `Failed to reload prompts: ${err.message}`,
+            error: 'Failed to reload prompts. Check server logs for details.',
         });
     }
 });

@@ -3,7 +3,7 @@ require('dotenv').config();
 module.exports = {
   port: process.env.PORT || 3001,
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/medsage',
-  jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
+  jwtSecret: process.env.JWT_SECRET,
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
     credentials: true
@@ -14,9 +14,10 @@ module.exports = {
     maxMessagesPerSession: 200,
   },
   ai: {
-    model: process.env.AI_MODEL || 'gpt-3.5-turbo',
-    temperature: 0.7,
-    maxTokens: 1000
+    // Model is configured per-prompt in promptRegistry.json; this is informational only.
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
+    temperature: 0.2,    // default for structured calls; overridden per-prompt
+    maxTokens: 2000,     // default; overridden per-prompt
   },
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
