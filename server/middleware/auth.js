@@ -18,21 +18,12 @@ try {
     firebaseEnabled = true;
     console.log('[Auth] Firebase Admin initialized successfully');
   } else {
-    // PRODUCTION GUARD: Firebase credentials are required in production.
-    // Fail at startup — never allow an unauthenticated bypass in prod.
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[Auth] FATAL: Firebase credentials missing in production. Set FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL.');
-      process.exit(1);
-    }
-    console.warn('[Auth] Firebase credentials missing - running in DEV BYPASS MODE (INSECURE)');
-    console.warn('[Auth] DO NOT USE IN PRODUCTION');
+    console.warn('[Auth] Firebase credentials missing — all protected routes will return 503 until credentials are set.');
+    console.warn('[Auth] Set FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL in your environment.');
   }
 } catch (err) {
   console.error('[Auth] Firebase Admin init failed:', err.message);
-  if (process.env.NODE_ENV === 'production') {
-    console.error('[Auth] FATAL: Cannot initialize Firebase in production. Exiting.');
-    process.exit(1);
-  }
+  console.error('[Auth] All protected routes will return 503 until Firebase is fixed.');
 }
 
 /**
