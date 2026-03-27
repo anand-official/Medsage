@@ -100,7 +100,7 @@ const Header = () => {
             mb: 1
           }}
         >
-          Medsage
+          Medsage.ai
         </Typography>
 
         {/* Animated underline */}

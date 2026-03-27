@@ -13,7 +13,9 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  Divider
+  Divider,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import {
   Home as HomeIcon,
@@ -24,34 +26,29 @@ import {
   Brightness7 as LightModeIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
-  Dashboard as DashboardIcon
+  Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 import { ThemeContext } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import '../animations.css';
 
-const SIDEBAR_WIDTH_FULL = 220;
-const SIDEBAR_WIDTH_MINI = 64;
+const NAVBAR_HEIGHT = 64;
 const BOTTOM_DOCK_HEIGHT = 72;
 
-// The sidebar background is always dark regardless of theme
-const SIDEBAR_BG = '#0b0b12';
-const SIDEBAR_BORDER = '1px solid rgba(255,255,255,0.05)';
-
 const CortexLogoIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="3" fill="#ec4899" filter="drop-shadow(0 0 8px rgba(236,72,153,0.8))" />
-    <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#sb-logo-grad-1)" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#nb-logo-grad-1)" strokeWidth="2.5" strokeLinecap="round" />
     <path
       d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M19.07 4.93l-4.24 4.24M9.17 14.83l-4.24 4.24"
-      stroke="url(#sb-logo-grad-2)" strokeWidth="1.5" strokeLinecap="round" opacity="0.8"
+      stroke="url(#nb-logo-grad-2)" strokeWidth="1.5" strokeLinecap="round" opacity="0.8"
     />
     <defs>
-      <linearGradient id="sb-logo-grad-1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <linearGradient id="nb-logo-grad-1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
         <stop stopColor="#6366f1" />
         <stop offset="1" stopColor="#a855f7" />
       </linearGradient>
-      <linearGradient id="sb-logo-grad-2" x1="22" y1="2" x2="2" y2="22" gradientUnits="userSpaceOnUse">
+      <linearGradient id="nb-logo-grad-2" x1="22" y1="2" x2="2" y2="22" gradientUnits="userSpaceOnUse">
         <stop stopColor="#ec4899" />
         <stop offset="1" stopColor="#6366f1" />
       </linearGradient>
@@ -66,20 +63,13 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Desktop breakpoints
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));   // >= 900px
-  const isLarge   = useMediaQuery(theme.breakpoints.up('lg'));   // >= 1200px
-  const isMobile  = !isDesktop;
-
-  // On desktop: lg+ = full sidebar (220px), md = mini sidebar (64px)
-  const sidebarWidth = isLarge ? SIDEBAR_WIDTH_FULL : SIDEBAR_WIDTH_MINI;
-  const isMini = isDesktop && !isLarge;
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const navigationItems = [
-    { label: 'Dashboard', icon: <HomeIcon />,        path: '/' },
-    { label: 'Cortex',    icon: <QuestionIcon />,    path: '/question' },
-    { label: 'Study Plan',icon: <DateRangeIcon />,   path: '/planner' },
-    { label: 'Library',   icon: <BookIcon />,         path: '/books' },
+    { label: 'Dashboard', icon: <HomeIcon />,      path: '/' },
+    { label: 'Cortex',    icon: <QuestionIcon />,  path: '/question' },
+    { label: 'Study Plan',icon: <DateRangeIcon />, path: '/planner' },
+    { label: 'Library',   icon: <BookIcon />,       path: '/books' },
   ];
 
   const [anchorEl, setAnchorEl] = React.useState(null);
@@ -97,240 +87,165 @@ const Layout = () => {
     }
   };
 
-  // ── Sidebar Nav Item ────────────────────────────────────────────────────────
-  const NavItem = ({ item }) => {
-    const isActive = location.pathname === item.path;
-
-    const button = (
-      <Box
-        onClick={() => navigate(item.path)}
-        role="button"
-        aria-label={item.label}
-        aria-current={isActive ? 'page' : undefined}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: isMini ? 0 : 1.5,
-          justifyContent: isMini ? 'center' : 'flex-start',
-          px: isMini ? 0 : 2,
-          py: 1.1,
-          mx: isMini ? 'auto' : 1.5,
-          width: isMini ? 42 : 'auto',
-          height: 42,
-          borderRadius: 2.5,
-          cursor: 'pointer',
-          transition: 'background 0.15s, color 0.15s',
-          background: isActive
-            ? 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(168,85,247,0.18) 100%)'
-            : 'transparent',
-          border: isActive ? '1px solid rgba(99,102,241,0.28)' : '1px solid transparent',
-          color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.45)',
-          '&:hover': {
-            background: isActive
-              ? 'linear-gradient(135deg, rgba(99,102,241,0.3) 0%, rgba(168,85,247,0.22) 100%)'
-              : 'rgba(255,255,255,0.06)',
-            color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.75)',
-          },
-          '&:active': { transform: 'scale(0.96)' },
-          '& .MuiSvgIcon-root': { fontSize: 20, flexShrink: 0 },
-        }}
-      >
-        {item.icon}
-        {!isMini && (
-          <Typography
-            sx={{
-              fontSize: '0.875rem',
-              fontWeight: isActive ? 700 : 500,
-              lineHeight: 1,
-              color: 'inherit',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {item.label}
-          </Typography>
-        )}
-      </Box>
-    );
-
-    if (isMini) {
-      return (
-        <Tooltip title={item.label} placement="right" arrow>
-          {button}
-        </Tooltip>
-      );
-    }
-    return button;
-  };
-
-  // ── Sidebar ─────────────────────────────────────────────────────────────────
-  const Sidebar = () => (
-    <Box
-      component="nav"
-      aria-label="Main navigation"
+  // ── Top Navbar ───────────────────────────────────────────────────────────────
+  const Navbar = () => (
+    <AppBar
+      position="fixed"
+      elevation={0}
       sx={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        width: sidebarWidth,
-        bgcolor: SIDEBAR_BG,
-        borderRight: SIDEBAR_BORDER,
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: theme.zIndex.drawer,
-        transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
-        overflowX: 'hidden',
+        height: NAVBAR_HEIGHT,
+        bgcolor: 'rgba(8, 6, 18, 0.92)',
+        backdropFilter: 'blur(24px) saturate(160%)',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        zIndex: theme.zIndex.appBar,
       }}
     >
-      {/* Logo area */}
-      <Box
-        onClick={() => navigate('/')}
-        role="button"
-        aria-label="Go to dashboard"
+      <Toolbar
+        disableGutters
         sx={{
-          height: 72,
+          height: NAVBAR_HEIGHT,
+          minHeight: `${NAVBAR_HEIGHT}px !important`,
+          px: { xs: 2, md: 3 },
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isMini ? 'center' : 'flex-start',
-          px: isMini ? 0 : 2.5,
-          gap: 1.5,
-          cursor: 'pointer',
-          flexShrink: 0,
-          borderBottom: SIDEBAR_BORDER,
+          gap: 1,
         }}
       >
-        <CortexLogoIcon />
-        {!isMini && (
+        {/* Logo */}
+        <Box
+          onClick={() => navigate('/')}
+          role="button"
+          aria-label="Go to dashboard"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            cursor: 'pointer',
+            mr: { xs: 0, md: 3 },
+            flexShrink: 0,
+          }}
+        >
+          <CortexLogoIcon />
           <Typography
             sx={{
               fontWeight: 900,
-              fontSize: '1.1rem',
-              letterSpacing: '-0.04em',
+              fontSize: '1.05rem',
+              letterSpacing: '-0.03em',
               background: 'linear-gradient(135deg, #a78bfa 0%, #f472b6 60%, #fb923c 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               userSelect: 'none',
+              display: { xs: 'none', sm: 'block' },
             }}
           >
-            Cortex
+            Medsage.ai
           </Typography>
+        </Box>
+
+        {/* Nav links — desktop only */}
+        {!isMobile && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+            {navigationItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Box
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  role="button"
+                  aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s, color 0.15s',
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(99,102,241,0.22) 0%, rgba(168,85,247,0.15) 100%)'
+                      : 'transparent',
+                    border: isActive ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent',
+                    color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+                    '&:hover': {
+                      background: isActive
+                        ? 'linear-gradient(135deg, rgba(99,102,241,0.28) 0%, rgba(168,85,247,0.2) 100%)'
+                        : 'rgba(255,255,255,0.06)',
+                      color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.8)',
+                    },
+                    '&:active': { transform: 'scale(0.96)' },
+                    '& .MuiSvgIcon-root': { fontSize: 18, flexShrink: 0 },
+                  }}
+                >
+                  {item.icon}
+                  <Typography
+                    sx={{
+                      fontSize: '0.85rem',
+                      fontWeight: isActive ? 700 : 500,
+                      lineHeight: 1,
+                      color: 'inherit',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
         )}
-      </Box>
 
-      {/* Nav items */}
-      <Box sx={{ pt: 1.5, flex: 0 }}>
-        {navigationItems.map((item) => (
-          <NavItem key={item.path} item={item} />
-        ))}
-      </Box>
+        {/* Spacer for mobile */}
+        {isMobile && <Box sx={{ flex: 1 }} />}
 
-      {/* Flex spacer */}
-      <Box sx={{ flex: 1 }} />
-
-      {/* Bottom controls */}
-      <Box sx={{ borderTop: SIDEBAR_BORDER, pt: 1, pb: 1.5 }}>
-        {/* Theme toggle */}
-        {isMini ? (
-          <Tooltip title={mode === 'dark' ? 'Light mode' : 'Dark mode'} placement="right" arrow>
+        {/* Right controls */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>
+          {/* Theme toggle */}
+          <Tooltip title={mode === 'dark' ? 'Light mode' : 'Dark mode'} arrow>
             <IconButton
               onClick={toggleColorMode}
               aria-label="Toggle theme"
+              size="small"
               sx={{
-                display: 'flex', mx: 'auto', mb: 0.5,
-                width: 42, height: 42, borderRadius: 2.5,
+                width: 36,
+                height: 36,
+                borderRadius: 2,
                 color: 'rgba(255,255,255,0.45)',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.75)' },
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.8)' },
               }}
             >
               {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
-        ) : (
-          <Box
-            onClick={toggleColorMode}
-            role="button"
-            aria-label="Toggle theme"
-            sx={{
-              display: 'flex', alignItems: 'center', gap: 1.5,
-              px: 2, py: 1.1, mx: 1.5, borderRadius: 2.5,
-              cursor: 'pointer',
-              color: 'rgba(255,255,255,0.45)',
-              transition: 'background 0.15s, color 0.15s',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.75)' },
-              '& .MuiSvgIcon-root': { fontSize: 20 },
-            }}
-          >
-            {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-            <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, lineHeight: 1, color: 'inherit' }}>
-              {mode === 'dark' ? 'Light mode' : 'Dark mode'}
-            </Typography>
-          </Box>
-        )}
 
-        {/* User avatar */}
-        {isMini ? (
-          <Tooltip title={userProfile?.displayName || currentUser?.displayName || 'Account'} placement="right" arrow>
+          {/* Avatar */}
+          <Tooltip title={userProfile?.displayName || currentUser?.displayName || 'Account'} arrow>
             <IconButton
               onClick={handleAvatarClick}
               aria-label="Account menu"
               aria-controls={openMenu ? 'account-menu' : undefined}
               aria-haspopup="true"
-              sx={{ display: 'flex', mx: 'auto', mt: 0.25, width: 42, height: 42, borderRadius: 2.5 }}
+              size="small"
+              sx={{ ml: 0.25, p: 0.25 }}
             >
               <Avatar
                 src={userProfile?.photoURL || currentUser?.photoURL}
                 sx={{
-                  width: 32, height: 32,
+                  width: 34,
+                  height: 34,
                   border: '2px solid rgba(99,102,241,0.4)',
                   bgcolor: '#6366f1',
                   fontSize: '0.75rem',
                 }}
-              />
+              >
+                {(userProfile?.displayName || currentUser?.displayName || 'S')[0].toUpperCase()}
+              </Avatar>
             </IconButton>
           </Tooltip>
-        ) : (
-          <Box
-            onClick={handleAvatarClick}
-            role="button"
-            aria-label="Account menu"
-            aria-controls={openMenu ? 'account-menu' : undefined}
-            aria-haspopup="true"
-            sx={{
-              display: 'flex', alignItems: 'center', gap: 1.5,
-              px: 2, py: 1, mx: 1.5, mt: 0.25, borderRadius: 2.5,
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
-            }}
-          >
-            <Avatar
-              src={userProfile?.photoURL || currentUser?.photoURL}
-              sx={{
-                width: 32, height: 32, flexShrink: 0,
-                border: '2px solid rgba(99,102,241,0.4)',
-                bgcolor: '#6366f1',
-                fontSize: '0.75rem',
-              }}
-            />
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{
-                fontSize: '0.8rem', fontWeight: 700, lineHeight: 1.2,
-                color: 'rgba(255,255,255,0.85)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {userProfile?.displayName || currentUser?.displayName || 'Student'}
-              </Typography>
-              <Typography sx={{
-                fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.2,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {userProfile?.email || currentUser?.email || ''}
-              </Typography>
-            </Box>
-          </Box>
-        )}
-      </Box>
-    </Box>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 
   // ── Account dropdown menu ───────────────────────────────────────────────────
@@ -341,14 +256,14 @@ const Layout = () => {
       open={openMenu}
       onClose={handleCloseMenu}
       onClick={handleCloseMenu}
-      transformOrigin={{ horizontal: 'left', vertical: 'bottom' }}
-      anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
+      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       PaperProps={{
         elevation: 0,
         sx: {
           overflow: 'visible',
           filter: 'drop-shadow(0px 8px 28px rgba(0,0,0,0.45))',
-          mb: 1,
+          mt: 1,
           borderRadius: 3,
           background: 'rgba(14, 11, 26, 0.96)',
           backdropFilter: 'blur(20px)',
@@ -462,31 +377,29 @@ const Layout = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'transparent' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'transparent' }}>
       <CssBaseline />
 
-      {/* Desktop sidebar */}
-      {isDesktop && <Sidebar />}
+      {/* Top navbar */}
+      <Navbar />
 
-      {/* Main content area */}
+      {/* Main content area — offset by navbar height */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          // offset for sidebar on desktop, no offset on mobile
-          ml: isDesktop ? `${sidebarWidth}px` : 0,
+          mt: `${NAVBAR_HEIGHT}px`,
           pb: isMobile ? `${BOTTOM_DOCK_HEIGHT + 16}px` : 0,
-          minHeight: '100vh',
-          width: isDesktop ? `calc(100% - ${sidebarWidth}px)` : '100%',
+          minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
           overflowX: 'hidden',
-          transition: 'margin-left 0.25s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
         <Box
           sx={{
-            px: { xs: 2, sm: 3, md: 3, lg: 4 },
+            px: { xs: 2, sm: 3, md: 4 },
             py: { xs: 2, md: 3 },
             maxWidth: 1600,
+            mx: 'auto',
           }}
         >
           <Outlet />
@@ -496,7 +409,7 @@ const Layout = () => {
       {/* Mobile bottom dock */}
       {isMobile && <BottomDock />}
 
-      {/* Account menu (shared between sidebar and dock) */}
+      {/* Account menu */}
       <AccountMenu />
     </Box>
   );

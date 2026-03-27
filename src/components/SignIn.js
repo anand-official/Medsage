@@ -196,7 +196,7 @@ export default function SignIn() {
                   </defs>
                 </svg>
               </div>
-              <span style={{ fontWeight: 900, fontSize: 26, letterSpacing: '-0.5px' }}>Medsage</span>
+              <span style={{ fontWeight: 900, fontSize: 26, letterSpacing: '-0.5px' }}>Medsage.ai</span>
             </div>
 
             <h1 style={{ fontSize: 'clamp(44px, 4.5vw, 64px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-1.5px', marginBottom: 24 }}>

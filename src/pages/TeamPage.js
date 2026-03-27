@@ -520,7 +520,7 @@ export default function TeamPage() {
                         <span style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                             behind
                         </span>{' '}
-                        Medsage
+                        Medsage.ai
                     </h1>
 
                     <p style={{

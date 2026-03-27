@@ -266,7 +266,7 @@ function Navbar({ onSignIn }) {
                     <span style={{
                         fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 17,
                         color: '#f1f5f9', letterSpacing: '-0.4px',
-                    }}>Medsage</span>
+                    }}>Medsage.ai</span>
                 </motion.div>
 
                 {/* Center nav links — hidden on mobile */}
@@ -1000,7 +1000,7 @@ function Footer() {
                                 </svg>
                             </div>
                             <span style={{ fontWeight: 900, fontSize: 24, color: '#f8fafc', letterSpacing: '-0.5px' }}>
-                                Medsage
+                                Medsage.ai
                             </span>
                         </div>
                         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 500 }}>
