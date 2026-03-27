@@ -2,9 +2,10 @@ services:
   - type: web
     name: medsage-backend
     env: node
+    rootDir: server
     plan: free
     buildCommand: "npm install"
-    startCommand: "node server/index.js"
+    startCommand: "npm start"
     envVars:
       - key: NODE_VERSION
         value: 22.14.0
