@@ -441,12 +441,13 @@ class TopicConfidenceScorer {
      */
     scoreQuery(question) {
         const q = question.toLowerCase();
+        const normalizedQuestion = this._normalizeText(q);
         let best = null;
         let bestScore = 0;
 
         for (const rule of this.topicRules) {
             // Strong keyword match → 0.92 confidence
-            const strongHit = rule.strongKeywords.some(kw => q.includes(kw));
+            const strongHit = rule.strongKeywords.some((kw) => this._includesKeyword(normalizedQuestion, kw));
             if (strongHit) {
                 const score = 0.92;
                 if (score > bestScore) {
@@ -457,7 +458,7 @@ class TopicConfidenceScorer {
             }
 
             // Regular keyword match — count multiple hits for graduated scoring
-            const hits = rule.keywords.filter(kw => q.includes(kw)).length;
+            const hits = rule.keywords.filter((kw) => this._includesKeyword(normalizedQuestion, kw)).length;
             if (hits > 0) {
                 // 1 hit → 0.72, 2 hits → 0.80, 3+ hits → 0.86
                 const score = Math.min(0.86, 0.72 + (hits - 1) * 0.07);
@@ -469,7 +470,7 @@ class TopicConfidenceScorer {
         }
 
         if (!best || bestScore < 0.60) {
-            const semanticFallback = this._semanticSubjectFallback(q);
+            const semanticFallback = this._semanticSubjectFallback(normalizedQuestion);
             if (semanticFallback) {
                 return semanticFallback;
             }
@@ -523,12 +524,15 @@ class TopicConfidenceScorer {
         }
     }
 
-    _semanticSubjectFallback(q) {
+    _semanticSubjectFallback(normalizedQuestion) {
         let topSubject = null;
         let topHits = 0;
 
         for (const [subject, anchors] of Object.entries(SUBJECT_ANCHORS)) {
-            const hits = anchors.reduce((count, kw) => count + (q.includes(kw) ? 1 : 0), 0);
+            const hits = anchors.reduce(
+                (count, kw) => count + (this._includesKeyword(normalizedQuestion, kw) ? 1 : 0),
+                0
+            );
             if (hits > topHits) {
                 topHits = hits;
                 topSubject = subject;
@@ -620,6 +624,18 @@ class TopicConfidenceScorer {
         if (!magnitudeA || !magnitudeB) return 0;
 
         return dot / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+    }
+
+    _normalizeText(text = '') {
+        return ` ${String(text)
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim()} `;
+    }
+
+    _includesKeyword(normalizedQuestion, keyword) {
+        const normalizedKeyword = this._normalizeText(keyword);
+        return normalizedQuestion.includes(normalizedKeyword);
     }
 
     /**

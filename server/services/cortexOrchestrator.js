@@ -385,14 +385,25 @@ class CortexOrchestrator {
         // expandQuery returns [searchPhrase, ...alternatives] (or [searchPhrase] on
         // timeout/error/disabled).  retrieveWithExpansion runs all variants in
         // parallel and merges unique chunks from alt queries into the primary result.
-        const expandedQueries = await queryExpander.expandQuery(searchPhrase);
-        const retrieval = await ragService.retrieveWithExpansion(
-            ctx.topicResult.topic_id,
-            { subject: ctx.topicResult.subject, country: ctx.syllabusContext.country },
-            expandedQueries,
-            ctx.calibratedTopicConfidence,
-            ctx.mode
-        );
+        let retrieval;
+        if (typeof ragService.retrieveWithExpansion === 'function') {
+            const expandedQueries = await queryExpander.expandQuery(searchPhrase);
+            retrieval = await ragService.retrieveWithExpansion(
+                ctx.topicResult.topic_id,
+                { subject: ctx.topicResult.subject, country: ctx.syllabusContext.country },
+                expandedQueries,
+                ctx.calibratedTopicConfidence,
+                ctx.mode
+            );
+        } else {
+            retrieval = await ragService.retrieveContext(
+                ctx.topicResult.topic_id,
+                { subject: ctx.topicResult.subject, country: ctx.syllabusContext.country },
+                searchPhrase,
+                ctx.calibratedTopicConfidence,
+                ctx.mode
+            );
+        }
         recordRAGLatency(retrieval.telemetry?.latency_ms || 0);
 
         // Record expansion telemetry (only fires when alternatives were actually generated)

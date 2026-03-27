@@ -25,6 +25,7 @@ import TeamPage from './pages/TeamPage';
 import { StudyProvider } from './contexts/StudyContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getTheme } from './theme';
+import { getStoredValue, setStoredValue } from './utils/browser';
 
 // Export the theme context
 export const ThemeContext = createContext({ toggleColorMode: () => { } });
@@ -42,11 +43,11 @@ function ProtectedRoute({ children }) {
 
 function App() {
   // State for theme mode
-  const [mode, setMode] = useState(localStorage.getItem('themeMode') || 'light');
+  const [mode, setMode] = useState(() => getStoredValue('themeMode', 'light'));
 
   // Save theme preference to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem('themeMode', mode);
+    setStoredValue('themeMode', mode);
   }, [mode]);
 
   // Create theme based on mode
@@ -92,7 +93,7 @@ function App() {
         <CssBaseline />
         <AuthProvider>
           <StudyProvider>
-            <Router>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <Onboarding />
               <Routes>
                 <Route path="/landing" element={<LandingPage />} />

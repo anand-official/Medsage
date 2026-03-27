@@ -29,13 +29,27 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchMedicalQuery, submitFeedback, fetchSessionMessages } from '../services/api';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { buildHistoryForRequest } from '../utils/assistantContext';
+import {
+  createChatTimestamp,
+  hydrateSessionMessages,
+  serializeSessionMessages,
+} from '../utils/chatSessions';
+import {
+  getSpeechRecognitionConstructor,
+  getSpeechSynthesis,
+  getSpeechSynthesisUtteranceConstructor,
+  getStoredValue,
+  safeJsonParse,
+  setStoredValue,
+} from '../utils/browser';
+import OnboardingTour from '../components/OnboardingTour';
+import '../animations.css';
 
 // Number of messages to render per page when viewing a long session
 const RENDER_PAGE_SIZE = 50;
-import { useAuth } from '../contexts/AuthContext';
-import { buildHistoryForRequest } from '../utils/assistantContext';
-import OnboardingTour from '../components/OnboardingTour';
-import '../animations.css';
+const CHAT_SESSIONS_STORAGE_KEY = 'medsage_chat_sessions';
 
 // ─── Professor personas by topic ─────────────────────────────────────────────
 const PROFESSORS = {
@@ -245,6 +259,9 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
   const [keyPointsExpanded, setKeyPointsExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(null); // 'up' | 'down' | null
+  const speechSynthesis = getSpeechSynthesis();
+  const SpeechSynthesisUtteranceCtor = getSpeechSynthesisUtteranceConstructor();
+  const canSpeak = Boolean(speechSynthesis && SpeechSynthesisUtteranceCtor);
 
   const handleFeedback = (rating) => {
     if (feedbackGiven || !response.log_id) return;
@@ -252,14 +269,25 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
     onFeedback?.(response.log_id, rating);
   };
 
-  useEffect(() => { return () => { if (isSpeaking) window.speechSynthesis.cancel(); }; }, [isSpeaking]);
+  useEffect(() => {
+    return () => {
+      if (isSpeaking && speechSynthesis) {
+        speechSynthesis.cancel();
+      }
+    };
+  }, [isSpeaking, speechSynthesis]);
 
   const toggleSpeak = () => {
-    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
-    const utterance = new SpeechSynthesisUtterance((response.text || '').replace(/[*#`]/g, ''));
+    if (!canSpeak) return;
+    if (isSpeaking) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtteranceCtor((response.text || '').replace(/[*#`]/g, ''));
     utterance.onend = () => setIsSpeaking(false);
     setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    speechSynthesis.speak(utterance);
   };
 
   const handleCopy = () => {
@@ -554,8 +582,9 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
               borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
               display: 'flex', justifyContent: 'flex-end', gap: 0.25,
             }}>
-              <Tooltip title={isSpeaking ? 'Stop reading' : 'Read aloud'}>
-                <IconButton size="small" onClick={toggleSpeak} sx={{
+              <Tooltip title={canSpeak ? (isSpeaking ? 'Stop reading' : 'Read aloud') : 'Text-to-speech unavailable'}>
+                <span>
+                <IconButton size="small" onClick={toggleSpeak} disabled={!canSpeak && !isSpeaking} sx={{
                   p: 0.75, borderRadius: 1.5,
                   color: isSpeaking ? '#f87171' : (isDark ? '#334155' : '#cbd5e1'),
                   '&:hover': { color: isDark ? '#94a3b8' : '#64748b', bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' },
@@ -563,6 +592,7 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
                 }}>
                   {isSpeaking ? <StopIcon sx={{ fontSize: 14 }} /> : <VolumeUpIcon sx={{ fontSize: 14 }} />}
                 </IconButton>
+                </span>
               </Tooltip>
               <Tooltip title={copied ? 'Copied!' : 'Copy answer'}>
                 <IconButton size="small" onClick={handleCopy} sx={{
@@ -910,15 +940,22 @@ const QuestionPage = () => {
           id: s.session_id, title: s.title, timestamp: new Date(s.updated_at).getTime()
         }));
         if (serverSessions.length > 0) {
-          setSavedSessions(serverSessions);
-          localStorage.setItem('medsage_chat_sessions', JSON.stringify(serverSessions));
+          const localSessions = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
+          const fallbackSessions = Array.isArray(localSessions) ? localSessions : [];
+          const seenIds = new Set(serverSessions.map((session) => session.id));
+          const mergedSessions = [
+            ...serverSessions,
+            ...fallbackSessions.filter((session) => session?.id && !seenIds.has(session.id)),
+          ].slice(0, 20);
+          setSavedSessions(mergedSessions);
+          setStoredValue(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(mergedSessions));
           return;
         }
       } catch { /* offline or unauthenticated — fall through to localStorage */ }
-      try {
-        const raw = localStorage.getItem('medsage_chat_sessions');
-        if (raw) setSavedSessions(JSON.parse(raw));
-      } catch { /* ignore */ }
+      const localSessions = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
+      if (Array.isArray(localSessions)) {
+        setSavedSessions(localSessions);
+      }
     };
     load();
   }, []);
@@ -929,16 +966,18 @@ const QuestionPage = () => {
     const firstUserMsg = messages.find(m => m.role === 'user');
     if (!firstUserMsg) return;
     const title = firstUserMsg.text.length > 60 ? firstUserMsg.text.substring(0, 60) + '…' : firstUserMsg.text;
-    const session = { id: sessionIdRef.current, title, timestamp: Date.now(), messages };
+    const serializableMessages = serializeSessionMessages(messages);
+    if (serializableMessages.length === 0) return;
+    const session = { id: sessionIdRef.current, title, timestamp: Date.now(), messages: serializableMessages };
 
     // Update localStorage immediately (offline cache)
     try {
-      const raw = localStorage.getItem('medsage_chat_sessions');
-      const all = raw ? JSON.parse(raw) : [];
-      const idx = all.findIndex(s => s.id === session.id);
-      if (idx >= 0) all[idx] = session; else all.unshift(session);
-      const trimmed = all.slice(0, 20);
-      localStorage.setItem('medsage_chat_sessions', JSON.stringify(trimmed));
+      const all = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
+      const nextSessions = Array.isArray(all) ? all : [];
+      const idx = nextSessions.findIndex(s => s.id === session.id);
+      if (idx >= 0) nextSessions[idx] = session; else nextSessions.unshift(session);
+      const trimmed = nextSessions.slice(0, 20);
+      setStoredValue(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(trimmed));
       setSavedSessions(trimmed);
     } catch { /* ignore */ }
 
@@ -946,12 +985,12 @@ const QuestionPage = () => {
     api.post('/api/chat/sessions', {
       session_id: sessionIdRef.current,
       title,
-      messages: messages.map(m => ({ role: m.role, text: m.text || '', timestamp: m.timestamp })),
+      messages: serializableMessages,
     }).catch(() => { /* silently fail — localStorage is the fallback */ });
   }, [messages]);
 
   useEffect(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = getSpeechRecognitionConstructor();
     if (!SR) return;
     const recognition = new SR();
     recognition.continuous = true;
@@ -974,8 +1013,21 @@ const QuestionPage = () => {
   }, []);
 
   const toggleListen = () => {
-    if (isListening) { recognitionRef.current?.stop(); setIsListening(false); }
-    else { try { recognitionRef.current?.start(); setIsListening(true); } catch (e) { } }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    if (!recognitionRef.current) {
+      setSnackbar({ open: true, message: 'Voice input is not supported in this browser.' });
+      return;
+    }
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (e) {
+      setSnackbar({ open: true, message: 'Microphone is not available right now.' });
+    }
   };
 
   useEffect(() => {
@@ -989,7 +1041,7 @@ const QuestionPage = () => {
     if (!q && !attachedImage) return;
 
     const displayText = q || '(Image attached)';
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const messageClock = createChatTimestamp();
     const history = buildHistory();
     const imageDataUrl = attachedImage?.dataUrl || null;
     const detectedSubject = imageDataUrl ? null : detectSubjectFromText(q);
@@ -999,7 +1051,12 @@ const QuestionPage = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setMessages(prev => [...prev, { role: 'user', text: displayText, imageSrc: imageDataUrl, timestamp }]);
+    setMessages(prev => [...prev, {
+      role: 'user',
+      text: displayText,
+      imageSrc: imageDataUrl,
+      ...messageClock,
+    }]);
     setQuestion('');
     setAttachedImage(null);
     setLoading(true);
@@ -1032,7 +1089,7 @@ const QuestionPage = () => {
         modeUsed: mode,
         topicId: raw?.topicId || raw?.meta?.topic_id || null,
         subject: raw?.subject || raw?.meta?.subject || detectedSubject || null,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        ...createChatTimestamp(),
       }]);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError') return;
@@ -1042,7 +1099,7 @@ const QuestionPage = () => {
         retryable: err.retryable !== false, // default true unless explicitly false
         queryText: q,
         imageDataUrl: attachedImage?.dataUrl || null,
-        timestamp,
+        ...createChatTimestamp(),
       }]);
     } finally {
       if (abortControllerRef.current === controller) setLoading(false);
@@ -1064,7 +1121,14 @@ const QuestionPage = () => {
   };
 
   const handleCopy = (text) => {
-    navigator.clipboard.writeText(text || '').then(() => setSnackbar({ open: true, message: 'Copied to clipboard' }));
+    if (!navigator?.clipboard?.writeText) {
+      setSnackbar({ open: true, message: 'Copy is not supported in this browser.' });
+      return;
+    }
+    navigator.clipboard
+      .writeText(text || '')
+      .then(() => setSnackbar({ open: true, message: 'Copied to clipboard' }))
+      .catch(() => setSnackbar({ open: true, message: 'Failed to copy answer.' }));
   };
 
   const handleFeedback = async (logId, rating) => {
@@ -1103,17 +1167,12 @@ const QuestionPage = () => {
       try {
         const data = await fetchSessionMessages(session.id, 1, 200);
         const raw = data?.session?.messages || [];
-        // Server stores plain { role, text, timestamp }; rebuild minimal AI message shape
-        // so AIMessage can render the text field from response.text.
-        msgs = raw.map(m => ({
-          role: m.role,
-          text: m.text || '',
-          timestamp: m.timestamp,
-          ...(m.role === 'ai' ? { response: { text: m.text || '', type: 'ANSWER' } } : {}),
-        }));
+        msgs = hydrateSessionMessages(raw);
       } catch {
         msgs = [];
       }
+    } else {
+      msgs = hydrateSessionMessages(msgs);
     }
 
     setMessages(msgs);
@@ -1162,7 +1221,7 @@ const QuestionPage = () => {
     e.stopPropagation();
     try {
       const updated = savedSessions.filter(s => s.id !== sessionId);
-      localStorage.setItem('medsage_chat_sessions', JSON.stringify(updated));
+      setStoredValue(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(updated));
       setSavedSessions(updated);
     } catch { /* ignore */ }
     // Delete from server in background

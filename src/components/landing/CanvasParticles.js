@@ -51,7 +51,7 @@ export default function CanvasParticles() {
                 const dx = p.x - mx;
                 const dy = p.y - my;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < MOUSE_REPEL) {
+                if (dist > 0 && dist < MOUSE_REPEL) {
                     const force = (MOUSE_REPEL - dist) / MOUSE_REPEL;
                     p.vx += (dx / dist) * force * 0.4;
                     p.vy += (dy / dist) * force * 0.4;

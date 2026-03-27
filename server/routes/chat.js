@@ -213,6 +213,12 @@ router.post('/sessions', [
     body('messages').isArray({ max: MAX_MESSAGES_PER_SESSION }),
     body('messages.*.role').isIn(['user', 'ai']),
     body('messages.*.text').isString().isLength({ max: 10000 }),
+    body('messages.*.timestamp').optional().isInt({ min: 0 }),
+    body('messages.*.meta').optional().isObject(),
+    body('messages.*.meta.topic_id').optional().isString().isLength({ max: 120 }),
+    body('messages.*.meta.subject').optional().isString().isLength({ max: 120 }),
+    body('messages.*.meta.confidence').optional().isFloat({ min: 0, max: 1 }),
+    body('messages.*.meta.pipeline').optional().isString().isLength({ max: 120 }),
 ], verifyToken, async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

@@ -8,10 +8,15 @@ describe('topicConfidenceScorer', () => {
     expect(result.confidence).toBeGreaterThanOrEqual(0.9);
   });
 
-  test('uses semantic fallback for weak keyword queries', () => {
+  test('routes psychiatry-style queries to the psychiatry subject', () => {
     const result = topicConfidenceScorer.scoreQuery('How do thought disorder patterns influence cognition in mental illness?');
     expect(result.matched).toBe(true);
-    expect(result.method).toBe('semantic_fallback_v1');
     expect(result.subject).toBe('Psychiatry');
+    expect(result.confidence).toBeGreaterThanOrEqual(0.55);
+  });
+
+  test('does not treat partial word overlaps as keyword matches', () => {
+    const result = topicConfidenceScorer.scoreQuery('How do thought patterns change in psychosis?');
+    expect(result.subject).not.toBe('ENT');
   });
 });

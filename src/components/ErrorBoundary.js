@@ -1,4 +1,5 @@
 import React from 'react';
+import { matchesMediaQuery, reloadWindow } from '../utils/browser';
 
 /**
  * ErrorBoundary — catches unhandled render/lifecycle errors inside QuestionPage
@@ -27,7 +28,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.hasError) return this.props.children;
 
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = matchesMediaQuery('(prefers-color-scheme: dark)');
 
     return (
       <div style={{
@@ -97,7 +98,7 @@ class ErrorBoundary extends React.Component {
             Try again
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={reloadWindow}
             style={{
               padding: '10px 22px',
               borderRadius: 10,

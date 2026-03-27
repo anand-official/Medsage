@@ -5,15 +5,13 @@ import { useAuth } from '../contexts/AuthContext';
 import '../animations.css';
 import CanvasParticles from '../components/landing/CanvasParticles';
 import TeamSection from '../components/landing/TeamSection';
+import { getViewportWidth, subscribeToMediaQuery } from '../utils/browser';
 
 // ─── Mobile detection hook ──────────────────────────────────────────────────
 function useIsMobile(breakpoint = 768) {
-    const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+    const [isMobile, setIsMobile] = useState(() => getViewportWidth() < breakpoint);
     useEffect(() => {
-        const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-        const handler = (e) => setIsMobile(e.matches);
-        mq.addEventListener('change', handler);
-        return () => mq.removeEventListener('change', handler);
+        return subscribeToMediaQuery(`(max-width: ${breakpoint - 1}px)`, setIsMobile);
     }, [breakpoint]);
     return isMobile;
 }

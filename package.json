@@ -7,8 +7,10 @@
     "start": "node server/index.js",
     "dev:backend": "nodemon server/index.js",
     "start:frontend": "react-scripts start",
+    "build": "react-scripts build",
     "build:frontend": "react-scripts build",
-    "test:backend": "jest --config jest.backend.config.js"
+    "test:backend": "jest --config jest.backend.config.js",
+    "test:frontend": "react-scripts test --watchAll=false --runInBand"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
