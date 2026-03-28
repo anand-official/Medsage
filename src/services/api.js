@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { auth } from '../firebase';
+import { getApiBaseUrl } from '../config/apiBase';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_URL,
@@ -216,7 +217,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
     // proceed without auth header
   }
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  const API_URL = getApiBaseUrl();
 
   const response = await fetch(`${API_URL}/api/medical/query/stream`, {
     method: 'POST',
