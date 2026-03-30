@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleLogin } from '@react-oauth/google';
 import '../animations.css';
 
 // ─── SVGs ────────────────────────────────────────────────────────────────
@@ -56,22 +57,22 @@ const features = [
 
 // ─── COMPONENT ──────────────────────────────────────────────────────────
 export default function SignIn() {
-  const { signInWithGoogle } = useAuth();
+  const { handleGoogleSuccess } = useAuth();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleGoogleSignIn = async () => {
+  const onGoogleSuccess = async (credentialResponse) => {
     try {
       setError('');
-      setLoading(true);
-      await signInWithGoogle();
+      await handleGoogleSuccess(credentialResponse);
       navigate('/');
-    } catch (error) {
-      setError(error.message || 'Failed to sign in with Google');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err.message || 'Failed to sign in with Google');
     }
+  };
+
+  const onGoogleError = () => {
+    setError('Google sign-in failed. Please try again.');
   };
 
   return (
@@ -313,32 +314,18 @@ export default function SignIn() {
               )}
             </AnimatePresence>
 
-            {/* VIBRANT GOOGLE BUTTON */}
-            <motion.button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.03, boxShadow: '0 12px 30px rgba(255,255,255,0.25)' }}
-              whileTap={{ scale: loading ? 1 : 0.97 }}
-              style={{
-                width: '100%', padding: '16px 24px', borderRadius: 16, minHeight: 52,
-                background: '#ffffff',
-                border: 'none',
-                color: '#090514', fontSize: 17, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                opacity: loading ? 0.7 : 1, transition: 'all 0.2s',
-              }}
-            >
-              {loading ? (
-                <div style={{ width: 22, height: 22, border: '2px solid rgba(0,0,0,0.1)', borderTopColor: '#000', borderRadius: '50%', animation: 'spinner 1s linear infinite' }} />
-              ) : (
-                <>
-                  <IconGoogle />
-                  Continue with Google
-                </>
-              )}
-            </motion.button>
+            {/* GOOGLE LOGIN BUTTON */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <GoogleLogin
+                onSuccess={onGoogleSuccess}
+                onError={onGoogleError}
+                theme="filled_black"
+                size="large"
+                shape="rectangular"
+                width="360"
+                text="continue_with"
+              />
+            </div>
 
             <div style={{ marginTop: 40, fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
               By continuing, you agree to Medsage's<br />

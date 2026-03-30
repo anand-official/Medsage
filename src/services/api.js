@@ -1,6 +1,8 @@
 import axios from 'axios';
-import { auth } from '../firebase';
 import { getApiBaseUrl } from '../config/apiBase';
+
+// Read the Google ID token stored on login
+const getStoredToken = () => localStorage.getItem('google_id_token');
 
 const API_URL = getApiBaseUrl();
 
@@ -11,19 +13,13 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor to attach Firebase Bearer token on every request.
+// Add request interceptor to attach Google ID token on every request.
 // The UID is NOT sent as a header — the backend decodes it from the token.
 api.interceptors.request.use(
-  async (config) => {
-    try {
-      const { auth } = await import('../firebase');
-      const user = auth.currentUser;
-      if (user) {
-        const token = await user.getIdToken();
-        config.headers['Authorization'] = `Bearer ${token}`;
-      }
-    } catch (e) {
-      // Not authenticated — let request go through without headers
+  (config) => {
+    const token = getStoredToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
@@ -42,17 +38,10 @@ api.interceptors.response.use(
   }
 );
 
-// Helper function to get the Firebase ID token (optional — returns null if not logged in)
-const getAuthToken = async () => {
-  const user = auth.currentUser;
-  if (!user) return null;
-  return user.getIdToken();
-};
-
-// Helper function to make API calls — attaches Firebase token when available
+// Helper function to make API calls — attaches Google ID token when available
 export const apiCall = async (endpoint, options = {}) => {
   try {
-    const token = await getAuthToken();
+    const token = getStoredToken();
     const response = await api({
       url: endpoint,
       ...options,
@@ -204,18 +193,9 @@ export const submitFeedback = async (logId, rating) => {
 export const streamMedicalQuery = async (query, options = {}, onToken, onDone, onError, signal = null) => {
   const { mode = 'conceptual', history = [], subject = null, onStart = null } = options;
 
-  // Get Firebase token
-  let authHeader = '';
-  try {
-    const { auth } = await import('../firebase');
-    const user = auth.currentUser;
-    if (user) {
-      const token = await user.getIdToken();
-      authHeader = `Bearer ${token}`;
-    }
-  } catch (e) {
-    // proceed without auth header
-  }
+  // Get stored Google ID token
+  const storedToken = getStoredToken();
+  const authHeader = storedToken ? `Bearer ${storedToken}` : '';
 
   const API_URL = getApiBaseUrl();
 
