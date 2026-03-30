@@ -1,5 +1,6 @@
 const LOCAL_API_URL = 'http://localhost:3001';
-const PRODUCTION_API_URL = 'https://medsage-1.onrender.com';
+// Fallback only — always set REACT_APP_API_URL in Vercel env vars
+const PRODUCTION_API_URL = process.env.REACT_APP_API_URL || 'https://medsage-1.onrender.com';
 
 function trimTrailingSlash(url) {
   return url.replace(/\/+$/, '');

@@ -30,5 +30,5 @@ services:
       # FIREBASE_PRIVATE_KEY     — From Firebase service account JSON (include the full key with \n)
       # QDRANT_URL               — Qdrant Cloud cluster URL (e.g. https://xxx.qdrant.io)
       # QDRANT_API_KEY           — Qdrant Cloud API key
-      # ALLOWED_ORIGINS          — Comma-separated list: https://medsage.ai,https://www.medsage.ai
+      # ALLOWED_ORIGINS          — Comma-separated list: https://medsage.pro,https://www.medsage.pro
       # ----------------------------------------

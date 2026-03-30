@@ -44,9 +44,9 @@ app.set('trust proxy', 1);
 const PRODUCTION_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : [
-      'https://medsage.ai',
-      'https://www.medsage.ai',
-      'https://medsage-ai.vercel.app', // replace with your actual Vercel deployment URL
+      'https://medsage.pro',
+      'https://www.medsage.pro',
+      'https://medsage-ai.vercel.app', // Vercel preview URL
     ];
 
 const DEVELOPMENT_ORIGINS = ['http://localhost:3000', 'http://localhost:3002'];
