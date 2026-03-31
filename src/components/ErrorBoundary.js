@@ -1,6 +1,6 @@
 import React from 'react';
 import { reloadWindow } from '../utils/browser';
-import { ThemeContext } from '../App';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 /**
  * ErrorBoundary — catches unhandled render/lifecycle errors inside QuestionPage

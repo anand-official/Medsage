@@ -1,4 +1,4 @@
-import React, { useState, createContext, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import {
   ThemeProvider,
@@ -26,9 +26,9 @@ import { StudyProvider } from './contexts/StudyContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getTheme } from './theme';
 import { getStoredValue, setStoredValue } from './utils/browser';
+import { ThemeContext } from './contexts/ThemeContext';
 
-// Export the theme context
-export const ThemeContext = createContext({ toggleColorMode: () => { } });
+export { ThemeContext }; // re-export so existing `from '../App'` imports keep working
 
 // Protected Route component
 function ProtectedRoute({ children }) {
