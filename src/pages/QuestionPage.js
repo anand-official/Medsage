@@ -1408,18 +1408,25 @@ const QuestionPage = () => {
         <div ref={bottomRef} style={{ height: 1 }} />
       </Box>
 
-      {/* ── Input bar (fixed to viewport bottom) ─────────────────── */}
+      {/* ── Command center / input bar (fixed bottom) ─────────────── */}
       <Box sx={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10,
-        pb: isMobile ? 'calc(env(safe-area-inset-bottom, 8px) + 72px)' : '24px',
-        pt: { xs: '48px', md: '64px' },
-        px: { xs: 1, sm: 2 },
+        pb: isMobile ? 'calc(env(safe-area-inset-bottom, 8px) + 72px)' : '26px',
+        pt: { xs: '46px', md: '60px' },
+        px: { xs: 1.5, sm: 2.5 },
         background: isDark
           ? 'linear-gradient(to top, rgba(6,10,20,1) 0%, rgba(6,10,20,0.9) 55%, transparent 100%)'
           : 'linear-gradient(to top, rgba(248,250,252,1) 0%, rgba(248,250,252,0.9) 55%, transparent 100%)',
         pointerEvents: 'none',
       }}>
-        <Box sx={{ maxWidth: 820, mx: 'auto', pointerEvents: 'auto' }}>
+        <Box sx={{
+          maxWidth: 880,
+          mx: 'auto',
+          pointerEvents: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+        }}>
 
           {/* Attached image preview */}
           <AnimatePresence>
