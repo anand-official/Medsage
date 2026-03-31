@@ -1,8 +1,25 @@
 'use strict';
-const { OAuth2Client } = require('google-auth-library');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const client = new OAuth2Client(CLIENT_ID);
+
+// Verify a Google ID token using Google's tokeninfo endpoint.
+// No library needed — one HTTPS call, response cached by Google's CDN.
+async function verifyGoogleToken(token) {
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+  const payload = await res.json();
+
+  if (!res.ok || payload.error_description) {
+    throw new Error(payload.error_description || 'Token verification failed');
+  }
+
+  // Audience must match our OAuth client ID when configured
+  if (CLIENT_ID && payload.aud !== CLIENT_ID) {
+    console.error(`[Auth] Audience mismatch — expected: ${CLIENT_ID}, got: ${payload.aud}`);
+    throw new Error('Token audience mismatch');
+  }
+
+  return payload;
+}
 
 const verifyToken = async (req, res, next) => {
   try {
@@ -12,12 +29,11 @@ const verifyToken = async (req, res, next) => {
     }
     const token = authHeader.split(' ')[1];
 
-    // Dev bypass when no CLIENT_ID configured
+    // Dev bypass when GOOGLE_CLIENT_ID is not configured
     if (!CLIENT_ID) {
       if (process.env.NODE_ENV === 'production') {
         return res.status(503).json({ success: false, error: 'Auth service not configured' });
       }
-      // Dev: decode without verification
       try {
         const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
         req.user = {
@@ -33,15 +49,14 @@ const verifyToken = async (req, res, next) => {
       }
     }
 
-    const ticket = await client.verifyIdToken({ idToken: token, audience: CLIENT_ID });
-    const payload = ticket.getPayload();
+    const payload = await verifyGoogleToken(token);
 
     req.user = {
       uid: payload.sub,
       email: payload.email,
       displayName: payload.name || payload.email,
       photoURL: payload.picture || null,
-      admin: false, // set via ADMIN_UIDS env var
+      admin: false,
     };
     next();
   } catch (error) {
@@ -56,8 +71,7 @@ const optionalAuth = async (req, res, next) => {
   try {
     const token = authHeader.split(' ')[1];
     if (!CLIENT_ID) return next();
-    const ticket = await client.verifyIdToken({ idToken: token, audience: CLIENT_ID });
-    const payload = ticket.getPayload();
+    const payload = await verifyGoogleToken(token);
     req.user = {
       uid: payload.sub,
       email: payload.email,
