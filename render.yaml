@@ -4,6 +4,8 @@ services:
     env: node
     rootDir: server
     plan: free
+    # Must be unauthenticated — /health is admin-only in production
+    healthCheckPath: /healthz
     buildCommand: "npm install"
     startCommand: "npm start"
     envVars:

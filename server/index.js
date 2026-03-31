@@ -28,12 +28,19 @@ const adminRoutes = require('./routes/admin');
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/cortex';
 const { scheduleRetentionJob } = require('./services/auditRetention');
-mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000, socketTimeoutMS: 45000 })
+mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 15000,
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10,
+  retryWrites: true,
+})
   .then(() => {
     console.log('[MongoDB] Connected successfully');
     scheduleRetentionJob(); // Start audit log retention cron after DB is ready
   })
   .catch(err => console.error('[MongoDB] Connection error:', err.message));
+mongoose.connection.on('disconnected', () => console.warn('[MongoDB] Disconnected — will reconnect automatically'));
+mongoose.connection.on('reconnected', () => console.log('[MongoDB] Reconnected'));
 
 const app = express();
 
@@ -121,6 +128,16 @@ app.get('/', (req, res) => {
   res.json({ name: 'Cortex API', status: 'ok', version: '2.0.0' });
 });
 
+// Public liveness probe — no auth. Use this for Render/load balancer health checks.
+// The detailed /health route stays admin-gated so internal metrics are not exposed.
+app.get('/healthz', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'cortex-api',
+    uptime_s: Math.floor(process.uptime()),
+  });
+});
+
 // Health check + Prometheus metrics
 registerMonitoringRoutes(app);
 
@@ -145,13 +162,20 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Health check available at http://localhost:${PORT}/health`);
+  console.log(`Liveness (public): http://localhost:${PORT}/healthz`);
+  console.log(`Detailed health (admin): http://localhost:${PORT}/health`);
 });
 
 process.on('SIGTERM', () => {
   console.log('[Server] SIGTERM received — closing gracefully');
+  const killTimer = setTimeout(() => {
+    console.error('[Server] Force exit after graceful timeout');
+    process.exit(1);
+  }, 25000);
+  killTimer.unref?.();
   server.close(() => {
-    mongoose.connection.close();
+    clearTimeout(killTimer);
+    mongoose.connection.close().catch(() => {});
     process.exit(0);
   });
 });
