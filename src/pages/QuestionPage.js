@@ -710,7 +710,7 @@ function WelcomeState({ isDark, onPromptClick }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Box sx={{ textAlign: 'center', pt: { xs: 3, md: 6 }, pb: 6, px: 1 }}>
+      <Box sx={{ textAlign: 'center', pt: { xs: 4, md: 8 }, pb: 6, px: 1 }}>
 
         {/* Icon */}
         <Box sx={{ position: 'relative', width: 64, height: 64, mx: 'auto', mb: 3 }}>
@@ -1412,15 +1412,19 @@ const QuestionPage = () => {
       <Box sx={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10,
         pb: isMobile ? 'calc(env(safe-area-inset-bottom, 8px) + 72px)' : '26px',
-        pt: { xs: '46px', md: '60px' },
-        px: { xs: 1.5, sm: 2.5 },
+        pt: { xs: '52px', md: '68px' },
+        // Padding must match Layout.js content padding so the input box
+        // edges land on the same column as the chat messages above it.
+        px: { xs: 2, sm: 3, md: 4 },
         background: isDark
-          ? 'linear-gradient(to top, rgba(6,10,20,1) 0%, rgba(6,10,20,0.9) 55%, transparent 100%)'
-          : 'linear-gradient(to top, rgba(248,250,252,1) 0%, rgba(248,250,252,0.9) 55%, transparent 100%)',
+          ? 'linear-gradient(to top, rgba(12,14,26,1) 0%, rgba(12,14,26,0.92) 55%, transparent 100%)'
+          : 'linear-gradient(to top, rgba(244,246,255,1) 0%, rgba(244,246,255,0.92) 55%, transparent 100%)',
         pointerEvents: 'none',
       }}>
         <Box sx={{
-          maxWidth: 880,
+          // Same maxWidth as the page content (820) so the input aligns
+          // flush with the messages — no wider, no narrower.
+          maxWidth: 820,
           mx: 'auto',
           pointerEvents: 'auto',
           display: 'flex',
@@ -1585,11 +1589,11 @@ const QuestionPage = () => {
               </Stack>
 
               {/* Keyboard hint */}
-              <Typography sx={{ fontSize: '0.67rem', color: isDark ? '#1e293b' : '#e2e8f0', display: { xs: 'none', md: 'block' }, userSelect: 'none' }}>
-                <kbd style={{ padding: '1px 5px', borderRadius: 4, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, fontSize: '0.65rem', fontFamily: 'inherit', color: isDark ? '#334155' : '#94a3b8' }}>Enter</kbd>{' '}
-                <span style={{ color: isDark ? '#1e293b' : '#e2e8f0' }}>send · </span>
-                <kbd style={{ padding: '1px 5px', borderRadius: 4, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, fontSize: '0.65rem', fontFamily: 'inherit', color: isDark ? '#334155' : '#94a3b8' }}>⇧ Enter</kbd>{' '}
-                <span style={{ color: isDark ? '#1e293b' : '#e2e8f0' }}>new line</span>
+              <Typography sx={{ fontSize: '0.67rem', color: isDark ? '#475569' : '#94a3b8', display: { xs: 'none', md: 'block' }, userSelect: 'none' }}>
+                <kbd style={{ padding: '1px 5px', borderRadius: 4, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, fontSize: '0.65rem', fontFamily: 'inherit', color: isDark ? '#64748b' : '#94a3b8' }}>Enter</kbd>{' '}
+                <span style={{ color: isDark ? '#475569' : '#94a3b8' }}>send · </span>
+                <kbd style={{ padding: '1px 5px', borderRadius: 4, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, fontSize: '0.65rem', fontFamily: 'inherit', color: isDark ? '#64748b' : '#94a3b8' }}>⇧ Enter</kbd>{' '}
+                <span style={{ color: isDark ? '#475569' : '#94a3b8' }}>new line</span>
               </Typography>
             </Box>
           </Box>
