@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Box, Typography, CircularProgress, Alert, Button, Stack,
     Card, Divider, Skeleton
@@ -29,8 +29,6 @@ function StatWidget({ label, value, unit = '', color = '#6366f1', loading }) {
     return (
         <Card elevation={0} sx={{
             p: { xs: 2, md: 2.5 }, borderRadius: 3, flex: '1 1 auto', minWidth: { xs: '45%', sm: 110 },
-            border: '1px solid rgba(255,255,255,0.07)',
-            background: 'rgba(255,255,255,0.03)',
             textAlign: 'center',
         }}>
             {loading ? (
@@ -58,6 +56,10 @@ export default function ReviewSession() {
     const [statsLoading, setStatsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sessionDone, setSessionDone] = useState(false);
+    const advanceTimerRef = useRef(null);
+
+    // Clean up any pending advance timer on unmount
+    useEffect(() => () => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); }, []);
 
     const loadCards = useCallback(async () => {
         setLoading(true);
@@ -97,8 +99,8 @@ export default function ReviewSession() {
         const result = await sm2API.submitReview(cardId, quality);
         setSessionResults(prev => [...prev, { cardId, quality, nextReview: result.next_review, interval: result.interval_days }]);
 
-        // Short delay then advance
-        setTimeout(() => {
+        // Short delay then advance — store ref so it can be cancelled on unmount
+        advanceTimerRef.current = setTimeout(() => {
             const nextIdx = currentIndex + 1;
             if (nextIdx >= cards.length) {
                 setSessionDone(true);

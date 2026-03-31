@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useMemo } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -23,6 +23,11 @@ import {
   EmojiEvents as TrophyIcon,
   Notifications as NotificationIcon
 } from '@mui/icons-material';
+
+const ITEM_VARIANTS = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 100 } },
+};
 
 const ProgressCard = () => {
   const { studyPlan, loading } = useStudyContext();
@@ -50,53 +55,22 @@ const ProgressCard = () => {
   const completedTopics = studyPlan?.completedTopics || 0;
   const totalTopics = studyPlan?.totalTopics || 0;
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 }
-    }
-  };
+  const stats = useMemo(() => [
+    { label: 'Completion', value: `${completionPercentage}%`,         icon: <CheckCircleIcon />, color: theme.palette.primary.main,   tooltip: 'Overall completion of your study plan' },
+    { label: 'Topics',     value: `${completedTopics}/${totalTopics}`, icon: <SchoolIcon />,      color: theme.palette.secondary.main, tooltip: 'Topics covered vs total topics' },
+    { label: 'Streak',     value: '7 days',                           icon: <TimerIcon />,       color: theme.palette.success.main,   tooltip: 'Current study streak' },
+    { label: 'Progress',   value: '+12%',                             icon: <TrendingIcon />,    color: theme.palette.warning.main,   tooltip: 'Progress made this week' },
+  ], [completionPercentage, completedTopics, totalTopics,
+      theme.palette.primary.main, theme.palette.secondary.main,
+      theme.palette.success.main, theme.palette.warning.main]);
 
-  const stats = [
-    {
-      label: 'Completion',
-      value: `${completionPercentage}%`,
-      icon: <CheckCircleIcon />,
-      color: theme.palette.primary.main,
-      tooltip: 'Overall completion of your study plan'
-    },
-    {
-      label: 'Topics',
-      value: `${completedTopics}/${totalTopics}`,
-      icon: <SchoolIcon />,
-      color: theme.palette.secondary.main,
-      tooltip: 'Topics covered vs total topics'
-    },
-    {
-      label: 'Streak',
-      value: '7 days',
-      icon: <TimerIcon />,
-      color: theme.palette.success.main,
-      tooltip: 'Current study streak'
-    },
-    {
-      label: 'Progress',
-      value: '+12%',
-      icon: <TrendingIcon />,
-      color: theme.palette.warning.main,
-      tooltip: 'Progress made this week'
-    }
-  ];
-
-  const achievements = [
-    { id: 1, title: 'Early Bird', icon: <TimerIcon />, color: theme.palette.primary.main },
-    { id: 2, title: 'Quick Learner', icon: <SchoolIcon />, color: theme.palette.success.main }
-  ];
+  const achievements = useMemo(() => [
+    { id: 1, title: 'Early Bird',    icon: <TimerIcon />,  color: theme.palette.primary.main },
+    { id: 2, title: 'Quick Learner', icon: <SchoolIcon />, color: theme.palette.success.main },
+  ], [theme.palette.primary.main, theme.palette.success.main]);
 
   return (
-    <motion.div variants={itemVariants}>
+    <motion.div variants={ITEM_VARIANTS}>
       <Card 
         elevation={0}
         sx={{ 

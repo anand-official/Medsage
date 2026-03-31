@@ -1,5 +1,6 @@
 import React from 'react';
-import { matchesMediaQuery, reloadWindow } from '../utils/browser';
+import { reloadWindow } from '../utils/browser';
+import { ThemeContext } from '../App';
 
 /**
  * ErrorBoundary — catches unhandled render/lifecycle errors inside QuestionPage
@@ -8,6 +9,8 @@ import { matchesMediaQuery, reloadWindow } from '../utils/browser';
  * Must be a class component (React requirement for error boundaries).
  */
 class ErrorBoundary extends React.Component {
+  static contextType = ThemeContext;
+
   constructor(props) {
     super(props);
     this.state = { hasError: false, errorMessage: '' };
@@ -28,7 +31,9 @@ class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.hasError) return this.props.children;
 
-    const isDark = matchesMediaQuery('(prefers-color-scheme: dark)');
+    // Read mode from ThemeContext so the fallback UI matches the user's chosen theme,
+    // not the OS-level preference (which may differ).
+    const isDark = (this.context?.mode ?? 'dark') === 'dark';
 
     return (
       <div style={{

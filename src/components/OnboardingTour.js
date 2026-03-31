@@ -155,9 +155,12 @@ function TourTooltip({ step, stepIndex, total, onNext, onBack, onSkip, rect }) {
                 width: TOOLTIP_W,
                 borderRadius: 3,
                 p: 2.5,
-                background: '#1e293b',
+                // Tour tooltip is always dark regardless of app theme — it overlays
+                // a dark scrim, so a light card would look jarring.
+                background: '#1a1f2e',
                 border: '1px solid rgba(99,102,241,0.35)',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.2)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.65), 0 0 0 1px rgba(99,102,241,0.18)',
+                color: '#e2e8f0',
             }}
         >
             {/* Progress bar */}

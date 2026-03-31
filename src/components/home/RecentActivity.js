@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useMemo } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -33,61 +33,30 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useStudyContext } from '../../contexts/StudyContext';
 
+const ITEM_VARIANTS = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 100 } },
+};
+
 const RecentActivity = () => {
   const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 }
-    }
-  };
+  const recommendedTopics = useMemo(() => [
+    { title: 'Cardiovascular System', icon: <BookIcon />, color: theme.palette.primary.main,   progress: 75 },
+    { title: 'Respiratory System',    icon: <BookIcon />, color: theme.palette.secondary.main, progress: 45 },
+    { title: 'Nervous System',        icon: <BookIcon />, color: theme.palette.success.main,   progress: 30 },
+  ], [theme.palette.primary.main, theme.palette.secondary.main, theme.palette.success.main]);
 
-  const recommendedTopics = [
-    {
-      title: 'Cardiovascular System',
-      icon: <BookIcon />,
-      color: theme.palette.primary.main,
-      progress: 75
-    },
-    {
-      title: 'Respiratory System',
-      icon: <BookIcon />,
-      color: theme.palette.secondary.main,
-      progress: 45
-    },
-    {
-      title: 'Nervous System',
-      icon: <BookIcon />,
-      color: theme.palette.success.main,
-      progress: 30
-    }
-  ];
-
-  const trackProgress = [
-    {
-      title: 'Anatomy',
-      progress: 85,
-      color: theme.palette.primary.main
-    },
-    {
-      title: 'Physiology',
-      progress: 65,
-      color: theme.palette.secondary.main
-    },
-    {
-      title: 'Biochemistry',
-      progress: 45,
-      color: theme.palette.success.main
-    }
-  ];
+  const trackProgress = useMemo(() => [
+    { title: 'Anatomy',      progress: 85, color: theme.palette.primary.main },
+    { title: 'Physiology',   progress: 65, color: theme.palette.secondary.main },
+    { title: 'Biochemistry', progress: 45, color: theme.palette.success.main },
+  ], [theme.palette.primary.main, theme.palette.secondary.main, theme.palette.success.main]);
 
   return (
-    <motion.div variants={itemVariants}>
+    <motion.div variants={ITEM_VARIANTS}>
       <Card 
         elevation={0}
         sx={{ 

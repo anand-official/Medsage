@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useMemo } from 'react';
 import { 
   Box, 
   Typography, 
@@ -27,21 +27,23 @@ import { useNavigate } from 'react-router-dom';
 import { useStudyContext } from '../../contexts/StudyContext';
 import { format } from 'date-fns';
 
+const TODAY_TASKS = [
+  { id: 1, title: 'Review Cardiovascular System', completed: true },
+  { id: 2, title: 'Practice MCQs - Respiratory System', completed: false },
+  { id: 3, title: 'Read Chapter 5 - Nervous System', completed: false },
+];
+
+const ITEM_VARIANTS = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 100 } },
+};
+
 const QuickActions = () => {
   const { studyPlan, loading } = useStudyContext();
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 }
-    }
-  };
-
-  const quickActions = [
+  const quickActions = useMemo(() => [
     {
       title: 'Ask a Question',
       description: 'Get instant answers to your medical queries',
@@ -63,16 +65,10 @@ const QuickActions = () => {
       color: theme.palette.success.main,
       path: '/books'
     }
-  ];
-
-  const todayTasks = [
-    { id: 1, title: 'Review Cardiovascular System', completed: true },
-    { id: 2, title: 'Practice MCQs - Respiratory System', completed: false },
-    { id: 3, title: 'Read Chapter 5 - Nervous System', completed: false }
-  ];
+  ], [theme.palette.primary.main, theme.palette.secondary.main, theme.palette.success.main]);
 
   return (
-    <motion.div variants={itemVariants}>
+    <motion.div variants={ITEM_VARIANTS}>
       <Box>
         <Typography variant="h6" sx={{ 
           fontWeight: 600, 
@@ -192,7 +188,7 @@ const QuickActions = () => {
                 </Box>
 
                 <List sx={{ mb: 2 }}>
-                  {todayTasks.map((task) => (
+                  {TODAY_TASKS.map((task) => (
                     <ListItem 
                       key={task.id}
                       sx={{ 
