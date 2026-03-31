@@ -57,6 +57,9 @@ class EmbeddingService {
     }
 
     async getLocalEmbedding(text) {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('Local model fallback disabled in production. Set HF_API_TOKEN.');
+        }
         if (!this.extractor) {
             console.log(`\n[FALLBACK] HuggingFace API key invalid or API unreachable. Initializing local @xenova/transformers (this bypasses the API key entirely!). Downloading ONNX model ${this.model}...`);
             const { pipeline } = await import('@xenova/transformers');

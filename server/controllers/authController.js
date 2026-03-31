@@ -6,7 +6,8 @@ class AuthController {
     // Called by frontend after Firebase Google Sign-In to sync UserProfile
     async syncUser(req, res, next) {
         try {
-            const { uid, email, displayName, photoURL } = req.body;
+            const { email, displayName, photoURL } = req.body;
+            const uid = req.user.uid;
 
             if (!uid || !email) {
                 return res.status(400).json({ success: false, error: 'uid and email are required' });
@@ -77,6 +78,13 @@ class AuthController {
             }
 
             const { displayName, mbbs_year, college, country, onboarded } = req.body;
+
+            if (mbbs_year !== undefined) {
+                const parsed = parseInt(mbbs_year, 10);
+                if (isNaN(parsed) || parsed < 1 || parsed > 5) {
+                    return res.status(400).json({ success: false, error: 'mbbs_year must be between 1 and 5' });
+                }
+            }
 
             const user = await UserProfile.findOneAndUpdate(
                 { uid },

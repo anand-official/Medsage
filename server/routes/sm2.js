@@ -3,6 +3,10 @@ const router = express.Router();
 const sm2Service = require('../services/sm2Service');
 const geminiService = require('../services/geminiService');
 const { verifyToken } = require('../middleware/auth');
+const redisRateLimiter = require('../middleware/redisRateLimiter');
+const uidQueryLimiter = redisRateLimiter(
+    60, 60 * 1000, 'query', (req) => req.user?.uid || req.ip
+);
 
 /**
  * SM-2 Flashcard API Routes
@@ -20,7 +24,7 @@ function getUserId(req) {
 // ── POST /api/sm2/flashcard ──────────────────────────────────────────────────
 // Runs the full pipeline on a question and conditionally creates a flashcard.
 // Body: { question, answer_summary?, user_id, mode? }
-router.post('/flashcard', verifyToken, async (req, res) => {
+router.post('/flashcard', verifyToken, uidQueryLimiter, async (req, res) => {
     try {
         const userId = getUserId(req);
         const { question, answer_summary, mode } = req.body;

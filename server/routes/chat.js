@@ -239,11 +239,14 @@ router.post('/sessions', [
             if (oldest) await ChatSession.deleteOne({ _id: oldest._id });
         }
 
+        const rawTitle = title || (messages[0]?.text?.substring(0, 60) + '…') || 'Untitled session';
+        const safeTitle = rawTitle.replace(/<[^>]*>/g, '').substring(0, 63);
+
         const session = await ChatSession.findOneAndUpdate(
             { user_id: uid, session_id },
             {
                 $set: {
-                    title: title || (messages[0]?.text?.substring(0, 60) + '…') || 'Untitled session',
+                    title: safeTitle,
                     messages: messages.slice(0, MAX_MESSAGES_PER_SESSION),
                     updated_at: new Date(),
                 },

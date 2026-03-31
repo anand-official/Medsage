@@ -155,8 +155,8 @@ function looksLikeFollowUp(question, historyLength = 0) {
     if (!normalized) return false;
     // Pronoun references to the previous answer — unambiguous regardless of history
     if (/\b(this|that|these|those|it|they|above|same|previous|last|mentioned)\b/.test(normalized)) return true;
-    // Common follow-up starters — unambiguous regardless of history
-    if (/^(and|also|then|what about|how about|why|explain further|continue|elaborate|tell me more|give (me )?(an )?example|can you|could you|more (on|about)|what (else|more)|how (about|does)|so (what|how)|in that case|regarding|speaking of)/.test(normalized)) return true;
+    // Common follow-up starters — only meaningful when there is prior history
+    if (historyLength > 0 && /^(and|also|then|what about|how about|why|explain further|continue|elaborate|tell me more|give (me )?(an )?example|can you|could you|more (on|about)|what (else|more)|how (about|does)|so (what|how)|in that case|regarding|speaking of)/.test(normalized)) return true;
     // Bare wh- questions — only treat as follow-up when there is prior context;
     // on a fresh session these are likely standalone questions (e.g. "What stocks should I buy?")
     // that should go through the off-topic guard instead of being exempted.

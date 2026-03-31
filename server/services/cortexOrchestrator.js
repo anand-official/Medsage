@@ -97,7 +97,7 @@ class CortexOrchestrator {
             console.error('[PIPELINE] Fatal error:', error);
             try {
                 return await this._buildDirectResponse({
-                    question:      ctx.normalizedQuestion,
+                    question:      ctx.sanitizedQuestion,
                     mode:          ctx.mode,
                     persona:       getProfessorPersona(ctx.hintSubject),
                     historyBlock:  buildHistoryBlock(truncateHistory(ctx.history)),
@@ -336,7 +336,7 @@ class CortexOrchestrator {
         }
 
         return this._buildDirectResponse({
-            question:       ctx.normalizedQuestion,
+            question:       ctx.sanitizedQuestion,
             mode:           ctx.mode,
             persona:        ctx.persona,
             historyBlock:   ctx.historyBlock,
@@ -426,7 +426,7 @@ class CortexOrchestrator {
             }
 
             return this._buildDirectResponse({
-                question:       ctx.normalizedQuestion,
+                question:       ctx.sanitizedQuestion,
                 mode:           ctx.mode,
                 persona:        ctx.persona,
                 historyBlock:   ctx.historyBlock,
@@ -445,7 +445,7 @@ class CortexOrchestrator {
             mode:           ctx.mode,
             syllabusContext: ctx.syllabusContext,
             retrieval,
-            question:       ctx.normalizedQuestion,
+            question:       ctx.sanitizedQuestion,
             historyBlock:   ctx.historyBlock,
             persona:        ctx.persona,
             learnerContext: ctx.learnerContext,
@@ -461,7 +461,7 @@ class CortexOrchestrator {
         } catch (error) {
             recordError('PIPELINE_STRUCTURED_CALL_FAILED');
             return this._buildDirectResponse({
-                question:       ctx.normalizedQuestion,
+                question:       ctx.sanitizedQuestion,
                 mode:           ctx.mode,
                 persona:        ctx.persona,
                 historyBlock:   ctx.historyBlock,
@@ -511,7 +511,7 @@ class CortexOrchestrator {
         if (!schemaResult.is_valid) {
             recordError('SCHEMA_VALIDATION_FAILED');
             return this._buildDirectResponse({
-                question:       ctx.normalizedQuestion,
+                question:       ctx.sanitizedQuestion,
                 mode:           ctx.mode,
                 persona:        ctx.persona,
                 historyBlock:   ctx.historyBlock,

@@ -65,10 +65,10 @@ if (REDIS_URL) {
   });
 } else {
   if (process.env.NODE_ENV === 'production') {
-    console.warn(
+    console.error(
       '[Redis] WARNING: REDIS_URL is not set in production. ' +
       'Per-user rate limits are NOT enforced across instances or restarts. ' +
-      'Set REDIS_URL to enable persistent, cross-instance rate limiting.'
+      'Rate limiting is disabled. Set REDIS_URL to enable persistent, cross-instance rate limiting.'
     );
   } else {
     console.info('[Redis] REDIS_URL not set — Redis disabled in development mode. Rate limiters will fail-open.');

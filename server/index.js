@@ -143,7 +143,15 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check available at http://localhost:${PORT}/health`);
-}); 
+});
+
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received — closing gracefully');
+  server.close(() => {
+    mongoose.connection.close();
+    process.exit(0);
+  });
+});

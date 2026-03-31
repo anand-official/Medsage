@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { verifyToken, optionalAuth } = require('../middleware/auth');
+const { verifyToken, isAdmin } = require('../middleware/auth');
 
 const LIBRARY_PATH = path.join(__dirname, '../data/academy_library.json');
 
@@ -56,8 +56,7 @@ router.get('/', (req, res) => {
             } catch (parseErr) {
                 return res.status(500).json({
                     success: false,
-                    error: 'Library data is corrupt. Re-run the crawler.',
-                    detail: parseErr.message
+                    error: 'Library data is corrupt. Re-run the crawler.'
                 });
             }
         }
@@ -141,8 +140,7 @@ router.get('/', (req, res) => {
         console.error('[Library API] Error:', error.message);
         res.status(500).json({
             success: false,
-            error: 'Failed to load library data',
-            detail: error.message
+            error: 'Failed to load library data'
         });
     }
 });
@@ -152,7 +150,7 @@ router.get('/', (req, res) => {
  * Re-runs the crawler to update the library data
  * Optional authentication (rate limiting is applied globally)
  */
-router.post('/refresh', optionalAuth, (req, res) => {
+router.post('/refresh', verifyToken, isAdmin, (req, res) => {
     // Return immediately so the request doesn't timeout on Render (30s limit).
     // The crawl runs in the background.
     res.status(202).json({

@@ -13,8 +13,13 @@ async function verifyGoogleToken(token) {
     throw new Error(payload.error_description || 'Token verification failed');
   }
 
-  // Log audience for debugging — remove once confirmed working
-  console.log(`[Auth] Token verified. aud=${payload.aud} sub=${payload.sub?.slice(0, 8)}...`);
+  if (CLIENT_ID && payload.aud !== CLIENT_ID) {
+    console.error(`[Auth] Audience mismatch — expected: ${CLIENT_ID}, got: ${payload.aud}`);
+    throw new Error('Token audience mismatch');
+  }
+  if (parseInt(payload.exp, 10) * 1000 < Date.now()) {
+    throw new Error('Token expired');
+  }
 
   return payload;
 }
