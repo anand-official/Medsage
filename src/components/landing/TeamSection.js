@@ -26,8 +26,8 @@ const FOUNDERS = [
     },
     {
         name: 'Koyna Dutta',
-        role: 'Developer',
-        tag: 'Design & Development',
+        role: 'Product & Design',
+        tag: 'Product & Design',
         photo: '/koyna_dutta.jpeg',
         color: '#ec4899',
         colorRgb: '236,72,153',
@@ -50,8 +50,8 @@ const FOUNDERS = [
     },
     {
         name: 'Kapish Tuwani',
-        role: 'Growth & Operations',
-        tag: 'Data & Marketing',
+        role: 'Data & Platform Engineer',
+        tag: 'Data & Platform',
         photo: '/Kapish_Tulwani.png',
         color: '#f59e0b',
         colorRgb: '245,158,11',
