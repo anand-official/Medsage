@@ -212,7 +212,12 @@ export default function ProfilePage() {
     ];
 
     return (
-        <Box sx={{ maxWidth: 1400, mx: 'auto', pb: { xs: 12, md: 8 } }}>
+        <Box sx={{
+            maxWidth: 1400,
+            mx: 'auto',
+            px: { xs: 1.5, sm: 2.5, md: 3 },
+            pb: { xs: 12, md: 8 },
+        }}>
 
             {/* ══════════════════════════════════════════════════════════════
                 PAGE TITLE
