@@ -11,8 +11,6 @@ import {
   QuestionAnswer as QuestionIcon,
   DateRange as DateRangeIcon,
   Book as BookIcon,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
   Dashboard as DashboardIcon,
@@ -48,6 +46,94 @@ const LogoMark = () => (
     </defs>
   </svg>
 );
+
+// ── Celestial Theme Toggle ───────────────────────────────────────────────
+const STARS = [
+  { left: 31, top: 6,  size: 1.4 },
+  { left: 41, top: 4,  size: 1.0 },
+  { left: 37, top: 17, size: 1.2 },
+  { left: 47, top: 13, size: 0.85 },
+  { left: 35, top: 12, size: 0.7 },
+];
+
+const ThemeToggle = ({ mode, onClick }) => {
+  const isDark = mode === 'dark';
+  return (
+    <motion.div
+      onClick={onClick}
+      role="button"
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      style={{ position: 'relative', width: 54, height: 28, cursor: 'pointer', flexShrink: 0 }}
+    >
+      {/* Track */}
+      <motion.div
+        animate={{
+          background: isDark
+            ? 'linear-gradient(140deg, #07051a 0%, #15093a 100%)'
+            : 'linear-gradient(140deg, #93c5fd 0%, #fde68a 100%)',
+          borderColor: isDark ? 'rgba(139,92,246,0.5)' : 'rgba(251,191,36,0.6)',
+          boxShadow: isDark
+            ? '0 0 0 2.5px rgba(139,92,246,0.09), inset 0 1px 8px rgba(0,0,0,0.75)'
+            : '0 0 0 2.5px rgba(251,191,36,0.12), inset 0 1px 5px rgba(0,0,0,0.07)',
+        }}
+        transition={{ duration: 0.5, ease: 'easeInOut' }}
+        style={{
+          position: 'absolute', inset: 0,
+          borderRadius: 14,
+          border: '1.5px solid',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Twinkling stars (dark mode only) */}
+        <AnimatePresence>
+          {isDark && STARS.map((s, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 0.95, 0.55, 0.95], scale: 1 }}
+              exit={{ opacity: 0, scale: 0 }}
+              transition={{
+                scale: { delay: i * 0.07, duration: 0.3 },
+                opacity: { delay: i * 0.07, duration: 0.3, repeat: Infinity, repeatType: 'mirror', repeatDelay: i * 0.4 + 0.8 },
+              }}
+              style={{
+                position: 'absolute',
+                left: s.left, top: s.top,
+                width: s.size * 2, height: s.size * 2,
+                borderRadius: '50%',
+                background: 'white',
+                boxShadow: `0 0 ${s.size * 5}px rgba(255,255,255,0.85)`,
+                display: 'block',
+              }}
+            />
+          ))}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Sliding orb */}
+      <motion.div
+        animate={{
+          x: isDark ? 3 : 29,
+          background: isDark
+            ? 'linear-gradient(150deg, #dde6f5 20%, #b6c4e0 100%)'
+            : 'linear-gradient(150deg, #fef08a 0%, #fbbf24 100%)',
+          boxShadow: isDark
+            ? 'inset -5px 0px 0 4px #0c0820, 0 2px 10px rgba(0,0,0,0.6)'
+            : '0 0 18px rgba(251,191,36,0.95), 0 0 40px rgba(251,191,36,0.3), 0 2px 6px rgba(0,0,0,0.15)',
+        }}
+        transition={{ type: 'spring', stiffness: 560, damping: 33 }}
+        style={{
+          position: 'absolute',
+          top: 3, left: 0,
+          width: 22, height: 22,
+          borderRadius: '50%',
+        }}
+      />
+    </motion.div>
+  );
+};
 
 const Layout = () => {
   const { mode, toggleColorMode } = useContext(ThemeContext);
@@ -219,29 +305,7 @@ const Layout = () => {
         }}>
 
           {/* Theme toggle */}
-          <Box
-            onClick={toggleColorMode}
-            role="button"
-            aria-label="Toggle theme"
-            component={motion.div}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.93 }}
-            sx={{
-              width: 38, height: 38, borderRadius: '12px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(255,255,255,0.3)',
-              cursor: 'pointer',
-              transition: 'color 0.15s, background 0.15s',
-              '&:hover': {
-                background: 'rgba(255,255,255,0.06)',
-                color: 'rgba(255,255,255,0.65)',
-              },
-            }}
-          >
-            {mode === 'dark'
-              ? <LightModeIcon sx={{ fontSize: 16 }} />
-              : <DarkModeIcon sx={{ fontSize: 16 }} />}
-          </Box>
+          <ThemeToggle mode={mode} onClick={toggleColorMode} />
 
           {/* Separator */}
           <Box sx={{ width: 1, height: 16, bgcolor: 'rgba(255,255,255,0.1)' }} />
