@@ -244,92 +244,135 @@ export default function SignIn() {
         {/* Right Side: Sign In Form */}
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 40px)',
-          background: 'rgba(0, 0, 0, 0.4)',
+          background: 'rgba(0,0,0,0.35)',
           backdropFilter: 'blur(30px)',
           position: 'relative',
         }}>
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              width: '100%', maxWidth: 440,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 32, padding: 'clamp(28px, 5vw, 56px) clamp(24px, 5vw, 48px)',
-              backdropFilter: 'blur(24px)',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
-              textAlign: 'center',
-            }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ width: '100%', maxWidth: 420 }}
           >
-            <div className="mobile-logo-only" style={{ display: 'none', justifyContent: 'center', marginBottom: 24, cursor: 'pointer' }} onClick={() => navigate('/')}>
+            {/* Card */}
+            <div style={{
+              background: 'linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 28,
+              padding: 'clamp(32px, 5vw, 52px) clamp(24px, 5vw, 44px)',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 0 0 1px rgba(168,85,247,0.06) inset, 0 32px 80px rgba(0,0,0,0.45)',
+              textAlign: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              {/* Subtle top glow line */}
               <div style={{
-                width: 56, height: 56, borderRadius: 16,
-                background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15))',
-                border: '1px solid rgba(168,85,247,0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="3" fill="#a855f7" filter="drop-shadow(0 0 6px rgba(168,85,247,0.8))" />
-                  <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#mobile-logo-grad-1)" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M19.07 4.93l-4.24 4.24M9.17 14.83l-4.24 4.24" stroke="url(#mobile-logo-grad-2)" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
-                  <defs>
-                    <linearGradient id="mobile-logo-grad-1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#6366f1" />
-                      <stop offset="1" stopColor="#a855f7" />
-                    </linearGradient>
-                    <linearGradient id="mobile-logo-grad-2" x1="22" y1="2" x2="2" y2="22" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#ec4899" />
-                      <stop offset="1" stopColor="#6366f1" />
-                    </linearGradient>
-                  </defs>
-                </svg>
+                position: 'absolute', top: 0, left: '20%', right: '20%', height: 1,
+                background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.5), rgba(99,102,241,0.5), transparent)',
+              }} />
+
+              {/* Mobile logo */}
+              <div className="mobile-logo-only" style={{ display: 'none', justifyContent: 'center', marginBottom: 28, cursor: 'pointer' }} onClick={() => navigate('/')}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 14,
+                  background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15))',
+                  border: '1px solid rgba(168,85,247,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="3" fill="#a855f7" filter="drop-shadow(0 0 6px rgba(168,85,247,0.8))" />
+                    <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#ml1)" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M19.07 4.93l-4.24 4.24M9.17 14.83l-4.24 4.24" stroke="url(#ml2)" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
+                    <defs>
+                      <linearGradient id="ml1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop stopColor="#6366f1" /><stop offset="1" stopColor="#a855f7" /></linearGradient>
+                      <linearGradient id="ml2" x1="22" y1="2" x2="2" y2="22" gradientUnits="userSpaceOnUse"><stop stopColor="#ec4899" /><stop offset="1" stopColor="#6366f1" /></linearGradient>
+                    </defs>
+                  </svg>
+                </div>
               </div>
-            </div>
 
-            <h2 style={{ fontSize: 32, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.5px' }}>Welcome back</h2>
-            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', margin: '0 0 40px', lineHeight: 1.6 }}>
-              Sign in to continue your Medsage journey.
-            </p>
+              {/* Badge */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 14px', borderRadius: 100,
+                background: 'rgba(168,85,247,0.1)',
+                border: '1px solid rgba(168,85,247,0.25)',
+                marginBottom: 20,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', display: 'inline-block', boxShadow: '0 0 6px rgba(168,85,247,0.8)' }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', letterSpacing: '1.4px' }}>MEDSAGE.AI</span>
+              </div>
 
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <div style={{
-                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#fca5a5', padding: '12px 16px', borderRadius: 12, fontSize: 14,
-                    marginBottom: 24, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10
-                  }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    {error}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              <h2 style={{ fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 900, margin: '0 0 10px', letterSpacing: '-0.8px', color: '#f8fafc' }}>
+                Welcome back
+              </h2>
+              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', margin: '0 0 36px', lineHeight: 1.65 }}>
+                Sign in to continue your Medsage journey.
+              </p>
 
-            {/* GOOGLE LOGIN BUTTON */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <GoogleLogin
-                onSuccess={onGoogleSuccess}
-                onError={onGoogleError}
-                theme="filled_black"
-                size="large"
-                shape="rectangular"
-                width="360"
-                text="continue_with"
-              />
-            </div>
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{
+                      background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                      color: '#fca5a5', padding: '12px 16px', borderRadius: 12, fontSize: 14,
+                      marginBottom: 24, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      {error}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            <div style={{ marginTop: 40, fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
-              By continuing, you agree to Medsage's<br />
-              <a href="#" style={{ color: '#c084fc', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#e879f9'} onMouseLeave={e => e.target.style.color = '#c084fc'}>Terms of Service</a> &bull; <a href="#" style={{ color: '#c084fc', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#e879f9'} onMouseLeave={e => e.target.style.color = '#c084fc'}>Privacy Policy</a>
+              {/* Google button wrapper */}
+              <div style={{
+                padding: 3, borderRadius: 14,
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.4), rgba(168,85,247,0.4), rgba(236,72,153,0.4))',
+                marginBottom: 28,
+              }}>
+                <div style={{
+                  background: '#0f0c1a', borderRadius: 11,
+                  display: 'flex', justifyContent: 'center', padding: '6px 0',
+                }}>
+                  <GoogleLogin
+                    onSuccess={onGoogleSuccess}
+                    onError={onGoogleError}
+                    theme="filled_black"
+                    size="large"
+                    shape="rectangular"
+                    width="340"
+                    text="continue_with"
+                  />
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: 500, letterSpacing: '0.5px' }}>SECURED WITH GOOGLE</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+              </div>
+
+              {/* Terms */}
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7, margin: 0 }}>
+                By continuing, you agree to Medsage's{' '}
+                <a href="#" style={{ color: '#a78bfa', textDecoration: 'none', fontWeight: 600 }}
+                  onMouseEnter={e => e.target.style.color = '#c4b5fd'}
+                  onMouseLeave={e => e.target.style.color = '#a78bfa'}>Terms of Service</a>
+                {' '}&amp;{' '}
+                <a href="#" style={{ color: '#a78bfa', textDecoration: 'none', fontWeight: 600 }}
+                  onMouseEnter={e => e.target.style.color = '#c4b5fd'}
+                  onMouseLeave={e => e.target.style.color = '#a78bfa'}>Privacy Policy</a>
+              </p>
             </div>
           </motion.div>
         </div>
