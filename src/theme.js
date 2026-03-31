@@ -1,190 +1,228 @@
 import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
-// Create a function to generate a theme based on mode
 const getTheme = (mode) => {
   const isDark = mode === 'dark';
 
+  // ── Palette tokens ─────────────────────────────────────────────────────
+  const ink = {
+    bg:        isDark ? '#0c0e1a' : '#f4f6ff',
+    surface:   isDark ? 'rgba(16, 18, 32, 0.82)' : 'rgba(255, 255, 255, 0.92)',
+    card:      isDark ? 'rgba(18, 20, 34, 0.65)' : 'rgba(255, 255, 255, 0.88)',
+    border:    isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(99, 102, 241, 0.09)',
+    textPri:   isDark ? '#dde3f5' : '#1c1f35',
+    textSec:   isDark ? '#7e8ba3' : '#5c6882',
+    divider:   isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(99, 102, 241, 0.08)',
+  };
+
+  // Ambient background gradient — adapts per mode
+  const ambientGradient = isDark
+    ? `
+        radial-gradient(ellipse 60% 50% at 10% 8%,  rgba(99, 102, 241, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 88% 6%,  rgba(168, 85, 247, 0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 55% 45% at 82% 92%, rgba(99, 102, 241, 0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 4% 88%,  rgba(168, 85, 247, 0.14) 0%, transparent 70%)
+      `
+    : `
+        radial-gradient(ellipse 60% 50% at 5%  5%,  rgba(99, 102, 241, 0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 92% 4%,  rgba(168, 85, 247, 0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 55% 45% at 88% 94%, rgba(139, 92, 246, 0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 2% 92%,  rgba(99, 102, 241, 0.07) 0%, transparent 70%)
+      `;
+
   let theme = createTheme({
     breakpoints: {
-      values: {
-        xs: 0,
-        sm: 375,
-        md: 768,
-        lg: 1024,
-        xl: 1280,
-      },
+      values: { xs: 0, sm: 375, md: 768, lg: 1024, xl: 1280 },
     },
     palette: {
-      mode: mode,
+      mode,
       primary: {
-        main: '#6366f1', // Indigo/Blue
-        light: '#818cf8',
-        dark: '#4f46e5',
+        main:         isDark ? '#6366f1' : '#5b5fef',
+        light:        isDark ? '#818cf8' : '#7c7ff5',
+        dark:         isDark ? '#4f46e5' : '#4845d4',
         contrastText: '#ffffff',
       },
       secondary: {
-        main: '#a855f7', // Purple
+        main:  '#a855f7',
         light: '#c084fc',
-        dark: '#9333ea',
+        dark:  '#9333ea',
       },
       background: {
-        default: isDark ? '#050505' : '#f8fafc',
-        paper: isDark ? 'rgba(15, 15, 15, 0.8)' : '#ffffff',
+        default: ink.bg,
+        paper:   ink.surface,
       },
       text: {
-        primary: isDark ? '#f8fafc' : '#0f172a',
-        secondary: isDark ? '#94a3b8' : '#64748b',
+        primary:   ink.textPri,
+        secondary: ink.textSec,
       },
-      divider: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+      divider: ink.divider,
     },
     typography: {
       fontFamily: "'Inter', 'Poppins', sans-serif",
       h1: { fontWeight: 800, letterSpacing: '-0.025em' },
       h2: { fontWeight: 800, letterSpacing: '-0.025em' },
-      h3: { fontWeight: 700, letterSpacing: '-0.025em' },
-      h4: { fontWeight: 700, letterSpacing: '-0.025em' },
+      h3: { fontWeight: 700, letterSpacing: '-0.02em' },
+      h4: { fontWeight: 700, letterSpacing: '-0.02em' },
       h5: { fontWeight: 600 },
       h6: { fontWeight: 600 },
       button: { textTransform: 'none', fontWeight: 600 },
     },
-    shape: {
-      borderRadius: 16,
-    },
+    shape: { borderRadius: 16 },
     components: {
+      // ── Base ────────────────────────────────────────────────────────────
       MuiCssBaseline: {
         styleOverrides: {
           body: {
+            backgroundColor: ink.bg,
+            color: ink.textPri,
             scrollbarWidth: 'thin',
-            '&::-webkit-scrollbar': {
-              width: '6px',
-              height: '6px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'transparent',
-            },
+            overflowX: 'hidden',
+            position: 'relative',
+            '&::-webkit-scrollbar':       { width: '6px', height: '6px' },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+              backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(99,102,241,0.15)',
               borderRadius: '10px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              backgroundColor: isDark ? 'rgba(165,180,252,0.35)' : 'rgba(99,102,241,0.35)',
+            },
+            // Ambient mesh — updates with theme mode
+            '&::before': {
+              content: '""',
+              position: 'fixed',
+              inset: 0,
+              zIndex: -1,
+              background: ambientGradient,
+              filter: 'blur(80px)',
+              pointerEvents: 'none',
             },
           },
         },
       },
+
+      // ── Paper ───────────────────────────────────────────────────────────
       MuiPaper: {
         styleOverrides: {
           root: {
             backgroundImage: 'none',
-            ...(isDark && {
-              backgroundColor: 'rgba(15, 15, 15, 0.7)',
-              backdropFilter: 'blur(20px) saturate(180%)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }),
+            backgroundColor: ink.surface,
+            backdropFilter: 'blur(20px) saturate(160%)',
+            border: `1px solid ${ink.border}`,
           },
         },
       },
+
+      // ── Card ────────────────────────────────────────────────────────────
       MuiCard: {
         styleOverrides: {
           root: {
             borderRadius: 24,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             overflow: 'hidden',
-            ...(isDark && {
-              backgroundColor: 'rgba(20, 20, 20, 0.6)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              '&:hover': {
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-                transform: 'translateY(-4px)',
-              },
-              // Disable hover transform on touch devices
-              '@media (hover: none)': {
-                '&:hover': {
-                  transform: 'none',
-                },
-              },
-            }),
+            backgroundImage: 'none',
+            backgroundColor: ink.card,
+            backdropFilter: 'blur(16px) saturate(140%)',
+            border: `1px solid ${ink.border}`,
+            transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1), box-shadow 0.28s cubic-bezier(0.4,0,0.2,1), border-color 0.28s ease',
+            '&:hover': {
+              borderColor: isDark ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.22)',
+              boxShadow: isDark
+                ? '0 20px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(99,102,241,0.18)'
+                : '0 16px 40px rgba(99,102,241,0.12), 0 0 0 1px rgba(99,102,241,0.14)',
+              transform: 'translateY(-3px)',
+            },
+            '@media (hover: none)': {
+              '&:hover': { transform: 'none' },
+            },
           },
         },
       },
+
+      // ── Button ──────────────────────────────────────────────────────────
       MuiButton: {
         styleOverrides: {
           root: {
             borderRadius: 12,
             padding: '10px 24px',
-            minHeight: 44, // Apple HIG minimum touch target
+            minHeight: 44,
             transition: 'all 0.2s ease',
-            '&:active': {
-              transform: 'scale(0.97)',
-            },
+            '&:active': { transform: 'scale(0.97)' },
           },
           contained: {
             boxShadow: 'none',
             '&:hover': {
-              boxShadow: '0 8px 16px rgba(99, 102, 241, 0.3)',
+              boxShadow: isDark
+                ? '0 8px 20px rgba(99,102,241,0.35)'
+                : '0 8px 20px rgba(99,102,241,0.25)',
               transform: 'translateY(-1px)',
             },
             '@media (hover: none)': {
-              '&:hover': {
-                transform: 'none',
-                boxShadow: 'none',
-              },
+              '&:hover': { transform: 'none', boxShadow: 'none' },
             },
           },
         },
       },
+
+      // ── IconButton ──────────────────────────────────────────────────────
       MuiIconButton: {
         styleOverrides: {
           root: {
-            minWidth: 44,
-            minHeight: 44,
-            '&:active': {
-              transform: 'scale(0.92)',
-            },
+            minWidth: 44, minHeight: 44,
+            '&:active': { transform: 'scale(0.92)' },
           },
         },
       },
-      MuiTab: {
-        styleOverrides: {
-          root: {
-            minHeight: 48,
-          },
-        },
-      },
+
+      // ── AppBar ──────────────────────────────────────────────────────────
       MuiAppBar: {
         styleOverrides: {
           root: {
-            backgroundColor: isDark ? 'rgba(5, 5, 5, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(12px)',
-            borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
-            color: isDark ? '#ffffff' : '#0f172a',
+            backgroundColor: isDark
+              ? 'rgba(12, 14, 26, 0.78)'
+              : 'rgba(244, 246, 255, 0.85)',
+            backdropFilter: 'blur(20px) saturate(160%)',
+            borderBottom: `1px solid ${ink.border}`,
+            color: ink.textPri,
+            boxShadow: 'none',
           },
         },
       },
+
+      // ── Drawer ──────────────────────────────────────────────────────────
       MuiDrawer: {
         styleOverrides: {
           paper: {
-            backgroundColor: isDark ? '#080808' : '#ffffff',
-            borderRight: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
+            backgroundColor: isDark ? '#0e1020' : '#f8f9ff',
+            borderRight: `1px solid ${ink.border}`,
           },
         },
       },
+
+      // ── TextField ───────────────────────────────────────────────────────
       MuiTextField: {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
               borderRadius: 14,
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-              // Prevent iOS zoom on focus
-              '& input': {
-                fontSize: '16px',
-              },
+              backgroundColor: isDark
+                ? 'rgba(255,255,255,0.03)'
+                : 'rgba(99,102,241,0.04)',
+              '& input': { fontSize: '16px' },
               '&:hover': {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                backgroundColor: isDark
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(99,102,241,0.07)',
+              },
+              '&.Mui-focused': {
+                backgroundColor: isDark
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(99,102,241,0.06)',
               },
             },
           },
         },
       },
+
+      // ── Dialog ──────────────────────────────────────────────────────────
       MuiDialog: {
         styleOverrides: {
           paper: {
@@ -203,28 +241,29 @@ const getTheme = (mode) => {
           },
         },
       },
+
+      // ── Chip ────────────────────────────────────────────────────────────
       MuiChip: {
         styleOverrides: {
           root: {
-            '&.MuiChip-clickable': {
-              minHeight: 36,
-            },
+            '&.MuiChip-clickable': { minHeight: 36 },
           },
+        },
+      },
+
+      // ── Tab ─────────────────────────────────────────────────────────────
+      MuiTab: {
+        styleOverrides: {
+          root: { minHeight: 48 },
         },
       },
     },
   });
 
-  // Add responsive font sizes
   theme = responsiveFontSizes(theme);
-
   return theme;
-}
+};
 
-// Export default light theme
 const theme = getTheme('light');
-
-// Export the theme generator function
 export { getTheme };
-
 export default theme;
