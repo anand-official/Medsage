@@ -292,18 +292,6 @@ export default function SignIn() {
                 </div>
               </div>
 
-              {/* Badge */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 14px', borderRadius: 100,
-                background: 'rgba(168,85,247,0.1)',
-                border: '1px solid rgba(168,85,247,0.25)',
-                marginBottom: 20,
-              }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', display: 'inline-block', boxShadow: '0 0 6px rgba(168,85,247,0.8)' }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', letterSpacing: '1.4px' }}>MEDSAGE.AI</span>
-              </div>
-
               <h2 style={{ fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 900, margin: '0 0 10px', letterSpacing: '-0.8px', color: '#f8fafc' }}>
                 Welcome back
               </h2>
@@ -333,33 +321,37 @@ export default function SignIn() {
                 )}
               </AnimatePresence>
 
-              {/* Google button wrapper */}
-              <div style={{
-                padding: 3, borderRadius: 14,
-                background: 'linear-gradient(135deg, rgba(99,102,241,0.4), rgba(168,85,247,0.4), rgba(236,72,153,0.4))',
-                marginBottom: 28,
-              }}>
+              {/* Custom Google button */}
+              <div style={{ position: 'relative', width: '100%', marginBottom: 28 }}>
+                {/* Visible white pill */}
                 <div style={{
-                  background: '#0f0c1a', borderRadius: 11,
-                  display: 'flex', justifyContent: 'center', padding: '6px 0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                  width: '100%', height: 52, borderRadius: 100,
+                  background: '#ffffff',
+                  boxShadow: '0 2px 16px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)',
+                  fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, color: '#1a1a2e',
+                  pointerEvents: 'none', userSelect: 'none',
+                }}>
+                  <IconGoogle />
+                  Continue with Google
+                </div>
+                {/* Invisible Google button layered on top to capture clicks */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  opacity: 0.01, overflow: 'hidden', borderRadius: 100,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
                 }}>
                   <GoogleLogin
                     onSuccess={onGoogleSuccess}
                     onError={onGoogleError}
                     theme="filled_black"
                     size="large"
-                    shape="rectangular"
-                    width="340"
+                    shape="pill"
+                    width="500"
                     text="continue_with"
                   />
                 </div>
-              </div>
-
-              {/* Divider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: 500, letterSpacing: '0.5px' }}>SECURED WITH GOOGLE</span>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
               </div>
 
               {/* Terms */}
