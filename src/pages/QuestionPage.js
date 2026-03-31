@@ -1470,7 +1470,7 @@ const QuestionPage = () => {
           }}>
 
             {/* Text field row */}
-            <Box sx={{ display: 'flex', alignItems: 'flex-end', px: 1.75, pt: 1.5, pb: 0.75, gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-end', px: 2, pt: 1.5, pb: 0.5, gap: 1 }}>
               {/* Attach + mic */}
               <Box sx={{ display: 'flex', gap: 0.25, mb: 0.5, flexShrink: 0 }}>
                 <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
@@ -1552,8 +1552,11 @@ const QuestionPage = () => {
               </Tooltip>
             </Box>
 
+            {/* Divider */}
+            <Box sx={{ mx: 2, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }} />
+
             {/* Toolbar row */}
-            <Box sx={{ px: 2, pb: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25, flexWrap: 'wrap' }}>
+            <Box sx={{ px: 2, pt: 0.75, pb: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25, flexWrap: 'wrap' }}>
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 {/* Mode toggle */}
                 <Box id="tour-mode-toggle" sx={{
