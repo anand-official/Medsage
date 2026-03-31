@@ -31,8 +31,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      // Don't force redirect on 401 — let components handle it
+      // Clear expired/invalid Google ID token and redirect to sign-in
+      localStorage.removeItem('google_id_token');
+      window.location.href = '/signin';
     }
     return Promise.reject(error);
   }
@@ -215,6 +216,11 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('google_id_token');
+      window.location.href = '/signin';
+      return;
+    }
     if (onError) onError(new Error(`HTTP ${response.status}`));
     return;
   }
