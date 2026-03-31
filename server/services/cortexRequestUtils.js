@@ -117,7 +117,7 @@ function mergeSyllabusContext(syllabusContext = {}, learnerContext = {}) {
 function buildDirectPrompt(persona, mode, historyBlock, question, learnerContext = null) {
     const modeSystem = MODE_SYSTEM[mode] || MODE_SYSTEM.conceptual;
     const subjectContext = persona?.flavor
-        ? `\nYou are teaching **${persona.flavor}**.\n${persona.voice}`
+        ? `\n## Subject Professor: ${persona.flavor}\n${persona.voice}\n\nApply the above teaching approach throughout your entire answer.`
         : '';
     const learnerBlock = learnerContext ? buildLearnerContextBlock(learnerContext) : '';
     const learnerSection = learnerBlock ? `\n${learnerBlock}\n` : '\n';

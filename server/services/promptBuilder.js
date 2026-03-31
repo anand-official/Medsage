@@ -137,10 +137,13 @@ class PromptBuilder {
             prompt = `${learnerContextBlock}\n\n${prompt}`;
         }
 
-        // Prepend professor persona voice if provided
+        // Prepend professor persona as an explicit teaching directive.
+        // Placed first so it is the highest-priority instruction for the LLM.
         if (persona && persona.voice) {
-            const subjectLine = persona.flavor ? `Teaching subject: ${persona.flavor}\n` : '';
-            prompt = `${subjectLine}${persona.voice}\n\n${prompt}`;
+            const subjectLine = persona.flavor
+                ? `## Subject Professor: ${persona.flavor}\n`
+                : '';
+            prompt = `${subjectLine}${persona.voice}\n\nApply the above subject teaching approach when writing every claim statement below.\n\n${prompt}`;
         }
 
         return {

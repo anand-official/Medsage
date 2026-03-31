@@ -611,8 +611,11 @@ class CortexOrchestrator {
         const allClaimsSourced = finalCitationResult.claims.length > 0
             && sourcedClaimsCount === finalCitationResult.claims.length;
 
+        // Only mark clarification when confidence is genuinely low AND sourcing is absent.
+        // A good answer with 0 cited chunks should still be returned — just at lower confidence.
         const isClarificationRequired =
-            (confidenceReport.tier === 'LOW' && confidenceReport.final_confidence < 0.5) || sourcedClaimsCount < 1;
+            (confidenceReport.tier === 'LOW' && confidenceReport.final_confidence < 0.5) ||
+            (sourcedClaimsCount < 1 && confidenceReport.final_confidence < 0.55);
 
         const finalResponse = applyTrustMetadata({
             answer,
@@ -695,7 +698,10 @@ class CortexOrchestrator {
 
     _shouldClarifyQuestion(question, topicConfidence, historyLength = 0) {
         const words = (question || '').trim().split(/\s+/).filter(Boolean);
-        return topicConfidence < 0.5 && (words.length <= 6 || looksLikeFollowUp(question, historyLength));
+        // Never ask for clarification when the question is a genuine follow-up and
+        // history exists — the conversation context is enough to answer it directly.
+        if (historyLength > 0 && looksLikeFollowUp(question, historyLength)) return false;
+        return topicConfidence < 0.5 && words.length <= 6;
     }
 
     _shouldClarifyAfterRetrieval(question, topicConfidence) {
