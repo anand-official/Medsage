@@ -32,7 +32,7 @@ const FOUNDERS = [
         color: '#ec4899',
         colorRgb: '236,72,153',
         bio: 'Koyna brings creativity and technical depth to Medsage — crafting experiences that are as intuitive as they are impactful. She thrives at the intersection of design and engineering, turning ideas into features that students genuinely enjoy using.',
-        linkedin: 'https://www.linkedin.com/in/koyna-dutta',
+        linkedin: 'https://www.linkedin.com/in/koyna-dutta-54b050210/',
         github: 'https://github.com/koynadutta',
         email: '',
     },
