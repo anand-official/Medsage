@@ -193,11 +193,13 @@ describe('looksLikeFollowUp', () => {
         expect(looksLikeFollowUp('Explain the same again', 0)).toBe(true);
     });
 
-    test('common follow-up starters are always follow-ups', () => {
-        expect(looksLikeFollowUp('Also explain the mechanism', 0)).toBe(true);
-        expect(looksLikeFollowUp('What about the treatment?', 0)).toBe(true);
-        expect(looksLikeFollowUp('Can you elaborate?', 0)).toBe(true);
-        expect(looksLikeFollowUp('Give me an example', 0)).toBe(true);
+    // Starters like "what about" / "also" only count as follow-ups when there is
+    // prior conversation — otherwise off-topic wh-questions could bypass the guard.
+    test('common follow-up starters are follow-ups when history exists', () => {
+        expect(looksLikeFollowUp('Also explain the mechanism', 1)).toBe(true);
+        expect(looksLikeFollowUp('What about the treatment?', 1)).toBe(true);
+        expect(looksLikeFollowUp('Can you elaborate?', 1)).toBe(true);
+        expect(looksLikeFollowUp('Give me an example', 1)).toBe(true);
     });
 
     test('standalone medical question is not a follow-up', () => {

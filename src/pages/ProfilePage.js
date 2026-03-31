@@ -146,14 +146,23 @@ export default function ProfilePage() {
     const [deleting, setDeleting] = useState(false);
     const [form, setForm] = useState({ displayName: '', mbbs_year: '', college: '', country: 'India' });
 
+    // Sync form from server when profile fields change, but never clobber in-progress edits.
     useEffect(() => {
-        if (userProfile) setForm({
+        if (!userProfile || isEditing) return;
+        setForm({
             displayName: userProfile.displayName || '',
             mbbs_year: userProfile.mbbs_year || '',
             college: userProfile.college || '',
             country: userProfile.country || 'India',
         });
-    }, [userProfile?.uid]);
+    }, [
+        isEditing,
+        userProfile?.uid,
+        userProfile?.displayName,
+        userProfile?.mbbs_year,
+        userProfile?.college,
+        userProfile?.country,
+    ]);
 
     useEffect(() => {
         if (!studyPlan) getStudyPlan();
