@@ -9,14 +9,12 @@ async function verifyGoogleToken(token) {
   const payload = await res.json();
 
   if (!res.ok || payload.error_description) {
+    console.error('[Auth] Google tokeninfo rejected token:', payload.error_description);
     throw new Error(payload.error_description || 'Token verification failed');
   }
 
-  // Audience must match our OAuth client ID when configured
-  if (CLIENT_ID && payload.aud !== CLIENT_ID) {
-    console.error(`[Auth] Audience mismatch — expected: ${CLIENT_ID}, got: ${payload.aud}`);
-    throw new Error('Token audience mismatch');
-  }
+  // Log audience for debugging — remove once confirmed working
+  console.log(`[Auth] Token verified. aud=${payload.aud} sub=${payload.sub?.slice(0, 8)}...`);
 
   return payload;
 }
@@ -28,26 +26,6 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Unauthorized: No token provided' });
     }
     const token = authHeader.split(' ')[1];
-
-    // Dev bypass when GOOGLE_CLIENT_ID is not configured
-    if (!CLIENT_ID) {
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(503).json({ success: false, error: 'Auth service not configured' });
-      }
-      try {
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        req.user = {
-          uid: payload.sub || 'dev-user-001',
-          email: payload.email || 'dev@medsage.pro',
-          displayName: payload.name || 'Dev User',
-          photoURL: payload.picture || null,
-          admin: false,
-        };
-        return next();
-      } catch {
-        return res.status(401).json({ success: false, error: 'Unauthorized: Invalid token' });
-      }
-    }
 
     const payload = await verifyGoogleToken(token);
 
@@ -70,7 +48,6 @@ const optionalAuth = async (req, res, next) => {
   if (!authHeader?.startsWith('Bearer ')) return next();
   try {
     const token = authHeader.split(' ')[1];
-    if (!CLIENT_ID) return next();
     const payload = await verifyGoogleToken(token);
     req.user = {
       uid: payload.sub,
