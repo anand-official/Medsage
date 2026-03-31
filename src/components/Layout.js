@@ -1,6 +1,7 @@
 // src/components/Layout.js
 import React, { useContext, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Box, CssBaseline, Typography, useMediaQuery,
   Avatar, useTheme, Menu, MenuItem, Divider,
@@ -20,21 +21,29 @@ import { ThemeContext } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import '../animations.css';
 
-const NAVBAR_HEIGHT = 60;
+const NAVBAR_HEIGHT = 74;
 const BOTTOM_DOCK_HEIGHT = 72;
 
-const LogoIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="2.8" fill="#ec4899" filter="drop-shadow(0 0 5px rgba(236,72,153,0.9))" />
-    <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#lg1)" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M19.07 4.93l-4.24 4.24M9.17 14.83l-4.24 4.24"
-      stroke="url(#lg2)" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+const LogoMark = () => (
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+    <circle cx="14" cy="14" r="3.2" fill="url(#lm-fill)" />
+    <filter id="lm-glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <circle cx="14" cy="14" r="3.2" fill="#ec4899" filter="url(#lm-glow)" opacity="0.9" />
+    <path d="M14 3v7M14 18v7M3 14h7M18 14h7" stroke="url(#lm-stroke1)" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M5.75 5.75l4.95 4.95M17.3 17.3l4.95 4.95M22.25 5.75l-4.95 4.95M10.7 17.3l-4.95 4.95"
+      stroke="url(#lm-stroke2)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
     <defs>
-      <linearGradient id="lg1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <radialGradient id="lm-fill" cx="50%" cy="50%" r="50%">
+        <stop stopColor="#f0abfc" /><stop offset="1" stopColor="#ec4899" />
+      </radialGradient>
+      <linearGradient id="lm-stroke1" x1="3" y1="3" x2="25" y2="25" gradientUnits="userSpaceOnUse">
         <stop stopColor="#818cf8" /><stop offset="1" stopColor="#a855f7" />
       </linearGradient>
-      <linearGradient id="lg2" x1="22" y1="2" x2="2" y2="22" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#ec4899" /><stop offset="1" stopColor="#6366f1" />
+      <linearGradient id="lm-stroke2" x1="25" y1="3" x2="3" y2="25" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#f472b6" /><stop offset="1" stopColor="#6366f1" />
       </linearGradient>
     </defs>
   </svg>
@@ -49,10 +58,10 @@ const Layout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const navItems = [
-    { label: 'Dashboard',  icon: <HomeIcon sx={{ fontSize: 14 }} />,      path: '/' },
-    { label: 'Cortex',     icon: <QuestionIcon sx={{ fontSize: 14 }} />,  path: '/question' },
-    { label: 'Study Plan', icon: <DateRangeIcon sx={{ fontSize: 14 }} />, path: '/planner' },
-    { label: 'Library',    icon: <BookIcon sx={{ fontSize: 14 }} />,      path: '/books' },
+    { label: 'Dashboard',  icon: <HomeIcon sx={{ fontSize: 16 }} />,      path: '/' },
+    { label: 'Cortex',     icon: <QuestionIcon sx={{ fontSize: 16 }} />,  path: '/question' },
+    { label: 'Study Plan', icon: <DateRangeIcon sx={{ fontSize: 16 }} />, path: '/planner' },
+    { label: 'Library',    icon: <BookIcon sx={{ fontSize: 16 }} />,      path: '/books' },
   ];
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -78,52 +87,68 @@ const Layout = () => {
         position: 'fixed', top: 0, left: 0, right: 0,
         height: NAVBAR_HEIGHT,
         zIndex: theme.zIndex.appBar,
-        background: 'rgba(7, 5, 16, 0.82)',
-        backdropFilter: 'blur(24px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+        background: 'rgba(6, 4, 14, 0.74)',
+        backdropFilter: 'blur(34px) saturate(220%)',
+        WebkitBackdropFilter: 'blur(34px) saturate(220%)',
+        boxShadow: '0 18px 60px rgba(0,0,0,0.35)',
+        // Hair-thin separator only — no heavy border
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          bottom: 0, left: 0, right: 0,
+          height: '1px',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.25) 30%, rgba(99,102,241,0.25) 70%, transparent 100%)',
+        },
       }}
     >
       <Box sx={{
-        maxWidth: 1280,
-        mx: 'auto',
-        px: { xs: 2, md: 5 },
+        maxWidth: 1280, mx: 'auto',
+        px: { xs: 3, md: 6 },
         height: '100%',
         display: 'grid',
-        gridTemplateColumns: '1fr auto 1fr',
+        gridTemplateColumns: '220px 1fr 220px',
         alignItems: 'center',
       }}>
 
-        {/* ── Left: Logo ── */}
+        {/* ── Logo ── */}
         <Box
           onClick={() => navigate('/')}
           role="button"
           sx={{
-            display: 'flex', alignItems: 'center', gap: '9px',
+            display: 'flex', alignItems: 'center', gap: '10px',
             cursor: 'pointer', width: 'fit-content',
-            transition: 'opacity 0.15s',
-            '&:hover': { opacity: 0.8 },
+            '&:hover': { '& .logo-wordmark': { opacity: 1 } },
           }}
         >
-          <LogoIcon />
-          <Typography sx={{
-            fontWeight: 800,
-            fontSize: '0.93rem',
-            letterSpacing: '-0.04em',
-            background: 'linear-gradient(120deg, #c4b5fd 0%, #f0abfc 55%, #fb923c 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            userSelect: 'none',
-            display: { xs: 'none', sm: 'block' },
-          }}>
-            Medsage.ai
-          </Typography>
+          <LogoMark />
+          <Box className="logo-wordmark" sx={{ opacity: 0.88, transition: 'opacity 0.2s', display: { xs: 'none', sm: 'block' } }}>
+            <Typography sx={{
+              fontWeight: 800,
+              fontSize: '1.08rem',
+              letterSpacing: '-0.045em',
+              lineHeight: 1,
+              background: 'linear-gradient(105deg, #c4b5fd 0%, #e879f9 50%, #f97316 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              userSelect: 'none',
+            }}>
+              Medsage.ai
+            </Typography>
+          </Box>
         </Box>
 
-        {/* ── Center: Nav tabs ── */}
-        {!isMobile ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+        {/* ── Center Nav — sliding pill ── */}
+        {!isMobile && (
+          <Box sx={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '4px',
+            px: '6px',
+            py: '6px',
+            borderRadius: '16px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 10px 34px rgba(0,0,0,0.28)',
+          }}>
             {navItems.map((item) => {
               const active = location.pathname === item.path;
               return (
@@ -133,72 +158,83 @@ const Layout = () => {
                   role="button"
                   aria-current={active ? 'page' : undefined}
                   sx={{
+                    position: 'relative',
                     display: 'flex', alignItems: 'center', gap: '6px',
-                    px: '14px', py: '7px',
-                    borderRadius: '10px',
+                    px: '18px', py: '10px',
+                    borderRadius: '14px',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    background: active ? 'rgba(139,92,246,0.14)' : 'transparent',
-                    '&:hover': {
-                      background: active
-                        ? 'rgba(139,92,246,0.2)'
-                        : 'rgba(255,255,255,0.05)',
-                    },
+                    '&:hover .nav-label': { color: active ? '#fff' : 'rgba(255,255,255,0.78)' },
+                    '&:hover .nav-icon': { color: active ? '#c4b5fd' : 'rgba(255,255,255,0.6)' },
                     '&:active': { transform: 'scale(0.96)' },
+                    transition: 'transform 0.12s',
                   }}
                 >
-                  <Box sx={{
-                    color: active ? '#a78bfa' : 'rgba(255,255,255,0.3)',
+                  {/* Sliding pill background */}
+                  {active && (
+                    <motion.div
+                      layoutId="nav-pill"
+                      transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                      style={{
+                        position: 'absolute', inset: 0,
+                        borderRadius: 14,
+                        background: 'linear-gradient(135deg, rgba(124,58,237,0.22), rgba(99,102,241,0.16), rgba(236,72,153,0.14))',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        boxShadow: '0 10px 28px rgba(124,58,237,0.18), 0 0 0 1px rgba(255,255,255,0.04) inset',
+                      }}
+                    />
+                  )}
+
+                  <Box className="nav-icon" sx={{
+                    color: active ? '#c4b5fd' : 'rgba(255,255,255,0.32)',
                     display: 'flex', alignItems: 'center',
-                    transition: 'color 0.15s',
+                    transition: 'color 0.18s',
+                    position: 'relative', zIndex: 1,
+                    '& .MuiSvgIcon-root': { fontSize: 18 },
                   }}>
                     {item.icon}
                   </Box>
-                  <Typography sx={{
-                    fontSize: '0.82rem',
-                    fontWeight: active ? 700 : 500,
-                    color: active ? '#ede9fe' : 'rgba(255,255,255,0.45)',
-                    letterSpacing: '-0.01em',
+
+                  <Typography className="nav-label" sx={{
+                    fontSize: '0.9rem',
+                    fontWeight: active ? 700 : 520,
+                    color: active ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0.44)',
+                    letterSpacing: '-0.015em',
                     lineHeight: 1,
-                    transition: 'color 0.15s',
+                    transition: 'color 0.18s, font-weight 0.18s',
+                    position: 'relative', zIndex: 1,
                     whiteSpace: 'nowrap',
                   }}>
                     {item.label}
                   </Typography>
-                  {/* Active dot */}
-                  {active && (
-                    <Box sx={{
-                      width: 4, height: 4, borderRadius: '50%',
-                      background: '#a78bfa',
-                      boxShadow: '0 0 6px rgba(167,139,250,0.8)',
-                      flexShrink: 0,
-                    }} />
-                  )}
                 </Box>
               );
             })}
           </Box>
-        ) : <Box />}
+        )}
 
-        {/* ── Right: Controls ── */}
+        {/* ── Right controls ── */}
         <Box sx={{
           display: 'flex', alignItems: 'center',
-          gap: '8px', justifyContent: 'flex-end',
+          gap: '6px', justifyContent: 'flex-end',
         }}>
+
           {/* Theme toggle */}
           <Box
             onClick={toggleColorMode}
             role="button"
             aria-label="Toggle theme"
+            component={motion.div}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.93 }}
             sx={{
-              width: 34, height: 34, borderRadius: '9px',
+              width: 38, height: 38, borderRadius: '12px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(255,255,255,0.35)',
+              color: 'rgba(255,255,255,0.3)',
               cursor: 'pointer',
-              transition: 'all 0.15s',
+              transition: 'color 0.15s, background 0.15s',
               '&:hover': {
-                background: 'rgba(255,255,255,0.07)',
-                color: 'rgba(255,255,255,0.7)',
+                background: 'rgba(255,255,255,0.06)',
+                color: 'rgba(255,255,255,0.65)',
               },
             }}
           >
@@ -208,50 +244,60 @@ const Layout = () => {
           </Box>
 
           {/* Separator */}
-          <Box sx={{ width: '1px', height: 18, bgcolor: 'rgba(255,255,255,0.1)' }} />
+          <Box sx={{ width: 1, height: 16, bgcolor: 'rgba(255,255,255,0.1)' }} />
 
-          {/* Avatar + name */}
+          {/* Avatar */}
           <Box
             onClick={handleAvatarClick}
             role="button"
             aria-label="Account menu"
             aria-controls={openMenu ? 'account-menu' : undefined}
             aria-haspopup="true"
+            component={motion.div}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             sx={{
               display: 'flex', alignItems: 'center', gap: '8px',
               cursor: 'pointer', borderRadius: '10px',
-              px: '8px', py: '5px',
+              px: '8px', py: '6px',
               transition: 'background 0.15s',
-              '&:hover': { background: 'rgba(255,255,255,0.06)' },
+              '&:hover': { background: 'rgba(255,255,255,0.05)' },
             }}
           >
-            <Avatar
-              src={avatarSrc}
-              sx={{
-                width: 28, height: 28,
-                border: '2px solid rgba(139,92,246,0.45)',
-                bgcolor: '#5b50e8',
-                fontSize: '0.65rem', fontWeight: 800,
-              }}
-            >
-              {avatarFallback}
-            </Avatar>
+            <Box sx={{
+              position: 'relative',
+              '&::after': {
+                content: '""',
+                position: 'absolute', inset: -2.5,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #818cf8, #a855f7, #ec4899)',
+                zIndex: 0,
+                opacity: 0.7,
+              },
+            }}>
+              <Avatar
+                src={avatarSrc}
+                sx={{
+                  width: 32, height: 32,
+                  bgcolor: '#4f46e5',
+                  fontSize: '0.7rem', fontWeight: 800,
+                  position: 'relative', zIndex: 1,
+                }}
+              >
+                {avatarFallback}
+              </Avatar>
+            </Box>
             <Typography sx={{
-              fontSize: '0.8rem', fontWeight: 600,
-              color: 'rgba(255,255,255,0.55)',
+              fontSize: '0.86rem', fontWeight: 650,
+              color: 'rgba(255,255,255,0.52)',
               display: { xs: 'none', lg: 'block' },
-              maxWidth: 100, overflow: 'hidden',
+              maxWidth: 110, overflow: 'hidden',
               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {firstName}
             </Typography>
-            {/* Chevron */}
-            <Box sx={{
-              color: 'rgba(255,255,255,0.25)',
-              display: { xs: 'none', lg: 'flex' },
-              alignItems: 'center',
-            }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <Box sx={{ color: 'rgba(255,255,255,0.2)', display: { xs: 'none', lg: 'flex' } }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </Box>
@@ -262,7 +308,7 @@ const Layout = () => {
     </Box>
   );
 
-  // ── Account dropdown ────────────────────────────────────────────────────────
+  // ── Account Dropdown ────────────────────────────────────────────────────────
   const AccountMenu = () => (
     <Menu
       anchorEl={anchorEl}
@@ -275,46 +321,60 @@ const Layout = () => {
       PaperProps={{
         elevation: 0,
         sx: {
-          mt: 1, borderRadius: '14px',
-          background: 'rgba(10, 8, 22, 0.97)',
-          backdropFilter: 'blur(28px)',
-          border: '1px solid rgba(255,255,255,0.09)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.65), 0 0 0 1px rgba(168,85,247,0.07)',
-          minWidth: 220,
+          mt: 1.5, borderRadius: '16px',
+          background: 'rgba(9, 7, 20, 0.97)',
+          backdropFilter: 'blur(32px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(139,92,246,0.08)',
+          minWidth: 228, overflow: 'hidden',
         },
       }}
+      TransitionComponent={undefined}
+      TransitionProps={{ timeout: 0 }}
     >
-      <Box sx={{ px: 2, pt: 1.75, pb: 1.5, display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <Avatar src={avatarSrc} sx={{
-          width: 34, height: 34,
-          border: '2px solid rgba(139,92,246,0.4)',
-          bgcolor: '#5b50e8', fontSize: '0.72rem', fontWeight: 800,
+      {/* User header */}
+      <Box sx={{ px: 2, pt: 2, pb: 1.75, display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <Box sx={{
+          position: 'relative', flexShrink: 0,
+          '&::after': {
+            content: '""', position: 'absolute', inset: -2,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #818cf8, #a855f7)',
+            opacity: 0.6,
+          },
         }}>
-          {avatarFallback}
-        </Avatar>
+          <Avatar src={avatarSrc} sx={{
+            width: 36, height: 36, bgcolor: '#4f46e5',
+            fontSize: '0.75rem', fontWeight: 800,
+            position: 'relative', zIndex: 1,
+          }}>
+            {avatarFallback}
+          </Avatar>
+        </Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: '0.84rem', fontWeight: 700, color: '#f0eeff', lineHeight: 1.25 }} noWrap>
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#f5f3ff', lineHeight: 1.25 }} noWrap>
             {displayName || 'Student'}
           </Typography>
-          <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', mt: '2px' }} noWrap>
+          <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.32)', mt: '3px' }} noWrap>
             {userProfile?.email || currentUser?.email}
           </Typography>
         </Box>
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mx: 0 }} />
 
-      <Box sx={{ py: '5px', px: '5px' }}>
+      <Box sx={{ p: '6px' }}>
         {[
-          { icon: <DashboardIcon sx={{ fontSize: 15 }} />, label: 'Dashboard', onClick: () => navigate('/') },
-          { icon: <PersonIcon sx={{ fontSize: 15 }} />,    label: 'Profile & Settings', onClick: () => navigate('/profile') },
-        ].map(({ icon, label, onClick }) => (
-          <MenuItem key={label} onClick={() => { handleCloseMenu(); onClick(); }} sx={{
-            borderRadius: '9px', py: '8px', px: '10px', gap: '10px',
-            color: 'rgba(255,255,255,0.6)', fontSize: '0.82rem',
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: '#fff' },
+          { icon: <DashboardIcon sx={{ fontSize: 14 }} />, label: 'Dashboard', path: '/' },
+          { icon: <PersonIcon sx={{ fontSize: 14 }} />, label: 'Profile & Settings', path: '/profile' },
+        ].map(({ icon, label, path }) => (
+          <MenuItem key={label} onClick={() => { handleCloseMenu(); navigate(path); }} sx={{
+            borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
+            color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 500,
+            minHeight: 'unset',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.9)' },
           }}>
-            <Box sx={{ color: 'rgba(255,255,255,0.3)', display: 'flex' }}>{icon}</Box>
+            <Box sx={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}>{icon}</Box>
             {label}
           </MenuItem>
         ))}
@@ -322,35 +382,39 @@ const Layout = () => {
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
 
-      <Box sx={{ py: '5px', px: '5px' }}>
+      <Box sx={{ p: '6px' }}>
         <MenuItem onClick={handleLogout} sx={{
-          borderRadius: '9px', py: '8px', px: '10px', gap: '10px',
-          color: '#f87171', fontSize: '0.82rem',
+          borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
+          color: '#f87171', fontSize: '0.82rem', fontWeight: 500,
+          minHeight: 'unset',
           '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' },
         }}>
-          <LogoutIcon sx={{ fontSize: 15, color: '#f87171' }} />
-          Sign Out
+          <LogoutIcon sx={{ fontSize: 14, color: '#f87171' }} />
+          Sign out
         </MenuItem>
       </Box>
     </Menu>
   );
 
-  // ── Mobile bottom dock ──────────────────────────────────────────────────────
+  // ── Mobile Bottom Dock ──────────────────────────────────────────────────────
   const BottomDock = () => (
     <Box
       component="nav"
       aria-label="Main navigation"
       sx={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        pb: 'env(safe-area-inset-bottom, 0px)',
         height: BOTTOM_DOCK_HEIGHT,
+        pb: 'env(safe-area-inset-bottom, 0px)',
         zIndex: theme.zIndex.appBar,
-        background: 'rgba(7, 5, 16, 0.94)',
+        background: 'rgba(6, 4, 14, 0.94)',
         backdropFilter: 'blur(28px)',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        '&::before': {
+          content: '""', position: 'absolute',
+          top: 0, left: 0, right: 0, height: '1px',
+          background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.2), transparent)',
+        },
         display: 'flex', alignItems: 'center',
-        justifyContent: 'space-around',
-        px: 2,
+        justifyContent: 'space-around', px: 2,
       }}
     >
       {navItems.map((item) => {
@@ -361,29 +425,40 @@ const Layout = () => {
             onClick={() => navigate(item.path)}
             role="button"
             aria-current={active ? 'page' : undefined}
+            component={motion.div}
+            whileTap={{ scale: 0.88 }}
             sx={{
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', gap: '4px',
-              cursor: 'pointer', minWidth: 56,
-              transition: 'opacity 0.15s',
-              '&:active': { opacity: 0.6 },
+              cursor: 'pointer', minWidth: 60, py: '6px',
+              borderRadius: '12px',
+              position: 'relative',
             }}
           >
+            {active && (
+              <motion.div
+                layoutId="dock-pill"
+                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                style={{
+                  position: 'absolute', inset: 0,
+                  borderRadius: 12,
+                  background: 'rgba(139,92,246,0.12)',
+                }}
+              />
+            )}
             <Box sx={{
-              width: 38, height: 26, borderRadius: '8px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: active ? 'rgba(139,92,246,0.18)' : 'transparent',
-              color: active ? '#a78bfa' : 'rgba(255,255,255,0.28)',
-              transition: 'all 0.15s',
-              '& .MuiSvgIcon-root': { fontSize: 18 },
+              color: active ? '#a78bfa' : 'rgba(255,255,255,0.25)',
+              display: 'flex', transition: 'color 0.18s',
+              position: 'relative', zIndex: 1,
+              '& .MuiSvgIcon-root': { fontSize: 20 },
             }}>
               {item.icon}
             </Box>
             <Typography sx={{
-              fontSize: '0.58rem',
-              fontWeight: active ? 700 : 500,
-              color: active ? '#a78bfa' : 'rgba(255,255,255,0.28)',
-              lineHeight: 1,
+              fontSize: '0.58rem', fontWeight: active ? 700 : 500,
+              color: active ? '#a78bfa' : 'rgba(255,255,255,0.25)',
+              lineHeight: 1, position: 'relative', zIndex: 1,
+              transition: 'color 0.18s',
             }}>
               {item.label}
             </Typography>
@@ -397,7 +472,6 @@ const Layout = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       <Navbar />
-
       <Box
         component="main"
         sx={{
@@ -408,15 +482,10 @@ const Layout = () => {
           overflowX: 'hidden',
         }}
       >
-        <Box sx={{
-          px: { xs: 2, sm: 3, md: 4 },
-          py: { xs: 2, md: 3 },
-          maxWidth: 1400, mx: 'auto',
-        }}>
+        <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 }, maxWidth: 1400, mx: 'auto' }}>
           <Outlet />
         </Box>
       </Box>
-
       {isMobile && <BottomDock />}
       <AccountMenu />
     </Box>
