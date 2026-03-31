@@ -171,28 +171,36 @@ const Layout = () => {
   const avatarSrc = userProfile?.photoURL || currentUser?.photoURL;
   const avatarFallback = displayName[0]?.toUpperCase() || 'S';
 
-  // ── Navbar ─────────────────────────────────────────────────────────────────
-  const Navbar = () => (
-    <Box
-      component="header"
-      sx={{
-        position: 'fixed', top: 0, left: 0, right: 0,
-        height: NAVBAR_HEIGHT,
-        zIndex: theme.zIndex.appBar,
-        background: 'rgba(6, 4, 14, 0.74)',
-        backdropFilter: 'blur(34px) saturate(220%)',
-        WebkitBackdropFilter: 'blur(34px) saturate(220%)',
-        boxShadow: '0 18px 60px rgba(0,0,0,0.35)',
-        // Hair-thin separator only — no heavy border
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          height: '1px',
-          background: 'linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.25) 30%, rgba(99,102,241,0.25) 70%, transparent 100%)',
-        },
-      }}
-    >
+  // ── Render ─────────────────────────────────────────────────────────────────
+  // NOTE: Navbar, AccountMenu, and BottomDock are NOT inner components —
+  // defining them as `const Foo = () => (...)` inside Layout causes React to
+  // treat them as new component types on every render, unmounting/remounting
+  // the DOM tree. This destroys the avatar button's DOM node that anchorEl
+  // points to, so MUI positions the dropdown at (0,0). Inline JSX is stable.
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <CssBaseline />
+
+      {/* ── Navbar ── */}
+      <Box
+        component="header"
+        sx={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          height: NAVBAR_HEIGHT,
+          zIndex: theme.zIndex.appBar,
+          background: 'rgba(6, 4, 14, 0.74)',
+          backdropFilter: 'blur(34px) saturate(220%)',
+          WebkitBackdropFilter: 'blur(34px) saturate(220%)',
+          boxShadow: '0 18px 60px rgba(0,0,0,0.35)',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.25) 30%, rgba(99,102,241,0.25) 70%, transparent 100%)',
+          },
+        }}
+      >
       <Box sx={{
         maxWidth: 1280, mx: 'auto',
         px: { xs: 3, md: 6 },
@@ -376,174 +384,9 @@ const Layout = () => {
         </Box>
 
       </Box>
-    </Box>
-  );
-
-  // ── Account Dropdown ────────────────────────────────────────────────────────
-  const AccountMenu = () => (
-    <Menu
-      anchorEl={anchorEl}
-      id="account-menu"
-      open={openMenu}
-      onClose={handleCloseMenu}
-      onClick={handleCloseMenu}
-      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      disableScrollLock
-      PaperProps={{
-        elevation: 0,
-        sx: {
-          mt: 1.5, borderRadius: '16px',
-          background: 'rgba(9, 7, 20, 0.97)',
-          backdropFilter: 'blur(32px)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(139,92,246,0.08)',
-          minWidth: 228, overflow: 'hidden',
-        },
-      }}
-      TransitionComponent={undefined}
-      TransitionProps={{ timeout: 0 }}
-    >
-      {/* User header */}
-      <Box sx={{ px: 2, pt: 2, pb: 1.75, display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <Box sx={{
-          position: 'relative', flexShrink: 0,
-          '&::after': {
-            content: '""', position: 'absolute', inset: -2,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #818cf8, #a855f7)',
-            opacity: 0.6,
-          },
-        }}>
-          <Avatar src={avatarSrc} sx={{
-            width: 36, height: 36, bgcolor: '#4f46e5',
-            fontSize: '0.75rem', fontWeight: 800,
-            position: 'relative', zIndex: 1,
-          }}>
-            {avatarFallback}
-          </Avatar>
-        </Box>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#f5f3ff', lineHeight: 1.25 }} noWrap>
-            {displayName || 'Student'}
-          </Typography>
-          <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.32)', mt: '3px' }} noWrap>
-            {userProfile?.email || currentUser?.email}
-          </Typography>
-        </Box>
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mx: 0 }} />
-
-      <Box sx={{ p: '6px' }}>
-        {[
-          { icon: <DashboardIcon sx={{ fontSize: 14 }} />, label: 'Dashboard', path: '/' },
-          { icon: <PersonIcon sx={{ fontSize: 14 }} />, label: 'Profile & Settings', path: '/profile' },
-        ].map(({ icon, label, path }) => (
-          <MenuItem key={label} onClick={() => { handleCloseMenu(); navigate(path); }} sx={{
-            borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
-            color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 500,
-            minHeight: 'unset',
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.9)' },
-          }}>
-            <Box sx={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}>{icon}</Box>
-            {label}
-          </MenuItem>
-        ))}
-      </Box>
-
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
-
-      <Box sx={{ p: '6px' }}>
-        <MenuItem onClick={handleLogout} sx={{
-          borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
-          color: '#f87171', fontSize: '0.82rem', fontWeight: 500,
-          minHeight: 'unset',
-          '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' },
-        }}>
-          <LogoutIcon sx={{ fontSize: 14, color: '#f87171' }} />
-          Sign out
-        </MenuItem>
-      </Box>
-    </Menu>
-  );
-
-  // ── Mobile Bottom Dock ──────────────────────────────────────────────────────
-  const BottomDock = () => (
-    <Box
-      component="nav"
-      aria-label="Main navigation"
-      sx={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        height: BOTTOM_DOCK_HEIGHT,
-        pb: 'env(safe-area-inset-bottom, 0px)',
-        zIndex: theme.zIndex.appBar,
-        background: 'rgba(6, 4, 14, 0.94)',
-        backdropFilter: 'blur(28px)',
-        '&::before': {
-          content: '""', position: 'absolute',
-          top: 0, left: 0, right: 0, height: '1px',
-          background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.2), transparent)',
-        },
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-around', px: 2,
-      }}
-    >
-      {navItems.map((item) => {
-        const active = location.pathname === item.path;
-        return (
-          <Box
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            role="button"
-            aria-current={active ? 'page' : undefined}
-            component={motion.div}
-            whileTap={{ scale: 0.88 }}
-            sx={{
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: '4px',
-              cursor: 'pointer', minWidth: 60, py: '6px',
-              borderRadius: '12px',
-              position: 'relative',
-            }}
-          >
-            {active && (
-              <motion.div
-                layoutId="dock-pill"
-                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                style={{
-                  position: 'absolute', inset: 0,
-                  borderRadius: 12,
-                  background: 'rgba(139,92,246,0.12)',
-                }}
-              />
-            )}
-            <Box sx={{
-              color: active ? '#a78bfa' : 'rgba(255,255,255,0.25)',
-              display: 'flex', transition: 'color 0.18s',
-              position: 'relative', zIndex: 1,
-              '& .MuiSvgIcon-root': { fontSize: 20 },
-            }}>
-              {item.icon}
-            </Box>
-            <Typography sx={{
-              fontSize: '0.58rem', fontWeight: active ? 700 : 500,
-              color: active ? '#a78bfa' : 'rgba(255,255,255,0.25)',
-              lineHeight: 1, position: 'relative', zIndex: 1,
-              transition: 'color 0.18s',
-            }}>
-              {item.label}
-            </Typography>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <CssBaseline />
-      <Navbar />
+      {/* ── Main content ── */}
       <Box
         component="main"
         sx={{
@@ -558,8 +401,162 @@ const Layout = () => {
           <Outlet />
         </Box>
       </Box>
-      {isMobile && <BottomDock />}
-      <AccountMenu />
+
+      {/* ── Mobile Bottom Dock ── */}
+      {isMobile && (
+        <Box
+          component="nav"
+          aria-label="Main navigation"
+          sx={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            height: BOTTOM_DOCK_HEIGHT,
+            pb: 'env(safe-area-inset-bottom, 0px)',
+            zIndex: theme.zIndex.appBar,
+            background: 'rgba(6, 4, 14, 0.94)',
+            backdropFilter: 'blur(28px)',
+            '&::before': {
+              content: '""', position: 'absolute',
+              top: 0, left: 0, right: 0, height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.2), transparent)',
+            },
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-around', px: 2,
+          }}
+        >
+          {navItems.map((item) => {
+            const active = location.pathname === item.path;
+            return (
+              <Box
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                role="button"
+                aria-current={active ? 'page' : undefined}
+                component={motion.div}
+                whileTap={{ scale: 0.88 }}
+                sx={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: '4px',
+                  cursor: 'pointer', minWidth: 60, py: '6px',
+                  borderRadius: '12px',
+                  position: 'relative',
+                }}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="dock-pill"
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                    style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'rgba(139,92,246,0.12)' }}
+                  />
+                )}
+                <Box sx={{
+                  color: active ? '#a78bfa' : 'rgba(255,255,255,0.25)',
+                  display: 'flex', transition: 'color 0.18s',
+                  position: 'relative', zIndex: 1,
+                  '& .MuiSvgIcon-root': { fontSize: 20 },
+                }}>
+                  {item.icon}
+                </Box>
+                <Typography sx={{
+                  fontSize: '0.58rem', fontWeight: active ? 700 : 500,
+                  color: active ? '#a78bfa' : 'rgba(255,255,255,0.25)',
+                  lineHeight: 1, position: 'relative', zIndex: 1,
+                  transition: 'color 0.18s',
+                }}>
+                  {item.label}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+
+      {/* ── Account Dropdown ── */}
+      <Menu
+        anchorEl={anchorEl}
+        id="account-menu"
+        open={openMenu}
+        onClose={handleCloseMenu}
+        onClick={handleCloseMenu}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        disableScrollLock
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            mt: 1.5, borderRadius: '16px',
+            background: 'rgba(9, 7, 20, 0.97)',
+            backdropFilter: 'blur(32px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(139,92,246,0.08)',
+            minWidth: 228, overflow: 'hidden',
+          },
+        }}
+        TransitionComponent={undefined}
+        TransitionProps={{ timeout: 0 }}
+      >
+        {/* User header */}
+        <Box sx={{ px: 2, pt: 2, pb: 1.75, display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Box sx={{
+            position: 'relative', flexShrink: 0,
+            '&::after': {
+              content: '""', position: 'absolute', inset: -2,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #818cf8, #a855f7)',
+              opacity: 0.6,
+            },
+          }}>
+            <Avatar src={avatarSrc} sx={{
+              width: 36, height: 36, bgcolor: '#4f46e5',
+              fontSize: '0.75rem', fontWeight: 800,
+              position: 'relative', zIndex: 1,
+            }}>
+              {avatarFallback}
+            </Avatar>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#f5f3ff', lineHeight: 1.25 }} noWrap>
+              {displayName || 'Student'}
+            </Typography>
+            <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.32)', mt: '3px' }} noWrap>
+              {userProfile?.email || currentUser?.email}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mx: 0 }} />
+
+        <Box sx={{ p: '6px' }}>
+          {[
+            { icon: <DashboardIcon sx={{ fontSize: 14 }} />, label: 'Dashboard', path: '/' },
+            { icon: <PersonIcon sx={{ fontSize: 14 }} />, label: 'Profile & Settings', path: '/profile' },
+          ].map(({ icon, label, path }) => (
+            <MenuItem key={label} onClick={() => { handleCloseMenu(); navigate(path); }} sx={{
+              borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
+              color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem', fontWeight: 500,
+              minHeight: 'unset',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.9)' },
+            }}>
+              <Box sx={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}>{icon}</Box>
+              {label}
+            </MenuItem>
+          ))}
+        </Box>
+
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
+
+        <Box sx={{ p: '6px' }}>
+          <MenuItem onClick={handleLogout} sx={{
+            borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
+            color: '#f87171', fontSize: '0.82rem', fontWeight: 500,
+            minHeight: 'unset',
+            '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' },
+          }}>
+            <LogoutIcon sx={{ fontSize: 14, color: '#f87171' }} />
+            Sign out
+          </MenuItem>
+        </Box>
+      </Menu>
+
     </Box>
   );
 };
