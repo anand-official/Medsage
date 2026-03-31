@@ -48,8 +48,7 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // runs once on mount — intentional
 
   const scheduleTokenRefresh = (expEpochSeconds) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
