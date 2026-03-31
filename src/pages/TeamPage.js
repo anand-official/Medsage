@@ -228,7 +228,7 @@ const TEAM = [
         name: 'Koyna Dutta',
         role: 'Developer',
         tag: 'Design & Development',
-        photo: '/koyna_dutta.png',
+        photo: '/koyna_dutta.jpeg',
         color: '#ec4899',
         colorRgb: '236,72,153',
         bio: 'Koyna brings creativity and technical depth to Medsage — crafting experiences that are as intuitive as they are impactful. She thrives at the intersection of design and engineering, turning ideas into features that students genuinely enjoy using.',
@@ -238,7 +238,7 @@ const TEAM = [
     },
     {
         name: 'Bikash Yadav',
-        role: 'Developer',
+        role: 'Lead AI Integrations Engineer',
         tag: 'Fullstack & AI',
         photo: '/Bikash_yadav.png',
         color: '#a855f7',

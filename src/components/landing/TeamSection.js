@@ -28,7 +28,7 @@ const FOUNDERS = [
         name: 'Koyna Dutta',
         role: 'Developer',
         tag: 'Design & Development',
-        photo: '/koyna_dutta.png',
+        photo: '/koyna_dutta.jpeg',
         color: '#ec4899',
         colorRgb: '236,72,153',
         bio: 'Koyna brings creativity and technical depth to Medsage — crafting experiences that are as intuitive as they are impactful. She thrives at the intersection of design and engineering, turning ideas into features that students genuinely enjoy using.',
@@ -38,7 +38,7 @@ const FOUNDERS = [
     },
     {
         name: 'Bikash Yadav',
-        role: 'Developer',
+        role: 'Lead AI Integrations Engineer',
         tag: 'Fullstack & AI',
         photo: '/Bikash_yadav.png',
         color: '#a855f7',
@@ -47,6 +47,18 @@ const FOUNDERS = [
         linkedin: 'https://www.linkedin.com/in/bikash-yadav-0a3215291',
         github: 'https://github.com/Bikashydv1',
         email: 'ybikash919@gmail.com',
+    },
+    {
+        name: 'Kapish Tuwani',
+        role: 'Growth & Operations',
+        tag: 'Data & Marketing',
+        photo: '/Kapish_Tulwani.png',
+        color: '#f59e0b',
+        colorRgb: '245,158,11',
+        bio: 'Skilled in Python, NumPy, Pandas, Matplotlib, and Scikit-learn. Kapish drives Medsage\'s growth strategy, partnerships, and outreach — connecting the platform with every aspiring doctor who needs it.',
+        linkedin: 'https://www.linkedin.com/in/kapish-tuwani-211491371/',
+        github: 'https://github.com/tuwanikapish-ctrl',
+        email: 'kapishtuwani@gmail.com',
     },
 ];
 
