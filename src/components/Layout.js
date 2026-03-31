@@ -1,5 +1,5 @@
 // src/components/Layout.js
-import React, { useContext, useState } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -150,9 +150,15 @@ const Layout = () => {
     { label: 'Library',    icon: <BookIcon sx={{ fontSize: 16 }} />,      path: '/books' },
   ];
 
+  const avatarBtnRef = useRef(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
-  const handleAvatarClick = (e) => setAnchorEl(e.currentTarget);
+  const handleAvatarClick = () => {
+    // Use a stable ref (not event.currentTarget) to prevent Menu anchoring
+    // to (0,0) when the click target is not an HTMLElement (rare, but happens).
+    if (anchorEl) setAnchorEl(null);
+    else setAnchorEl(avatarBtnRef.current);
+  };
   const handleCloseMenu = () => setAnchorEl(null);
 
   const handleLogout = async () => {
@@ -313,6 +319,7 @@ const Layout = () => {
           {/* Avatar */}
           <Box
             onClick={handleAvatarClick}
+            ref={avatarBtnRef}
             role="button"
             aria-label="Account menu"
             aria-controls={openMenu ? 'account-menu' : undefined}
@@ -382,6 +389,7 @@ const Layout = () => {
       onClick={handleCloseMenu}
       transformOrigin={{ horizontal: 'right', vertical: 'top' }}
       anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      disableScrollLock
       PaperProps={{
         elevation: 0,
         sx: {
