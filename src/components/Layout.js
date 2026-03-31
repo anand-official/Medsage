@@ -3,8 +3,7 @@ import React, { useContext, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box, CssBaseline, Typography, useMediaQuery,
-  Avatar, Tooltip, useTheme, Menu, MenuItem,
-  ListItemIcon, Divider,
+  Avatar, useTheme, Menu, MenuItem, Divider,
 } from '@mui/material';
 import {
   Home as HomeIcon,
@@ -21,12 +20,12 @@ import { ThemeContext } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import '../animations.css';
 
-const NAVBAR_HEIGHT = 64;
-const BOTTOM_DOCK_HEIGHT = 76;
+const NAVBAR_HEIGHT = 60;
+const BOTTOM_DOCK_HEIGHT = 72;
 
 const LogoIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="2.8" fill="#ec4899" filter="drop-shadow(0 0 6px rgba(236,72,153,0.9))" />
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="2.8" fill="#ec4899" filter="drop-shadow(0 0 5px rgba(236,72,153,0.9))" />
     <path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="url(#lg1)" strokeWidth="2.2" strokeLinecap="round" />
     <path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M19.07 4.93l-4.24 4.24M9.17 14.83l-4.24 4.24"
       stroke="url(#lg2)" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
@@ -50,10 +49,10 @@ const Layout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const navItems = [
-    { label: 'Dashboard',  icon: <HomeIcon sx={{ fontSize: 15 }} />,       path: '/' },
-    { label: 'Cortex',     icon: <QuestionIcon sx={{ fontSize: 15 }} />,   path: '/question' },
-    { label: 'Study Plan', icon: <DateRangeIcon sx={{ fontSize: 15 }} />,  path: '/planner' },
-    { label: 'Library',    icon: <BookIcon sx={{ fontSize: 15 }} />,       path: '/books' },
+    { label: 'Dashboard',  icon: <HomeIcon sx={{ fontSize: 14 }} />,      path: '/' },
+    { label: 'Cortex',     icon: <QuestionIcon sx={{ fontSize: 14 }} />,  path: '/question' },
+    { label: 'Study Plan', icon: <DateRangeIcon sx={{ fontSize: 14 }} />, path: '/planner' },
+    { label: 'Library',    icon: <BookIcon sx={{ fontSize: 14 }} />,      path: '/books' },
   ];
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -71,65 +70,50 @@ const Layout = () => {
   const avatarSrc = userProfile?.photoURL || currentUser?.photoURL;
   const avatarFallback = displayName[0]?.toUpperCase() || 'S';
 
-  // ── Floating Navbar ────────────────────────────────────────────────────────
+  // ── Navbar ─────────────────────────────────────────────────────────────────
   const Navbar = () => (
     <Box
       component="header"
       sx={{
-        position: 'fixed',
-        top: 12,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'calc(100% - 32px)',
-        maxWidth: 920,
-        height: 52,
+        position: 'fixed', top: 0, left: 0, right: 0,
+        height: NAVBAR_HEIGHT,
         zIndex: theme.zIndex.appBar,
-        borderRadius: '16px',
-        background: 'rgba(8, 6, 18, 0.88)',
-        backdropFilter: 'blur(32px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: `
-          0 0 0 1px rgba(168,85,247,0.07) inset,
-          0 1px 0 rgba(255,255,255,0.05) inset,
-          0 8px 32px rgba(0,0,0,0.5),
-          0 2px 8px rgba(0,0,0,0.3)
-        `,
+        background: 'rgba(7, 5, 16, 0.82)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
       }}
     >
-      {/* Top shimmer line */}
       <Box sx={{
-        position: 'absolute', top: 0, left: '15%', right: '15%', height: '1px', borderRadius: 1,
-        background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.45), rgba(99,102,241,0.45), transparent)',
-        pointerEvents: 'none',
-      }} />
-
-      <Box sx={{
-        px: { xs: 1.5, sm: 2 },
+        maxWidth: 1280,
+        mx: 'auto',
+        px: { xs: 2, md: 5 },
         height: '100%',
         display: 'grid',
         gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center',
-        gap: 1,
       }}>
 
-        {/* ── Logo ── */}
+        {/* ── Left: Logo ── */}
         <Box
           onClick={() => navigate('/')}
           role="button"
           sx={{
-            display: 'flex', alignItems: 'center', gap: 1,
+            display: 'flex', alignItems: 'center', gap: '9px',
             cursor: 'pointer', width: 'fit-content',
-            borderRadius: '10px', p: '4px 8px', ml: -1,
-            transition: 'background 0.18s',
-            '&:hover': { background: 'rgba(255,255,255,0.05)' },
+            transition: 'opacity 0.15s',
+            '&:hover': { opacity: 0.8 },
           }}
         >
           <LogoIcon />
           <Typography sx={{
-            fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.04em',
+            fontWeight: 800,
+            fontSize: '0.93rem',
+            letterSpacing: '-0.04em',
             background: 'linear-gradient(120deg, #c4b5fd 0%, #f0abfc 55%, #fb923c 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
             userSelect: 'none',
             display: { xs: 'none', sm: 'block' },
           }}>
@@ -137,15 +121,9 @@ const Layout = () => {
           </Typography>
         </Box>
 
-        {/* ── Center Nav ── */}
+        {/* ── Center: Nav tabs ── */}
         {!isMobile ? (
-          <Box sx={{
-            display: 'flex', alignItems: 'center', gap: '2px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '12px',
-            p: '3px',
-          }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
             {navItems.map((item) => {
               const active = location.pathname === item.path;
               return (
@@ -155,123 +133,131 @@ const Layout = () => {
                   role="button"
                   aria-current={active ? 'page' : undefined}
                   sx={{
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    px: '11px', py: '6px',
-                    borderRadius: '9px',
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    px: '14px', py: '7px',
+                    borderRadius: '10px',
                     cursor: 'pointer',
-                    transition: 'all 0.16s ease',
-                    background: active
-                      ? 'linear-gradient(135deg, rgba(99,102,241,0.32) 0%, rgba(168,85,247,0.22) 100%)'
-                      : 'transparent',
-                    boxShadow: active
-                      ? '0 1px 0 rgba(255,255,255,0.07) inset, 0 4px 12px rgba(99,102,241,0.15)'
-                      : 'none',
+                    transition: 'all 0.15s ease',
+                    background: active ? 'rgba(139,92,246,0.14)' : 'transparent',
                     '&:hover': {
                       background: active
-                        ? 'linear-gradient(135deg, rgba(99,102,241,0.38) 0%, rgba(168,85,247,0.28) 100%)'
-                        : 'rgba(255,255,255,0.06)',
+                        ? 'rgba(139,92,246,0.2)'
+                        : 'rgba(255,255,255,0.05)',
                     },
-                    '&:active': { transform: 'scale(0.95)' },
+                    '&:active': { transform: 'scale(0.96)' },
                   }}
                 >
-                  <Box sx={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.32)', display: 'flex' }}>
+                  <Box sx={{
+                    color: active ? '#a78bfa' : 'rgba(255,255,255,0.3)',
+                    display: 'flex', alignItems: 'center',
+                    transition: 'color 0.15s',
+                  }}>
                     {item.icon}
                   </Box>
                   <Typography sx={{
-                    fontSize: '0.8rem',
+                    fontSize: '0.82rem',
                     fontWeight: active ? 700 : 500,
-                    color: active ? '#ddd6fe' : 'rgba(255,255,255,0.5)',
+                    color: active ? '#ede9fe' : 'rgba(255,255,255,0.45)',
                     letterSpacing: '-0.01em',
                     lineHeight: 1,
+                    transition: 'color 0.15s',
                     whiteSpace: 'nowrap',
                   }}>
                     {item.label}
                   </Typography>
+                  {/* Active dot */}
+                  {active && (
+                    <Box sx={{
+                      width: 4, height: 4, borderRadius: '50%',
+                      background: '#a78bfa',
+                      boxShadow: '0 0 6px rgba(167,139,250,0.8)',
+                      flexShrink: 0,
+                    }} />
+                  )}
                 </Box>
               );
             })}
           </Box>
         ) : <Box />}
 
-        {/* ── Right Controls ── */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
-
+        {/* ── Right: Controls ── */}
+        <Box sx={{
+          display: 'flex', alignItems: 'center',
+          gap: '8px', justifyContent: 'flex-end',
+        }}>
           {/* Theme toggle */}
-          <Tooltip title={mode === 'dark' ? 'Light mode' : 'Dark mode'} arrow>
-            <Box
-              onClick={toggleColorMode}
-              role="button"
-              aria-label="Toggle theme"
-              sx={{
-                width: 32, height: 32, borderRadius: '10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(255,255,255,0.38)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                background: 'rgba(255,255,255,0.03)',
-                cursor: 'pointer',
-                transition: 'all 0.16s ease',
-                '&:hover': {
-                  background: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.75)',
-                  borderColor: 'rgba(255,255,255,0.14)',
-                },
-              }}
-            >
-              {mode === 'dark'
-                ? <LightModeIcon sx={{ fontSize: 15 }} />
-                : <DarkModeIcon sx={{ fontSize: 15 }} />}
-            </Box>
-          </Tooltip>
+          <Box
+            onClick={toggleColorMode}
+            role="button"
+            aria-label="Toggle theme"
+            sx={{
+              width: 34, height: 34, borderRadius: '9px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'rgba(255,255,255,0.35)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              '&:hover': {
+                background: 'rgba(255,255,255,0.07)',
+                color: 'rgba(255,255,255,0.7)',
+              },
+            }}
+          >
+            {mode === 'dark'
+              ? <LightModeIcon sx={{ fontSize: 16 }} />
+              : <DarkModeIcon sx={{ fontSize: 16 }} />}
+          </Box>
 
           {/* Separator */}
-          <Box sx={{ width: '1px', height: 20, bgcolor: 'rgba(255,255,255,0.08)' }} />
+          <Box sx={{ width: '1px', height: 18, bgcolor: 'rgba(255,255,255,0.1)' }} />
 
-          {/* Avatar button */}
-          <Tooltip title={displayName || 'Account'} arrow>
-            <Box
-              onClick={handleAvatarClick}
-              role="button"
-              aria-label="Account menu"
-              aria-controls={openMenu ? 'account-menu' : undefined}
-              aria-haspopup="true"
+          {/* Avatar + name */}
+          <Box
+            onClick={handleAvatarClick}
+            role="button"
+            aria-label="Account menu"
+            aria-controls={openMenu ? 'account-menu' : undefined}
+            aria-haspopup="true"
+            sx={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              cursor: 'pointer', borderRadius: '10px',
+              px: '8px', py: '5px',
+              transition: 'background 0.15s',
+              '&:hover': { background: 'rgba(255,255,255,0.06)' },
+            }}
+          >
+            <Avatar
+              src={avatarSrc}
               sx={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                pl: '5px', pr: { xs: '5px', lg: '10px' }, py: '3px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                border: '1px solid rgba(255,255,255,0.07)',
-                background: 'rgba(255,255,255,0.03)',
-                transition: 'all 0.16s ease',
-                '&:hover': {
-                  background: 'rgba(255,255,255,0.07)',
-                  borderColor: 'rgba(168,85,247,0.2)',
-                },
+                width: 28, height: 28,
+                border: '2px solid rgba(139,92,246,0.45)',
+                bgcolor: '#5b50e8',
+                fontSize: '0.65rem', fontWeight: 800,
               }}
             >
-              <Avatar
-                src={avatarSrc}
-                sx={{
-                  width: 24, height: 24,
-                  border: '1.5px solid rgba(139,92,246,0.55)',
-                  bgcolor: '#5b50e8',
-                  fontSize: '0.6rem', fontWeight: 800,
-                  boxShadow: '0 0 0 2px rgba(139,92,246,0.15)',
-                }}
-              >
-                {avatarFallback}
-              </Avatar>
-              <Typography sx={{
-                fontSize: '0.76rem', fontWeight: 600,
-                color: 'rgba(255,255,255,0.6)',
-                maxWidth: 88, overflow: 'hidden',
-                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                display: { xs: 'none', lg: 'block' },
-              }}>
-                {firstName}
-              </Typography>
+              {avatarFallback}
+            </Avatar>
+            <Typography sx={{
+              fontSize: '0.8rem', fontWeight: 600,
+              color: 'rgba(255,255,255,0.55)',
+              display: { xs: 'none', lg: 'block' },
+              maxWidth: 100, overflow: 'hidden',
+              textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {firstName}
+            </Typography>
+            {/* Chevron */}
+            <Box sx={{
+              color: 'rgba(255,255,255,0.25)',
+              display: { xs: 'none', lg: 'flex' },
+              alignItems: 'center',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </Box>
-          </Tooltip>
+          </Box>
         </Box>
+
       </Box>
     </Box>
   );
@@ -289,67 +275,60 @@ const Layout = () => {
       PaperProps={{
         elevation: 0,
         sx: {
-          mt: 1.5, borderRadius: '16px',
+          mt: 1, borderRadius: '14px',
           background: 'rgba(10, 8, 22, 0.97)',
           backdropFilter: 'blur(28px)',
           border: '1px solid rgba(255,255,255,0.09)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.65), 0 0 0 1px rgba(168,85,247,0.08)',
-          minWidth: 230, overflow: 'visible',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.65), 0 0 0 1px rgba(168,85,247,0.07)',
+          minWidth: 220,
         },
       }}
     >
-      {/* User info header */}
-      <Box sx={{ px: 2, pt: 1.75, pb: 1.5, display: 'flex', alignItems: 'center', gap: 1.25 }}>
-        <Avatar
-          src={avatarSrc}
-          sx={{
-            width: 34, height: 34,
-            border: '2px solid rgba(139,92,246,0.4)',
-            bgcolor: '#5b50e8', fontSize: '0.75rem', fontWeight: 800,
-          }}
-        >
+      <Box sx={{ px: 2, pt: 1.75, pb: 1.5, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <Avatar src={avatarSrc} sx={{
+          width: 34, height: 34,
+          border: '2px solid rgba(139,92,246,0.4)',
+          bgcolor: '#5b50e8', fontSize: '0.72rem', fontWeight: 800,
+        }}>
           {avatarFallback}
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.92)', lineHeight: 1.2 }} noWrap>
+          <Typography sx={{ fontSize: '0.84rem', fontWeight: 700, color: '#f0eeff', lineHeight: 1.25 }} noWrap>
             {displayName || 'Student'}
           </Typography>
-          <Typography sx={{ fontSize: '0.71rem', color: 'rgba(255,255,255,0.35)', mt: '2px' }} noWrap>
+          <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', mt: '2px' }} noWrap>
             {userProfile?.email || currentUser?.email}
           </Typography>
         </Box>
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mx: 1 }} />
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
 
-      <Box sx={{ py: '6px', px: '6px' }}>
-        <MenuItem onClick={() => { handleCloseMenu(); navigate('/'); }} sx={{
-          borderRadius: '10px', py: '8px', px: '10px',
-          color: 'rgba(255,255,255,0.65)', fontSize: '0.83rem', gap: 1.2,
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: '#fff' },
-        }}>
-          <DashboardIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} />
-          Dashboard
-        </MenuItem>
-        <MenuItem onClick={() => { handleCloseMenu(); navigate('/profile'); }} sx={{
-          borderRadius: '10px', py: '8px', px: '10px',
-          color: 'rgba(255,255,255,0.65)', fontSize: '0.83rem', gap: 1.2,
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: '#fff' },
-        }}>
-          <PersonIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} />
-          Profile & Settings
-        </MenuItem>
+      <Box sx={{ py: '5px', px: '5px' }}>
+        {[
+          { icon: <DashboardIcon sx={{ fontSize: 15 }} />, label: 'Dashboard', onClick: () => navigate('/') },
+          { icon: <PersonIcon sx={{ fontSize: 15 }} />,    label: 'Profile & Settings', onClick: () => navigate('/profile') },
+        ].map(({ icon, label, onClick }) => (
+          <MenuItem key={label} onClick={() => { handleCloseMenu(); onClick(); }} sx={{
+            borderRadius: '9px', py: '8px', px: '10px', gap: '10px',
+            color: 'rgba(255,255,255,0.6)', fontSize: '0.82rem',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: '#fff' },
+          }}>
+            <Box sx={{ color: 'rgba(255,255,255,0.3)', display: 'flex' }}>{icon}</Box>
+            {label}
+          </MenuItem>
+        ))}
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mx: 1 }} />
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
 
-      <Box sx={{ py: '6px', px: '6px' }}>
+      <Box sx={{ py: '5px', px: '5px' }}>
         <MenuItem onClick={handleLogout} sx={{
-          borderRadius: '10px', py: '8px', px: '10px',
-          color: '#f87171', fontSize: '0.83rem', gap: 1.2,
+          borderRadius: '9px', py: '8px', px: '10px', gap: '10px',
+          color: '#f87171', fontSize: '0.82rem',
           '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' },
         }}>
-          <LogoutIcon sx={{ fontSize: 16, color: '#f87171' }} />
+          <LogoutIcon sx={{ fontSize: 15, color: '#f87171' }} />
           Sign Out
         </MenuItem>
       </Box>
@@ -362,24 +341,16 @@ const Layout = () => {
       component="nav"
       aria-label="Main navigation"
       sx={{
-        position: 'fixed',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'calc(100% - 32px)',
-        maxWidth: 380,
-        height: 58,
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        pb: 'env(safe-area-inset-bottom, 0px)',
+        height: BOTTOM_DOCK_HEIGHT,
         zIndex: theme.zIndex.appBar,
-        borderRadius: '18px',
-        background: 'rgba(8, 6, 18, 0.92)',
-        backdropFilter: 'blur(32px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-        border: '1px solid rgba(255,255,255,0.09)',
-        boxShadow: '0 -1px 0 rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.55)',
-        display: 'flex',
-        alignItems: 'center',
+        background: 'rgba(7, 5, 16, 0.94)',
+        backdropFilter: 'blur(28px)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        display: 'flex', alignItems: 'center',
         justifyContent: 'space-around',
-        px: 1,
+        px: 2,
       }}
     >
       {navItems.map((item) => {
@@ -389,32 +360,30 @@ const Layout = () => {
             key={item.path}
             onClick={() => navigate(item.path)}
             role="button"
-            aria-label={item.label}
             aria-current={active ? 'page' : undefined}
             sx={{
               display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', cursor: 'pointer',
-              minWidth: 64, py: '6px', borderRadius: '12px',
-              transition: 'all 0.18s ease',
-              '&:active': { transform: 'scale(0.88)' },
+              alignItems: 'center', gap: '4px',
+              cursor: 'pointer', minWidth: 56,
+              transition: 'opacity 0.15s',
+              '&:active': { opacity: 0.6 },
             }}
           >
             <Box sx={{
-              width: 36, height: 26, borderRadius: '8px',
+              width: 38, height: 26, borderRadius: '8px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: active ? 'rgba(99,102,241,0.2)' : 'transparent',
-              color: active ? '#a78bfa' : 'rgba(255,255,255,0.32)',
-              transition: 'all 0.18s ease',
-              boxShadow: active ? '0 0 12px rgba(99,102,241,0.2)' : 'none',
+              background: active ? 'rgba(139,92,246,0.18)' : 'transparent',
+              color: active ? '#a78bfa' : 'rgba(255,255,255,0.28)',
+              transition: 'all 0.15s',
               '& .MuiSvgIcon-root': { fontSize: 18 },
             }}>
               {item.icon}
             </Box>
             <Typography sx={{
-              fontSize: '0.58rem', fontWeight: active ? 800 : 500,
-              color: active ? '#a78bfa' : 'rgba(255,255,255,0.3)',
-              lineHeight: 1, letterSpacing: '0.01em',
+              fontSize: '0.58rem',
+              fontWeight: active ? 700 : 500,
+              color: active ? '#a78bfa' : 'rgba(255,255,255,0.28)',
+              lineHeight: 1,
             }}>
               {item.label}
             </Typography>
@@ -433,8 +402,8 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          mt: `${NAVBAR_HEIGHT + 12}px`,
-          pb: isMobile ? `${BOTTOM_DOCK_HEIGHT + 16}px` : 0,
+          mt: `${NAVBAR_HEIGHT}px`,
+          pb: isMobile ? `${BOTTOM_DOCK_HEIGHT}px` : 0,
           minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
           overflowX: 'hidden',
         }}
@@ -442,8 +411,7 @@ const Layout = () => {
         <Box sx={{
           px: { xs: 2, sm: 3, md: 4 },
           py: { xs: 2, md: 3 },
-          maxWidth: 1400,
-          mx: 'auto',
+          maxWidth: 1400, mx: 'auto',
         }}>
           <Outlet />
         </Box>
