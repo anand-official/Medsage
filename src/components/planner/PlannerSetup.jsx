@@ -17,12 +17,27 @@ import {
 } from '@mui/icons-material';
 import { plannerAPI } from '../../services/plannerService';
 
-const ALL_SUBJECTS = {
-    1: ['Anatomy', 'Physiology', 'Biochemistry'],
-    2: ['Pathology', 'Pharmacology', 'Microbiology'],
-    3: ['PSM', 'ENT', 'Ophthalmology'],
-    4: ['Medicine', 'Surgery', 'OBGYN', 'Pediatrics'],
-    5: ['Internship']
+const COUNTRY_SUBJECTS = {
+    India: {
+        1: ['Anatomy', 'Physiology', 'Biochemistry'],
+        2: ['Pathology', 'Pharmacology', 'Microbiology', 'Forensic Medicine'],
+        3: ['PSM', 'ENT', 'Ophthalmology', 'Community Medicine'],
+        4: ['Medicine', 'Surgery', 'OBGYN', 'Pediatrics'],
+        5: ['Internship']
+    },
+    Nepal: {
+        1: ['Anatomy', 'Physiology', 'Biochemistry', 'Microbiology', 'Pathology', 'Pharmacology', 'Community Medicine', 'Introduction to Clinical Medicine', 'Medical Informatics'],
+        2: ['Anatomy', 'Physiology', 'Biochemistry', 'Microbiology', 'Pathology', 'Pharmacology', 'Community Medicine', 'Introduction to Clinical Medicine'],
+        3: ['Community Medicine', 'Medicine', 'Surgery', 'OBGYN', 'Pediatrics', 'Forensic Medicine', 'Ophthalmology', 'ENT'],
+        4: ['Community Medicine', 'Medicine', 'Surgery', 'OBGYN', 'Pediatrics', 'Forensic Medicine', 'Ophthalmology', 'ENT', 'Orthopedics', 'Psychiatry', 'Dermatology', 'Radiology', 'Anesthesia', 'Dental'],
+        5: ['Medicine', 'Surgery', 'Orthopedics', 'OBGYN', 'Pediatrics', 'Internship']
+    }
+};
+
+const normalizePlannerCountry = (country) => (country === 'Nepal' ? 'Nepal' : 'India');
+const getSubjectsForPlanner = (country, year) => {
+    const plannerCountry = normalizePlannerCountry(country);
+    return COUNTRY_SUBJECTS[plannerCountry]?.[year] || COUNTRY_SUBJECTS.India[year] || [];
 };
 
 export default function PlannerSetup({ onCancel }) {
@@ -45,6 +60,8 @@ export default function PlannerSetup({ onCancel }) {
     const [selectedYear, setSelectedYear] = useState(
         studyPlan?.mbbs_year || userProfile?.mbbs_year || 1
     );
+    const plannerCountry = normalizePlannerCountry(userProfile?.country);
+    const subjectsForSelectedYear = getSubjectsForPlanner(plannerCountry, selectedYear);
 
     // Keep year in sync if profile loads after mount (only when no existing plan)
     useEffect(() => {
@@ -56,9 +73,9 @@ export default function PlannerSetup({ onCancel }) {
     // Fetch Syllabus when the selectedYear changes
     useEffect(() => {
         if (selectedYear) {
-            const subjectsForYear = ALL_SUBJECTS[selectedYear] || [];
+            const subjectsForYear = getSubjectsForPlanner(userProfile?.country, selectedYear);
             setSelectedSubjects(subjectsForYear);
-            fetchSyllabus(selectedYear, userProfile?.country || 'India');
+            fetchSyllabus(selectedYear, normalizePlannerCountry(userProfile?.country));
             // reset selections if year changes to avoid orphaned topics
             setWeakTopics([]);
             setStrongTopics([]);
@@ -258,6 +275,21 @@ export default function PlannerSetup({ onCancel }) {
                                                 }}
                                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                                             />
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <Alert severity="info" sx={{ borderRadius: 3, '& .MuiAlert-message': { width: '100%' } }}>
+                                                <Typography variant="subtitle2" fontWeight={700}>
+                                                    {plannerCountry} MBBS syllabus, Year {selectedYear}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ mb: 1.5 }}>
+                                                    The study planner will only show and schedule subjects from this syllabus and year of study.
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                    {subjectsForSelectedYear.map(subject => (
+                                                        <Chip key={subject} label={subject} size="small" sx={{ fontWeight: 600 }} />
+                                                    ))}
+                                                </Box>
+                                            </Alert>
                                         </Grid>
                                     </Grid>
                                 )}

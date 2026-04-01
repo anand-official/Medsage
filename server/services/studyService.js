@@ -318,8 +318,8 @@ class StudyService {
         return this._buildResources(subject, topic, textbook);
     }
 
-    getSubjectsForYear(year) {
-        return Object.keys(syllabusScraper.constructor.EXPECTED_SUBJECTS?.[year] || {});
+    getSubjectsForYear(year, country = 'India') {
+        return syllabusScraper.getExpectedSubjects(country, year);
     }
 
     async getAllTopics(country, year, subjects) {
