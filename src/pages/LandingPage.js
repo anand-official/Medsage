@@ -482,7 +482,7 @@ function VisionSection() {
                         One of our closest friends, a medical student, used to tell us how overwhelming it was to prepare for exams with limited guidance. She'd struggle with last-minute doubts and couldn't find any AI-based tool tailored specifically to her needs.
                         Her repeated frustration made us realize how underserved medical students are when it comes to intelligent academic support.
                         <br /><br />
-                        <strong style={{ color: '#f1f5f9', fontWeight: 600 }}>That&apos;s what inspired us to build Cortex—an AI-powered study companion built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we&apos;re committed to making that vision real.
+                        <strong style={{ color: '#f1f5f9', fontWeight: 600 }}>That&apos;s what inspired us to build Medicos—a Study Operating System built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we&apos;re committed to making that vision real.
                     </p>
                 </div>
             </FadeUp>
