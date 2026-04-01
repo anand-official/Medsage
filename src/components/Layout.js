@@ -145,7 +145,7 @@ const Layout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const navItems = [
-    { label: 'Today',       icon: <HomeIcon sx={{ fontSize: 16 }} />,      path: '/' },
+    { label: 'Dashboard',  icon: <HomeIcon sx={{ fontSize: 16 }} />,      path: '/' },
     { label: 'Cortex',     icon: <QuestionIcon sx={{ fontSize: 16 }} />,  path: '/question' },
     { label: 'Study Plan', icon: <DateRangeIcon sx={{ fontSize: 16 }} />, path: '/planner' },
     { label: 'Review',     icon: <DashboardIcon sx={{ fontSize: 16 }} />, path: '/review' },

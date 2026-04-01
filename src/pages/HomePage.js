@@ -628,9 +628,6 @@ const HomePage = () => {
           >
             {greeting}, {firstName}
           </Typography>
-          <Typography sx={{ mt: 0.25, fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'text.disabled' }}>
-            Today Command Center
-          </Typography>
           <Chip
             icon={<CalendarIcon sx={{ fontSize: '13px !important' }} />}
             label={dayStr}
@@ -693,7 +690,7 @@ const HomePage = () => {
                   Today Command Center
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 640, fontSize: { xs: '0.92rem', md: '1rem' } }}>
-                  {commandCenter.eyebrow}. Medicos is prioritizing the next move that keeps your recall, planner pace, and weak-topic coverage aligned.
+                  {commandCenter.eyebrow}. Medsage is prioritizing the next move that keeps your recall, planner pace, and weak-topic coverage aligned.
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, rowGap: 1 }}>
                   {commandCenter.chips.map((chip) => (

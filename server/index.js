@@ -120,12 +120,12 @@ app.use('/api/admin', adminRoutes);
 
 // Basic route for API verification (could move to /api)
 app.get('/api', (req, res) => {
-  res.send('Welcome to the Medicos API. All systems operational.');
+  res.send('Welcome to the Cortex API. All systems operational.');
 });
 
 // Root route
 app.get('/', (req, res) => {
-  res.json({ name: 'Medicos API', status: 'ok', version: '2.0.0' });
+  res.json({ name: 'Cortex API', status: 'ok', version: '2.0.0' });
 });
 
 // Public liveness probe — no auth. Use this for Render/load balancer health checks.
@@ -150,7 +150,7 @@ app.get('/api-docs/swagger.json', ...swaggerGuard, (req, res) => {
   res.json(swaggerSpec);
 });
 app.use('/api-docs', ...swaggerGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Medicos API Docs',
+  customSiteTitle: 'Cortex API Docs',
   swaggerOptions: { persistAuthorization: true },
 }));
 
