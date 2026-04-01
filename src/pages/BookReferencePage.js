@@ -234,7 +234,7 @@ const BookReferencePage = () => {
   const fetchBooks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/library`);
+      const res = await fetch(`${API_BASE}/api/v1/library`);
       const data = await res.json();
       setBooks(data.books || []);
       setLastUpdated(data.lastUpdated);
@@ -253,7 +253,7 @@ const BookReferencePage = () => {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      const res = await api.post('/api/library/refresh');
+      const res = await api.post('/api/v1/library/refresh');
       // 202 = crawl started in background, 200 = done immediately
       if (res.status === 202) {
         setSnackbar({

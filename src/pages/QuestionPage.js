@@ -950,7 +950,7 @@ const QuestionPage = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await api.get('/api/chat/sessions');
+        const res = await api.get('/api/v1/chat/sessions');
         const serverSessions = (res.data?.sessions || []).map(s => ({
           id: s.session_id, title: s.title, timestamp: new Date(s.updated_at).getTime()
         }));
@@ -997,7 +997,7 @@ const QuestionPage = () => {
     } catch { /* ignore */ }
 
     // Sync to MongoDB in background (fire-and-forget)
-    api.post('/api/chat/sessions', {
+    api.post('/api/v1/chat/sessions', {
       session_id: sessionIdRef.current,
       title,
       messages: serializableMessages,
@@ -1242,7 +1242,7 @@ const QuestionPage = () => {
       setSavedSessions(updated);
     } catch { /* ignore */ }
     // Delete from server in background
-    api.delete(`/api/chat/sessions/${sessionId}`).catch(() => {});
+    api.delete(`/api/v1/chat/sessions/${sessionId}`).catch(() => {});
   };
 
   const handleFileChange = (e) => {

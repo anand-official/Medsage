@@ -2,6 +2,8 @@
   "buildCommand": "npm run build:frontend",
   "outputDirectory": "build",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://medsage-1.onrender.com/api/$1" },
+    { "source": "/healthz", "destination": "https://medsage-1.onrender.com/healthz" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
