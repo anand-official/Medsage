@@ -35,8 +35,11 @@ const GoalSchema = new mongoose.Schema({
 const StudyPlanSchema = new mongoose.Schema({
     uid: { type: String, required: true, unique: true },
     mbbs_year: { type: Number },
+    plan_mode: { type: String, enum: ['exam', 'self_study'], default: 'exam' },
+    plan_duration_days: { type: Number },
     exam_date: { type: Date },
     subjects_selected: [{ type: String }],
+    selected_topic_keys: [{ type: String }],
     weak_topics: [{ type: String }],
     strong_topics: [{ type: String }],
 

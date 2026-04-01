@@ -258,26 +258,46 @@ class RAGService {
     }
 
     async _searchAcrossCollections(vector, mustFilters, limit, candidates) {
+        const searches = candidates.map((collectionName, index) =>
+            qdrantClient.search(collectionName, {
+                vector,
+                filter: { must: mustFilters },
+                limit,
+                with_payload: true
+            }).then((results) => ({ collectionName, index, results }))
+        );
+
+        const settled = await Promise.allSettled(searches);
         let lastError = null;
-        for (const collectionName of candidates) {
-            try {
-                const results = await qdrantClient.search(collectionName, {
-                    vector,
-                    filter: { must: mustFilters },
-                    limit,
-                    with_payload: true
-                });
-                if (results.length > 0) {
-                    return { collection: collectionName, results };
-                }
-            } catch (err) {
-                lastError = err;
+        const fulfilled = [];
+
+        for (const outcome of settled) {
+            if (outcome.status === 'fulfilled') {
+                fulfilled.push(outcome.value);
+            } else {
+                lastError = outcome.reason;
             }
+        }
+
+        const nonEmpty = fulfilled.filter(({ results }) => Array.isArray(results) && results.length > 0);
+        if (nonEmpty.length > 0) {
+            nonEmpty.sort((a, b) => {
+                const scoreDiff = (b.results[0]?.score || 0) - (a.results[0]?.score || 0);
+                return scoreDiff !== 0 ? scoreDiff : a.index - b.index;
+            });
+            const best = nonEmpty[0];
+            return { collection: best.collectionName, results: best.results };
         }
 
         if (lastError) {
             console.warn('[RAG] Collection fallback exhausted:', lastError.message);
         }
+
+        const firstFulfilled = fulfilled.sort((a, b) => a.index - b.index)[0];
+        if (firstFulfilled) {
+            return { collection: firstFulfilled.collectionName, results: firstFulfilled.results || [] };
+        }
+
         return { collection: candidates[0] || DEFAULT_COLLECTION_NAME, results: [] };
     }
 

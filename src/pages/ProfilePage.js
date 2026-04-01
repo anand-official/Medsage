@@ -48,7 +48,7 @@ function detectCountryFromCollege(college) {
 }
 
 // ─── AI Insights ──────────────────────────────────────────────────────────────
-function generateInsights({ streak, progressPct, daysLeft, mbbs_year }) {
+function generateInsights({ streak, progressPct, daysLeft, mbbs_year, planMode }) {
     const tips = [];
     const habits = [];
 
@@ -82,7 +82,10 @@ function generateInsights({ streak, progressPct, daysLeft, mbbs_year }) {
     }
 
 
-    if (daysLeft !== null && daysLeft < 14) {
+    if (planMode === 'self_study') {
+        habits.push({ label: 'Study Mode', value: 'Self Study', color: '#6366f1' });
+        tips.push({ icon: '🧭', text: 'Your planner is in self-study mode. Use it to go deep on chosen chapters and build durable recall before expanding scope.' });
+    } else if (daysLeft !== null && daysLeft < 14) {
         habits.push({ label: 'Exam Countdown', value: `${daysLeft}d left`, color: '#ef4444' });
         tips.push({ icon: '🚨', text: `${daysLeft} days to exam! Shift to pure high-yield revision: past papers, flashcards, weak topics only.` });
     } else if (daysLeft !== null && daysLeft < 30) {
@@ -207,10 +210,11 @@ export default function ProfilePage() {
     const progressTotal = studyPlan?.analytics?.total_tasks || 0;
     const progressDone = studyPlan?.analytics?.completed || 0;
     const progressPct = progressTotal > 0 ? Math.round((progressDone / progressTotal) * 100) : null;
-    const daysLeft = studyPlan?.exam_date ? differenceInDays(new Date(studyPlan.exam_date), new Date()) : null;
+    const planMode = studyPlan?.plan_mode || (studyPlan?.exam_date ? 'exam' : null);
+    const daysLeft = planMode === 'exam' && studyPlan?.exam_date ? differenceInDays(new Date(studyPlan.exam_date), new Date()) : null;
     const { habits, tips } = useMemo(
-        () => generateInsights({ streak, progressPct, daysLeft, mbbs_year: userProfile.mbbs_year }),
-        [streak, progressPct, daysLeft, userProfile.mbbs_year]
+        () => generateInsights({ streak, progressPct, daysLeft, mbbs_year: userProfile.mbbs_year, planMode }),
+        [streak, progressPct, daysLeft, userProfile.mbbs_year, planMode]
     );
 
     const STAT_ITEMS = [

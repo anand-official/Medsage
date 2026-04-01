@@ -6,7 +6,7 @@
 
 import api from './api';
 
-const SM2_BASE = '/api/sm2';
+const SM2_BASE = '/api/v1/sm2';
 
 const sm2API = {
     /**

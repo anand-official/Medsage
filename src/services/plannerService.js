@@ -3,7 +3,7 @@ import { apiCall } from './api';
 export const plannerAPI = {
     // Generate a new AI-powered study plan
     generateStudyPlan: async (planData) => {
-        return apiCall('/api/study/generate', {
+        return apiCall('/api/v1/study/generate', {
             method: 'POST',
             data: planData
         });
@@ -11,22 +11,22 @@ export const plannerAPI = {
 
     // Get the entire plan (for Plan tab)
     getStudyPlan: async () => {
-        return apiCall('/api/study/plan');
+        return apiCall('/api/v1/study/plan');
     },
 
     // Get today's dashboard data (tasks, streak, analytics)
     getTodayDashboard: async () => {
-        return apiCall('/api/study/today');
+        return apiCall('/api/v1/study/today');
     },
 
     // Fetch curriculum syllabus for setup
     getSyllabus: async (year, country = 'India') => {
-        return apiCall(`/api/study/syllabus?year=${year}&country=${country}`);
+        return apiCall(`/api/v1/study/syllabus?year=${year}&country=${country}`);
     },
 
     // Tick a task as completed or incomplete
     tickTask: async (dateStr, taskId, completed) => {
-        return apiCall('/api/study/tick', {
+        return apiCall('/api/v1/study/tick', {
             method: 'POST',
             data: { dateStr, taskId, completed }
         });
@@ -34,7 +34,7 @@ export const plannerAPI = {
 
     // Add a custom task to a specific day
     addTask: async (dateStr, text) => {
-        return apiCall('/api/study/task/add', {
+        return apiCall('/api/v1/study/task/add', {
             method: 'POST',
             data: { dateStr, text }
         });
@@ -42,7 +42,7 @@ export const plannerAPI = {
 
     // Edit an existing task's description
     editTask: async (dateStr, taskId, newText) => {
-        return apiCall('/api/study/task/edit', {
+        return apiCall('/api/v1/study/task/edit', {
             method: 'PUT', // Using PUT since this is an idempotent modification
             data: { dateStr, taskId, newText }
         });
@@ -50,12 +50,12 @@ export const plannerAPI = {
 
     // Get full analytics (heatmap, performance)
     getAnalytics: async () => {
-        return apiCall('/api/study/analytics');
+        return apiCall('/api/v1/study/analytics');
     },
 
     // Toggle a goal's done status
     tickGoal: async (goalType, goalId) => {
-        return apiCall('/api/study/goal/tick', {
+        return apiCall('/api/v1/study/goal/tick', {
             method: 'POST',
             data: { goalType, goalId }
         });

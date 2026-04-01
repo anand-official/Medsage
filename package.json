@@ -9,7 +9,7 @@
     "start:frontend": "react-scripts start",
     "build": "react-scripts build",
     "build:frontend": "react-scripts build",
-    "test:backend": "jest --config jest.backend.config.js",
+    "test:backend": "jest --config jest.backend.config.js --runInBand",
     "test:frontend": "react-scripts test --watchAll=false --runInBand"
   },
   "dependencies": {

@@ -72,36 +72,36 @@ export const apiCall = async (endpoint, options = {}) => {
 // Auth API calls
 export const authAPI = {
   createOrUpdateUser: async (userData) => {
-    return apiCall('/auth/user', {
+    return apiCall('/api/v1/auth/user', {
       method: 'POST',
       data: userData
     });
   },
 
   getUserProfile: async () => {
-    return apiCall('/auth/profile');
+    return apiCall('/api/v1/auth/profile');
   },
 
   updateProfile: async (profileData) => {
-    return apiCall('/auth/profile', {
+    return apiCall('/api/v1/auth/profile', {
       method: 'PUT',
       data: profileData
     });
   },
 
   updatePreferences: async (preferences) => {
-    return apiCall('/auth/preferences', {
+    return apiCall('/api/v1/auth/preferences', {
       method: 'PUT',
       data: preferences
     });
   },
 
-  deleteAccount: () => apiCall('/auth/profile', { method: 'DELETE' }),
+  deleteAccount: () => apiCall('/api/v1/auth/profile', { method: 'DELETE' }),
 };
 
 
 export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = 'Indian MBBS', history = [], imageBase64 = null, signal = null, subject = null) => {
-  const response = await apiCall('/api/medical/query', {
+  const response = await apiCall('/api/v1/medical/query', {
     method: 'POST',
     data: {
       message: query,
@@ -155,6 +155,7 @@ export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = '
       log_id: payload?.log_id || null,
       claims: payload?.claims || null,
       allClaimsSourced: payload?.allClaimsSourced ?? null,
+      partial_answer: payload?.partial_answer || null,
     }
   };
 };
@@ -166,13 +167,13 @@ export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = '
  */
 export const fetchSessionMessages = async (sessionId, page = 1, limit = 50) => {
   const response = await api.get(
-    `/api/chat/sessions/${sessionId}?page=${page}&limit=${limit}`
+    `/api/v1/chat/sessions/${sessionId}?page=${page}&limit=${limit}`
   );
   return response.data; // { success, session: { messages, ... }, pagination }
 };
 
 export const submitFeedback = async (logId, rating) => {
-  return apiCall('/api/audit/feedback', {
+  return apiCall('/api/v1/audit/feedback', {
     method: 'POST',
     data: { log_id: logId, rating },
   });
@@ -200,7 +201,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
 
   const API_URL = getApiBaseUrl();
 
-  const response = await fetch(`${API_URL}/api/medical/query/stream`, {
+  const response = await fetch(`${API_URL}/api/v1/medical/query/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

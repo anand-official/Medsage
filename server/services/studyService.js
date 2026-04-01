@@ -4,6 +4,7 @@ const fs = require('fs');
 const StudyPlan = require('../models/StudyPlan');
 const geminiService = require('./geminiService');
 const syllabusScraper = require('./syllabusScraper');
+const { invalidateLearnerContext } = require('./learnerContextCache');
 
 // ─── SM-2 inspired review intervals (days after first learning) ───────────────
 const SRS_INTERVALS = [1, 3, 7, 14, 21, 30];
@@ -232,6 +233,10 @@ const SUBJECT_CATEGORY_MAP = {
     'Internship':        ['Medicine', 'Surgery', 'Anatomy'],
 };
 
+function makeTopicKey(subject, topic) {
+    return `${subject}::${topic}`;
+}
+
 class StudyService {
     constructor() {
         // Load academy library once at startup
@@ -341,6 +346,7 @@ class StudyService {
 
         // Delete any existing plan
         await StudyPlan.findOneAndDelete({ uid });
+        invalidateLearnerContext(uid);
 
         const allTopics = await this.getAllTopics(country || 'India', year, selectedSubjects);
         if (allTopics.length === 0) {
@@ -542,6 +548,297 @@ class StudyService {
         });
 
         await newPlan.save();
+        invalidateLearnerContext(uid);
+        return newPlan;
+    }
+
+    async getScopedTopics(country, year, subjects, selectedTopicKeys = []) {
+        const allTopics = await this.getAllTopics(country, year, subjects);
+        if (!selectedTopicKeys.length) {
+            return allTopics;
+        }
+
+        const selectedSet = new Set(selectedTopicKeys);
+        return allTopics.filter(({ subject, topic }) => selectedSet.has(makeTopicKey(subject, topic)));
+    }
+
+    buildTextbookCache(selectedSubjects) {
+        const textbookCache = {};
+        if (!this._library?.books) {
+            return textbookCache;
+        }
+
+        for (const sub of selectedSubjects) {
+            const cats = SUBJECT_CATEGORY_MAP[sub] || [sub];
+            const matches = this._library.books.filter(b =>
+                cats.some(c => b.category?.toLowerCase() === c.toLowerCase()) &&
+                b.freeLinks?.length > 0 && b.course === 'MBBS'
+            );
+            matches.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            textbookCache[sub] = matches[0] || null;
+        }
+
+        return textbookCache;
+    }
+
+    prioritizeTopics(allTopics, weakTopics, strongTopics) {
+        const weak = allTopics.filter(t => weakTopics.includes(t.topic));
+        const strong = allTopics.filter(t => strongTopics.includes(t.topic));
+        const regular = allTopics.filter(t => !weakTopics.includes(t.topic) && !strongTopics.includes(t.topic));
+        return [...weak, ...regular, ...strong];
+    }
+
+    buildMilestoneGoals({ today, horizonDays, selectedSubjects, planMode, weakTopics }) {
+        const goals = { daily: [], weekly: [], monthly: [], quarterly: [] };
+        const weekCount = Math.max(1, Math.min(Math.floor(horizonDays / 7), 12));
+
+        for (let w = 1; w <= weekCount; w++) {
+            const subjectFocus = selectedSubjects[(w - 1) % selectedSubjects.length] || 'Core study';
+            goals.weekly.push({
+                id: `wg${w}`,
+                text: planMode === 'exam'
+                    ? (w === weekCount
+                        ? 'Final sprint: revise, recall, and self-test aggressively'
+                        : `Week ${w}: master ${subjectFocus} and revisit your weak chapters`)
+                    : (w === 1
+                        ? 'Lock in a sustainable self-study rhythm'
+                        : `Week ${w}: deepen ${subjectFocus} and consolidate notes`),
+                due: format(addDays(today, Math.min(w * 7, horizonDays)), 'yyyy-MM-dd'),
+                done: false
+            });
+        }
+
+        const monthCount = Math.min(Math.floor(horizonDays / 30), 4);
+        for (let m = 1; m <= monthCount; m++) {
+            goals.monthly.push({
+                id: `mg${m}`,
+                text: planMode === 'exam'
+                    ? `Month ${m}: complete a full revision pass across ${selectedSubjects.slice(0, 3).join(', ')}`
+                    : `Month ${m}: turn studied chapters into long-term retention`,
+                due: format(addDays(today, Math.min(m * 30, horizonDays)), 'yyyy-MM-dd'),
+                done: false
+            });
+        }
+
+        if (planMode === 'self_study') {
+            goals.daily.push({
+                id: 'dg1',
+                text: weakTopics.length > 0
+                    ? `Touch at least one hard chapter daily: ${weakTopics[0]}`
+                    : 'Finish one deep-study block and one active-recall block every day',
+                due: format(addDays(today, 1), 'yyyy-MM-dd'),
+                done: false
+            });
+        }
+
+        if (horizonDays >= 90) {
+            goals.quarterly.push({
+                id: 'qg1',
+                text: planMode === 'exam'
+                    ? 'Quarter milestone: complete a full exam-level revision cycle'
+                    : 'Quarter milestone: build durable mastery across your chosen syllabus track',
+                due: format(addDays(today, 90), 'yyyy-MM-dd'),
+                done: false
+            });
+        }
+
+        return goals;
+    }
+
+    async generatePlanWithAI(uid, config) {
+        const {
+            year,
+            country,
+            planMode = 'exam',
+            examDate,
+            studyDurationDays,
+            selectedSubjects = [],
+            selectedTopicKeys = [],
+            weakTopics = [],
+            strongTopics = []
+        } = config;
+
+        const today = startOfDay(new Date());
+        let examDateObj = null;
+        let horizonDays = Number.parseInt(studyDurationDays, 10) || 21;
+
+        if (planMode === 'exam') {
+            examDateObj = startOfDay(parseISO(examDate));
+            if (isNaN(examDateObj.getTime()) || examDateObj < today) {
+                throw new Error('Valid future exam date is required');
+            }
+            horizonDays = differenceInDays(examDateObj, today);
+            if (horizonDays < 1) throw new Error('Exam date is too close');
+        } else {
+            horizonDays = Math.min(84, Math.max(7, horizonDays));
+        }
+
+        await StudyPlan.findOneAndDelete({ uid });
+        invalidateLearnerContext(uid);
+
+        const plannerSubjects = selectedSubjects.length > 0
+            ? selectedSubjects
+            : this.getSubjectsForYear(year, country || 'India');
+
+        const scopedTopics = await this.getScopedTopics(country || 'India', year, plannerSubjects, selectedTopicKeys);
+        if (scopedTopics.length === 0) {
+            throw new Error('No topics found for the selected year and chapter scope.');
+        }
+
+        const scopedSubjects = [...new Set(scopedTopics.map(t => t.subject))];
+        const sortedTopics = this.prioritizeTopics(scopedTopics, weakTopics, strongTopics);
+        const learningDaysCount = Math.max(1, Math.floor(horizonDays * (planMode === 'exam' ? 0.8 : 0.75)));
+        const topicsPerDay = Math.max(1, Math.ceil(sortedTopics.length / learningDaysCount));
+        const textbookCache = this.buildTextbookCache(scopedSubjects);
+
+        const daily_plan = [];
+        let topicIndex = 0;
+        let totalTasksGenerated = 0;
+        const topicLearnDates = new Map();
+
+        for (let i = 0; i < horizonDays; i++) {
+            const currentDay = addDays(today, i);
+            const tasks = [];
+
+            if (i < learningDaysCount) {
+                const topicsForToday = sortedTopics.slice(topicIndex, topicIndex + topicsPerDay);
+                topicsForToday.forEach((t, idx) => {
+                    tasks.push({
+                        id: `task_${i}_learn_${idx}_${Date.now() + idx}`,
+                        text: `${planMode === 'exam' ? 'Analyze & Learn' : 'Deep Study'}: ${t.subject} — ${t.topic}`,
+                        topic: t.topic,
+                        type: 'learning',
+                        completed: false,
+                        resources: this._buildResources(t.subject, t.topic, textbookCache[t.subject])
+                    });
+                    topicLearnDates.set(t.topic, { dayIdx: i, subject: t.subject });
+                });
+                topicIndex += topicsPerDay;
+
+                for (const [pastTopic, info] of topicLearnDates.entries()) {
+                    const daysSinceLearned = i - info.dayIdx;
+                    if (SRS_INTERVALS.includes(daysSinceLearned)) {
+                        const label = daysSinceLearned === 1 ? '1d'
+                            : daysSinceLearned === 3 ? '3d'
+                            : daysSinceLearned === 7 ? '1wk'
+                            : daysSinceLearned === 14 ? '2wk'
+                            : daysSinceLearned === 21 ? '3wk'
+                            : '1mo';
+                        tasks.push({
+                            id: `task_${i}_srs_${daysSinceLearned}d_${Date.now() + i}`,
+                            text: `Spaced Recall (${label}): ${pastTopic}`,
+                            topic: pastTopic,
+                            type: 'review',
+                            completed: false,
+                            resources: this._buildResources(info.subject, pastTopic, textbookCache[info.subject])
+                        });
+                    }
+                }
+            } else if (planMode === 'exam') {
+                tasks.push({
+                    id: `task_${i}_mock_${Date.now()}`,
+                    text: `Full Subject Mock Exam: ${scopedSubjects.slice(0, 3).join(', ')}`,
+                    topic: 'Mock Exam',
+                    type: 'mock_exam',
+                    completed: false,
+                    resources: []
+                });
+
+                const subjectIndex = (i - learningDaysCount) % scopedSubjects.length;
+                const reviewSubject = scopedSubjects[subjectIndex];
+                tasks.push({
+                    id: `task_${i}_targeted_${Date.now() + 1}`,
+                    text: `Targeted Mastery: ${reviewSubject}${weakTopics.length > 0 ? ' — Focus on ' + weakTopics.slice(0, 2).join(', ') : ''}`,
+                    topic: reviewSubject,
+                    type: 'review',
+                    completed: false,
+                    resources: this._buildResources(reviewSubject, reviewSubject, textbookCache[reviewSubject])
+                });
+            } else {
+                const reviewTopic = sortedTopics[(i - learningDaysCount) % sortedTopics.length];
+                const companionTopic = sortedTopics[(i - learningDaysCount + 1) % sortedTopics.length];
+
+                tasks.push({
+                    id: `task_${i}_review_${Date.now()}`,
+                    text: `Interleaved Review: ${reviewTopic.subject} — ${reviewTopic.topic}`,
+                    topic: reviewTopic.topic,
+                    type: 'review',
+                    completed: false,
+                    resources: this._buildResources(reviewTopic.subject, reviewTopic.topic, textbookCache[reviewTopic.subject])
+                });
+                tasks.push({
+                    id: `task_${i}_selftest_${Date.now() + 1}`,
+                    text: `Self-Test & Summarize: ${companionTopic.subject} — ${companionTopic.topic}`,
+                    topic: companionTopic.topic,
+                    type: 'learning',
+                    completed: false,
+                    resources: this._buildResources(companionTopic.subject, companionTopic.topic, textbookCache[companionTopic.subject])
+                });
+            }
+
+            if (tasks.length === 0) {
+                tasks.push({
+                    id: `task_${i}_pad_${Date.now()}`,
+                    text: planMode === 'exam' ? 'General Consolidation & Rest' : 'Light Review & Reflection',
+                    topic: 'Review',
+                    type: 'learning',
+                    completed: false,
+                    resources: []
+                });
+            }
+
+            totalTasksGenerated += tasks.length;
+            daily_plan.push({
+                date: format(currentDay, 'yyyy-MM-dd'),
+                tasks,
+                completion_rate: 0
+            });
+        }
+
+        let advisory_text = '';
+        try {
+            const prompt = planMode === 'exam'
+                ? `Act as an expert medical study advisor. Write a 2-sentence, high-energy, personalised strategy for a Year ${year} MBBS student with ${horizonDays} days until exams. Subjects: ${scopedSubjects.join(', ')}. Weak areas: ${weakTopics.slice(0, 4).join(', ') || 'none specified'}. Emphasise spaced repetition and clinical integration.`
+                : `Act as an expert medical study coach. Write a 2-sentence practical strategy for a Year ${year} MBBS student building a ${horizonDays}-day self-study plan. Subjects: ${scopedSubjects.join(', ')}. Focus chapters: ${sortedTopics.slice(0, 8).map(t => t.topic).join(', ')}. Emphasise deliberate practice, note-making, and active recall.`;
+            if (process.env.GEMINI_API_KEY) {
+                advisory_text = await geminiService.callLLM(prompt, { temperature: 0.55, max_tokens: 160 });
+            }
+        } catch (e) {
+            console.warn('[StudyService] AI advisory failed:', e.message);
+        }
+        if (!advisory_text) {
+            advisory_text = planMode === 'exam'
+                ? `With ${horizonDays} days to go, front-load your weak topics and let spaced repetition lock them in. Stay consistent — even 2 focused hours daily beats panic revision.`
+                : `This plan is built for steady mastery, not panic. Study actively, test yourself, and revisit the same chapter before it fades.`;
+        }
+
+        const goals = this.buildMilestoneGoals({
+            today,
+            horizonDays,
+            selectedSubjects: scopedSubjects,
+            planMode,
+            weakTopics
+        });
+
+        const newPlan = new StudyPlan({
+            uid,
+            mbbs_year: year,
+            plan_mode: planMode,
+            plan_duration_days: horizonDays,
+            exam_date: examDateObj,
+            subjects_selected: scopedSubjects,
+            selected_topic_keys: selectedTopicKeys,
+            weak_topics: weakTopics,
+            strong_topics: strongTopics,
+            advisory_text,
+            daily_plan,
+            goals,
+            streak: { current: 0, longest: 0, last_checkin: null },
+            analytics: { total_tasks: totalTasksGenerated, completed: 0, pace_factor: 1.0 }
+        });
+
+        await newPlan.save();
+        invalidateLearnerContext(uid);
         return newPlan;
     }
 

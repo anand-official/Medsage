@@ -29,6 +29,7 @@ const {
 
 // Greeting pattern shared by both generateMedicalResponse and streamMedicalResponse
 const GREETING_PATTERNS = /^(hi|hello|hey|hiya|howdy|sup|what's up|whats up|good morning|good afternoon|good evening|good night|how are you|how r u|thanks|thank you|ok|okay|cool|nice|great|awesome|wow|lol|haha|bye|goodbye|see you|cya|yes|no|sure|alright|got it|understood|noted)\s*[!?.]*$/i;
+const QUERY_REWRITE_TIMEOUT_MS = parseInt(process.env.QUERY_REWRITE_TIMEOUT_MS || '700', 10);
 
 class CortexOrchestrator {
     constructor(options = {}) {
@@ -147,7 +148,7 @@ class CortexOrchestrator {
         }
 
         // ── Guardrail 2: greeting detection (mirrors main pipeline) ───────────
-        if (GREETING_PATTERNS.test(normalizedQuestion)) {
+        if (history.length === 0 && GREETING_PATTERNS.test(normalizedQuestion)) {
             yield 'Hey! Ask me anything in medicine — anatomy, physiology, pharmacology, pathology, or any clinical topic. What would you like to study?';
             return;
         }
@@ -228,7 +229,7 @@ class CortexOrchestrator {
 
     /** Returns a greeting response, or null to continue. */
     _handleGreeting(ctx) {
-        if (!GREETING_PATTERNS.test(ctx.normalizedQuestion) || ctx.imageBase64) return null;
+        if (!GREETING_PATTERNS.test(ctx.normalizedQuestion) || ctx.imageBase64 || (ctx.history && ctx.history.length > 0)) return null;
         return this._buildClarificationResponse({
             answer:      'Hey! Ask me anything in medicine — anatomy, physiology, pharmacology, pathology, or any clinical topic. What would you like to study?',
             pipeline:    'greeting',
@@ -368,16 +369,25 @@ class CortexOrchestrator {
                     `History:\n${ctx.truncatedHistory.map((t) => `[${t.role.toUpperCase()}]: ${t.content}`).join('\n')}\n\n` +
                     `Latest Question: ${ctx.sanitizedQuestion}\n\nRewritten Search Phrase:`;
 
-                const rewritten = await this.llmClient.callText(rewritePrompt, {
-                    temperature: 0.1,
-                    max_tokens:  50,
-                });
+                const rewritten = await this._withTimeout(
+                    this.llmClient.callText(rewritePrompt, {
+                        temperature: 0.1,
+                        max_tokens:  50,
+                    }),
+                    QUERY_REWRITE_TIMEOUT_MS,
+                    null
+                );
+                if (!rewritten?.text) {
+                    throw new Error('Query rewrite timed out');
+                }
                 const cleaned = (rewritten.text || '').trim().replace(/^"|"$/g, '');
                 if (cleaned.length >= 10 && cleaned.length >= ctx.normalizedQuestion.length * 0.3) {
                     searchPhrase = cleaned;
                 }
             } catch (error) {
-                console.warn('[PIPELINE] Query rewrite failed, using original question:', error.message);
+                if (error.message !== 'Query rewrite timed out') {
+                    console.warn('[PIPELINE] Query rewrite failed, using original question:', error.message);
+                }
             }
         }
 
@@ -387,7 +397,13 @@ class CortexOrchestrator {
         // parallel and merges unique chunks from alt queries into the primary result.
         let retrieval;
         if (typeof ragService.retrieveWithExpansion === 'function') {
-            const expandedQueries = await queryExpander.expandQuery(searchPhrase);
+            const shouldExpandQuery =
+                ctx.truncatedHistory.length > 0 ||
+                ctx.calibratedTopicConfidence < 0.85 ||
+                searchPhrase.length < 48;
+            const expandedQueries = shouldExpandQuery
+                ? await queryExpander.expandQuery(searchPhrase)
+                : [searchPhrase];
             retrieval = await ragService.retrieveWithExpansion(
                 ctx.topicResult.topic_id,
                 { subject: ctx.topicResult.subject, country: ctx.syllabusContext.country },
@@ -827,6 +843,26 @@ class CortexOrchestrator {
         } catch {
             return false;
         }
+    }
+
+    _withTimeout(promise, ms, fallbackValue = null) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => resolve(fallbackValue), ms);
+            if (typeof timer.unref === 'function') {
+                timer.unref();
+            }
+
+            Promise.resolve(promise).then(
+                (value) => {
+                    clearTimeout(timer);
+                    resolve(value);
+                },
+                (error) => {
+                    clearTimeout(timer);
+                    reject(error);
+                }
+            );
+        });
     }
 
     _assembleAnswer(parsedJson, citationResult) {

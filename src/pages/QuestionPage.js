@@ -435,6 +435,21 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
               )}
             </Box>
 
+            {isClarification && response.partial_answer && (
+              <Box sx={{
+                mx: { xs: 2.5, md: 3 }, mb: 2, px: 2, py: 1.75, borderRadius: 2,
+                background: isDark ? 'rgba(16,185,129,0.07)' : 'rgba(16,185,129,0.05)',
+                border: '1px solid rgba(16,185,129,0.18)',
+              }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#10b981', mb: 0.75 }}>
+                  What Cortex Can Tell Already
+                </Typography>
+                <Box sx={{ color: isDark ? '#d1fae5' : '#065f46' }}>
+                  {renderMarkdown(response.partial_answer, isDark)}
+                </Box>
+              </Box>
+            )}
+
             {/* Key points / Claims */}
             {(response.claims?.length > 0 || response.keyPoints?.length > 0) && (() => {
               // Prefer structured claims (with sourcing data) over plain key points
@@ -1036,14 +1051,15 @@ const QuestionPage = () => {
 
   const buildHistory = useCallback(() => buildHistoryForRequest(messages), [messages]);
 
-  const handleSubmit = useCallback(async (queryText) => {
+  const handleSubmit = useCallback(async (queryText, options = {}) => {
     const q = (typeof queryText === 'string' ? queryText : question).trim();
-    if (!q && !attachedImage) return;
+    const overrideImageDataUrl = options.imageDataUrl || null;
+    if (!q && !attachedImage && !overrideImageDataUrl) return;
 
     const displayText = q || '(Image attached)';
     const messageClock = createChatTimestamp();
     const history = buildHistory();
-    const imageDataUrl = attachedImage?.dataUrl || null;
+    const imageDataUrl = overrideImageDataUrl || attachedImage?.dataUrl || null;
     const detectedSubject = imageDataUrl ? null : detectSubjectFromText(q);
     const syllabusLabel = userProfile?.country ? `${userProfile.country} MBBS` : 'Indian MBBS';
 
@@ -1083,6 +1099,7 @@ const QuestionPage = () => {
         log_id: raw?.log_id || null,
         claims: raw?.claims || null,
         allClaimsSourced: raw?.allClaimsSourced ?? null,
+        partial_answer: raw?.partial_answer || null,
       };
       setMessages(prev => [...prev, {
         role: 'ai', response: responseData,
@@ -1098,7 +1115,7 @@ const QuestionPage = () => {
         text: err.message || 'Failed to get a response. Is the backend running?',
         retryable: err.retryable !== false, // default true unless explicitly false
         queryText: q,
-        imageDataUrl: attachedImage?.dataUrl || null,
+        imageDataUrl,
         ...createChatTimestamp(),
       }]);
     } finally {
@@ -1374,7 +1391,7 @@ const QuestionPage = () => {
                       <Button
                         size="small"
                         startIcon={<RetryIcon sx={{ fontSize: '14px !important' }} />}
-                        onClick={() => handleSubmit(msg.queryText)}
+                        onClick={() => handleSubmit(msg.queryText, { imageDataUrl: msg.imageDataUrl || null })}
                         disabled={loading}
                         sx={{
                           flexShrink: 0,

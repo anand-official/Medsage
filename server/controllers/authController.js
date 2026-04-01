@@ -1,4 +1,5 @@
 const UserProfile = require('../models/UserProfile');
+const { invalidateLearnerContext } = require('../services/learnerContextCache');
 
 class AuthController {
 
@@ -57,6 +58,8 @@ class AuthController {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
             }
 
+            invalidateLearnerContext(uid);
+
             res.json({
                 success: true,
                 data: user
@@ -103,6 +106,8 @@ class AuthController {
             if (!user) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
             }
+
+            invalidateLearnerContext(uid);
 
             res.json({
                 success: true,
@@ -169,6 +174,8 @@ class AuthController {
             if (!deletedUser) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
             }
+
+            invalidateLearnerContext(uid);
 
             res.json({ success: true, message: 'Account and associated data deleted successfully' });
         } catch (error) {

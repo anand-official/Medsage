@@ -323,8 +323,13 @@ const HomePage = () => {
   const streak         = analyticsData?.streak?.current ?? todayData?.streak?.current ?? 0;
   const topicsDone     = analyticsData?.totalCompleted ?? studyPlan?.completedTopics ?? 0;
 
+  const plannerMode = studyPlan?.plan_mode || (studyPlan?.exam_date ? 'exam' : null);
+  const planDurationDays = studyPlan?.plan_duration_days || studyPlan?.daily_plan?.length || null;
+  const subjectCount = studyPlan?.subjects_selected?.length || 0;
+  const customScopeCount = studyPlan?.selected_topic_keys?.length || 0;
+
   // Exam countdown
-  const examDate  = studyPlan?.exam_date ? new Date(studyPlan.exam_date) : null;
+  const examDate  = plannerMode === 'exam' && studyPlan?.exam_date ? new Date(studyPlan.exam_date) : null;
   const daysToExam = examDate
     ? Math.max(0, Math.ceil((examDate - Date.now()) / 86400000))
     : null;
@@ -450,10 +455,17 @@ const HomePage = () => {
           label="Topics Mastered" color={C.emerald}
           loading={todayLoading} custom={3}
         />
-        {daysToExam !== null && (
+        {plannerMode === 'exam' && daysToExam !== null && (
           <StatPill
             icon={<CalendarIcon />} value={daysToExam}
             label="Days to Exam" color={C.amber}
+            loading={false} custom={4}
+          />
+        )}
+        {plannerMode === 'self_study' && planDurationDays !== null && (
+          <StatPill
+            icon={<PlannerIcon />} value={planDurationDays}
+            label="Study Horizon" color={C.emerald}
             loading={false} custom={4}
           />
         )}
@@ -648,7 +660,7 @@ const HomePage = () => {
           </Card>
         </MotionBox>
 
-        {/* ── Right: Quick Launch + Exam Countdown ────────────────────────── */}
+        {/* ── Right: Quick Launch + Planner Focus ─────────────────────────── */}
         <Stack spacing={2}>
           {/* Quick Launch */}
           <MotionBox variants={fadeUp} custom={6}>
@@ -679,15 +691,61 @@ const HomePage = () => {
             </Card>
           </MotionBox>
 
-          {/* Exam Countdown */}
+          {/* Planner Focus */}
           <MotionBox variants={fadeUp} custom={10}>
             <Card isDark={isDark}>
               <Box sx={{ px: 2.5, pt: 2.5, pb: 2.5 }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.08em', color: 'text.secondary', textTransform: 'uppercase', mb: 2 }}>
-                  Exam Countdown
+                  {plannerMode === 'self_study' ? 'Self-Study Focus' : 'Exam Countdown'}
                 </Typography>
 
-                {examDate && daysToExam !== null ? (
+                {plannerMode === 'self_study' ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+                    <Box sx={{
+                      width: 72, height: 72, borderRadius: '50%',
+                      background: 'rgba(16,185,129,0.1)',
+                      border: '1px solid rgba(16,185,129,0.22)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: C.emerald,
+                      boxShadow: '0 10px 30px rgba(16,185,129,0.14)',
+                      flexShrink: 0,
+                    }}>
+                      <PlannerIcon sx={{ fontSize: 30 }} />
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography fontWeight={800} sx={{ fontSize: '0.95rem', lineHeight: 1.2 }}>
+                        {planDurationDays ? `${planDurationDays}-day mastery path` : 'Self-study path active'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                        {`Year ${studyPlan?.mbbs_year || '—'}${subjectCount ? ` · ${subjectCount} subjects` : ''}${customScopeCount ? ` · ${customScopeCount} chosen chapters` : ''}`}
+                      </Typography>
+                      <Box sx={{ mt: 1, display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                        <Chip
+                          size="small"
+                          label={customScopeCount > 0 ? 'Custom scope' : 'Full-year syllabus'}
+                          sx={{
+                            height: 20, fontSize: '0.62rem', fontWeight: 700,
+                            bgcolor: 'rgba(16,185,129,0.12)',
+                            color: C.emerald,
+                            border: '1px solid rgba(16,185,129,0.22)',
+                          }}
+                        />
+                        {subjectCount > 0 && (
+                          <Chip
+                            size="small"
+                            label={`${subjectCount} subjects`}
+                            sx={{
+                              height: 20, fontSize: '0.62rem', fontWeight: 700,
+                              bgcolor: 'rgba(99,102,241,0.1)',
+                              color: C.indigoL,
+                              border: '1px solid rgba(99,102,241,0.18)',
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                ) : examDate && daysToExam !== null ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                     <ExamPulse days={daysToExam} />
                     <Box>

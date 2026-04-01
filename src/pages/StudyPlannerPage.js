@@ -29,8 +29,7 @@ import GoalTimeline from '../components/planner/GoalTimeline';
 export default function StudyPlannerPage() {
   const {
     studyPlan, getStudyPlan, fetchToday, fetchAnalytics, tickTask,
-    todayData, analyticsData, loading, error, setError,
-    setExamDate, setWeakTopics, setStrongTopics
+    todayData, analyticsData, loading, error, setError
   } = useStudyContext();
   const navigate = useNavigate();
 
@@ -168,17 +167,7 @@ export default function StudyPlannerPage() {
         <Stack direction="row" spacing={2} sx={{ mt: { xs: 2, sm: 0 } }}>
           <Button
             startIcon={<RefreshIcon />}
-            onClick={() => {
-              // Pre-populate form with existing plan settings
-              if (studyPlan) {
-                if (studyPlan.exam_date) {
-                  setExamDate(new Date(studyPlan.exam_date).toISOString().split('T')[0]);
-                }
-                if (studyPlan.weak_topics?.length) setWeakTopics(studyPlan.weak_topics);
-                if (studyPlan.strong_topics?.length) setStrongTopics(studyPlan.strong_topics);
-              }
-              setShowSetup(true);
-            }}
+            onClick={() => setShowSetup(true)}
             variant="outlined"
             sx={{ borderRadius: 3, borderColor: 'rgba(255,255,255,0.12)', color: 'text.secondary' }}
           >
@@ -299,7 +288,7 @@ export default function StudyPlannerPage() {
                     if (!dayData || !dayData.tasks || dayData.tasks.length === 0) {
                       return (
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, opacity: 0.5 }}>
-                          <Typography fontStyle="italic">No tasks scheduled. Enjoy your rest or plan an exam.</Typography>
+                          <Typography fontStyle="italic">No tasks scheduled. Enjoy the lighter day or refine your planner scope.</Typography>
                         </Box>
                       );
                     }

@@ -219,6 +219,7 @@ router.post('/sessions', [
     body('messages.*.meta.subject').optional().isString().isLength({ max: 120 }),
     body('messages.*.meta.confidence').optional().isFloat({ min: 0, max: 1 }),
     body('messages.*.meta.pipeline').optional().isString().isLength({ max: 120 }),
+    body('messages.*.response').optional().isObject(),
 ], verifyToken, async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

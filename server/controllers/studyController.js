@@ -3,29 +3,49 @@ const studyService = require('../services/studyService');
 class StudyController {
   async generateStudyPlan(req, res, next) {
     try {
-      const { year, country, examDate, selectedSubjects, weakTopics, strongTopics } = req.body;
+      const {
+        year,
+        country,
+        planMode = 'exam',
+        examDate,
+        studyDurationDays,
+        selectedSubjects,
+        selectedTopicKeys,
+        weakTopics,
+        strongTopics
+      } = req.body;
       const uid = req.user.uid;
 
       if (!uid) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
-      if (!year || !examDate || !selectedSubjects || !weakTopics) {
+      if (!year) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: year, examDate, selectedSubjects, weakTopics',
+          error: 'Missing required field: year',
         });
       }
 
-      const studyPlan = await studyService.generatePlanWithAI(
-        uid,
+      if (planMode === 'exam' && !examDate) {
+        return res.status(400).json({ success: false, error: 'Exam mode requires a future exam date.' });
+      }
+
+      if (planMode === 'self_study' && !studyDurationDays) {
+        return res.status(400).json({ success: false, error: 'Self-study mode requires a study duration.' });
+      }
+
+      const studyPlan = await studyService.generatePlanWithAI(uid, {
         year,
         country,
+        planMode,
         examDate,
-        selectedSubjects,
-        weakTopics,
-        strongTopics || []
-      );
+        studyDurationDays,
+        selectedSubjects: selectedSubjects || [],
+        selectedTopicKeys: selectedTopicKeys || [],
+        weakTopics: weakTopics || [],
+        strongTopics: strongTopics || []
+      });
 
       res.json({
         success: true,

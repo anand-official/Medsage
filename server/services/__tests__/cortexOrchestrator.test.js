@@ -173,6 +173,33 @@ describe('CortexOrchestrator.generateMedicalResponse', () => {
         expect(topicScorer.scoreQueryAdvanced).not.toHaveBeenCalled();
     });
 
+    test('does not treat greeting-style replies as a fresh greeting when history exists', async () => {
+        topicScorer.scoreQuery.mockReturnValue({ matched: true, confidence: 0.8, topic_id: null, subject: null });
+        topicScorer.scoreQueryAdvanced.mockResolvedValue(highTopicResult);
+        ragService.retrieveContext.mockResolvedValue(validRetrieval);
+        llmClient.callStructured.mockResolvedValue({
+            text: JSON.stringify(validParsedResponse),
+            provider: 'gemini',
+        });
+        outputSchemaValidator.validate.mockReturnValue({
+            is_valid: true,
+            parsed: validParsedResponse,
+            error: null,
+        });
+        citationVerifier.verifyStructuredClaims.mockReturnValue(validCitationResult);
+        confidenceEngine.compute.mockReturnValue(highConfidenceReport);
+
+        const response = await orchestrator.generateMedicalResponse('okay', {
+            history: [
+                { role: 'user', content: 'Explain acute inflammation' },
+                { role: 'ai', content: 'Acute inflammation is the immediate vascular response to injury.' },
+            ],
+        });
+
+        expect(response.meta.pipeline).not.toBe('greeting');
+        expect(ragService.retrieveContext).toHaveBeenCalled();
+    });
+
     test('refuses off-topic query that has no medical signal', async () => {
         // scoreQuery is called by _handleOffTopic when hasMedicalSignal is false
         topicScorer.scoreQuery.mockReturnValue({ matched: false, confidence: 0.05, topic_id: null, subject: null });

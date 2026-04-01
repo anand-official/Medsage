@@ -20,12 +20,6 @@ export const StudyProvider = ({ children }) => {
   const [todayData, setTodayData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
 
-  // Planner Setup Form State
-  const [examDate, setExamDate] = useState(null);
-  const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [weakTopics, setWeakTopics] = useState([]);
-  const [strongTopics, setStrongTopics] = useState([]);
-
   // Per-operation loading states (no more shared flicker)
   const [planLoading, setPlanLoading] = useState(false);
   const [todayLoading, setTodayLoading] = useState(false);
@@ -87,17 +81,13 @@ export const StudyProvider = ({ children }) => {
     }
   }, [userProfile]);
 
-  const generateStudyPlan = async (year) => {
+  const generateStudyPlan = async (planData) => {
     setIsGenerating(true);
     setGenerateError(null);
     try {
       const res = await plannerAPI.generateStudyPlan({
-        year,
+        ...planData,
         country: userProfile?.country || 'India',
-        examDate,
-        selectedSubjects,
-        weakTopics,
-        strongTopics
       });
       setStudyPlan(res.data);
       await fetchToday();
@@ -197,11 +187,6 @@ export const StudyProvider = ({ children }) => {
     studyPlan,
     todayData,
     analyticsData,
-
-    examDate, setExamDate,
-    selectedSubjects, setSelectedSubjects,
-    weakTopics, setWeakTopics,
-    strongTopics, setStrongTopics,
 
     // Granular loading/error for components that need them
     planLoading, todayLoading, analyticsLoading,

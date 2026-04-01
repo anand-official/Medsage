@@ -24,6 +24,8 @@ const MessageSchema = new mongoose.Schema({
         confidence: Number,
         pipeline:   String,
     },
+    // Rich assistant payload retained so restored sessions keep follow-up context.
+    response: mongoose.Schema.Types.Mixed,
 }, { _id: false });
 
 const ChatSessionSchema = new mongoose.Schema({

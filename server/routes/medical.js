@@ -9,6 +9,7 @@ const redisRateLimiter = require('../middleware/redisRateLimiter');
 const UserProfile = require('../models/UserProfile');
 const StudyPlan = require('../models/StudyPlan');
 const AuditLog = require('../models/AuditLog');
+const { getCachedLearnerContext, setCachedLearnerContext } = require('../services/learnerContextCache');
 
 // Per-authenticated-user rate limiter — Redis-backed, survives restarts and works
 // across multiple server instances. Applied AFTER verifyToken so req.user.uid is available.
@@ -30,23 +31,14 @@ const visionLimiter = redisRateLimiter(
 );
 
 // ── Learner context cache (avoids 2 MongoDB hits per request) ────────────────
-const LEARNER_CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 300) * 1000;
-const MAX_LEARNER_CACHE_SIZE = 1000;
-const learnerContextCache = new Map();
-
-function getCachedLearnerContext(uid) {
-  const entry = learnerContextCache.get(uid);
-  if (entry && entry.expires > Date.now()) return entry.data;
-  if (entry) learnerContextCache.delete(uid); // evict stale entry
-  return null;
-}
-
-function setCachedLearnerContext(uid, data) {
-  if (learnerContextCache.size >= MAX_LEARNER_CACHE_SIZE) {
-    const oldestKey = learnerContextCache.keys().next().value;
-    learnerContextCache.delete(oldestKey);
-  }
-  learnerContextCache.set(uid, { data, expires: Date.now() + LEARNER_CACHE_TTL_MS });
+function normalizeHistoryItems(history = []) {
+  return (history || [])
+    .filter((item) => item && (item.role === 'user' || item.role === 'ai'))
+    .map((item) => ({
+      role: item.role,
+      content: String(item.content ?? item.text ?? '').trim().slice(0, 2000),
+    }))
+    .filter((item) => item.content);
 }
 
 // ── Image validation ─────────────────────────────────────────────────────────
@@ -143,6 +135,7 @@ router.post('/query', [
   body('syllabus').optional().isString().isLength({ max: 100 }),
   body('history').optional().isArray({ max: 20 }).withMessage('History must be an array of at most 20 items'),
   body('history.*.role').optional().isIn(['user', 'ai']).withMessage('History item role must be "user" or "ai"'),
+  body('history.*.content').optional().isString().isLength({ max: 2000 }).withMessage('Each history item content must be under 2000 characters'),
   body('history.*.text').optional().isString().isLength({ max: 2000 }).withMessage('Each history item content must be under 2000 characters'),
   // imageBase64 string-length guard (actual byte size validated below after decode)
   body('imageBase64').optional().isString().isLength({ max: 8 * 1024 * 1024 }).withMessage('Image payload too large'),
@@ -158,10 +151,11 @@ router.post('/query', [
       message,
       mode = 'conceptual',
       syllabus = 'Indian MBBS',
-      history = [],
+      history: rawHistory = [],
       imageBase64 = null,
       subject = null,
     } = req.body;
+    const history = normalizeHistoryItems(rawHistory);
 
     // Apply vision rate limit inside the handler (after verifyToken) so req.user.uid is available.
     // We call the middleware manually and check res.headersSent: if the limiter wrote a 429
@@ -367,6 +361,7 @@ router.post('/query/stream', [
   body('mode').optional().isIn(['exam', 'conceptual']),
   body('history').optional().isArray({ max: 20 }),
   body('history.*.role').optional().isIn(['user', 'ai']),
+  body('history.*.content').optional().isString().isLength({ max: 2000 }),
   body('history.*.text').optional().isString().isLength({ max: 2000 }),
   body('subject').optional().isString().isLength({ max: 100 }),
 ], verifyToken, uidQueryLimiter, async (req, res) => {
@@ -375,7 +370,8 @@ router.post('/query/stream', [
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { message, mode = 'conceptual', history = [], subject = null } = req.body;
+  const { message, mode = 'conceptual', history: rawHistory = [], subject = null } = req.body;
+  const history = normalizeHistoryItems(rawHistory);
   const uid = req.user?.uid;
 
   // Set SSE headers FIRST — before any async work so that any downstream error
