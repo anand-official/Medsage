@@ -13,6 +13,57 @@ const api = axios.create({
   },
 });
 
+function splitEndpointAndQuery(endpoint) {
+  const [path, query = ''] = endpoint.split('?');
+  return {
+    path,
+    suffix: query ? `?${query}` : '',
+  };
+}
+
+function getLegacyEndpoint(endpoint) {
+  if (typeof endpoint !== 'string' || !endpoint.startsWith('/')) return null;
+
+  const { path, suffix } = splitEndpointAndQuery(endpoint);
+
+  if (path === '/api/v1/auth') {
+    return `/auth${suffix}`;
+  }
+
+  if (path.startsWith('/api/v1/auth/')) {
+    return `${path.replace('/api/v1/auth/', '/auth/')}${suffix}`;
+  }
+
+  if (path.startsWith('/api/v1/')) {
+    return `${path.replace('/api/v1/', '/api/')}${suffix}`;
+  }
+
+  return null;
+}
+
+function shouldRetryWithLegacyContract(error) {
+  const status = error?.response?.status;
+  const originalUrl = error?.config?.url;
+  return status === 404 && !error?.config?._legacyRetried && Boolean(getLegacyEndpoint(originalUrl));
+}
+
+async function fetchWithLegacyFallback(endpoint, init = {}) {
+  const baseUrl = getApiBaseUrl();
+  const candidates = [endpoint, getLegacyEndpoint(endpoint)].filter(Boolean);
+  let lastResponse = null;
+
+  for (const candidate of candidates) {
+    const response = await fetch(`${baseUrl}${candidate}`, init);
+    if (response.status === 404 && candidate !== candidates[candidates.length - 1]) {
+      lastResponse = response;
+      continue;
+    }
+    return response;
+  }
+
+  return lastResponse;
+}
+
 // Add request interceptor to attach Google ID token on every request.
 // The UID is NOT sent as a header — the backend decodes it from the token.
 api.interceptors.request.use(
@@ -29,7 +80,18 @@ api.interceptors.request.use(
 // Add response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    if (shouldRetryWithLegacyContract(error)) {
+      const legacyUrl = getLegacyEndpoint(error.config.url);
+      if (legacyUrl) {
+        return api.request({
+          ...error.config,
+          url: legacyUrl,
+          _legacyRetried: true,
+        });
+      }
+    }
+
     if (error.response?.status === 401) {
       // Clear expired/invalid Google ID token and redirect to sign-in
       localStorage.removeItem('google_id_token');
@@ -56,7 +118,7 @@ export const apiCall = async (endpoint, options = {}) => {
   } catch (error) {
     if (error.response) {
       const status = error.response.status;
-      const message = error.response.data?.error || error.response.statusText || `HTTP ${status}`;
+      const message = normalizeApiErrorMessage(error.response.data, error.response.statusText, status);
       const err = new Error(`${message}`);
       err.statusCode = status;
       err.retryable = status >= 500; // 5xx errors are worth retrying; 4xx are client errors
@@ -68,6 +130,27 @@ export const apiCall = async (endpoint, options = {}) => {
     throw err;
   }
 };
+
+function normalizeApiErrorMessage(payload, fallbackStatusText, statusCode) {
+  const pickMessage = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) {
+      return value.map((item) => pickMessage(item)).filter(Boolean).join('; ');
+    }
+    if (typeof value === 'object') {
+      return (
+        pickMessage(value.error) ||
+        pickMessage(value.message) ||
+        pickMessage(value.msg) ||
+        pickMessage(value.errors)
+      );
+    }
+    return '';
+  };
+
+  return pickMessage(payload) || fallbackStatusText || `HTTP ${statusCode}`;
+}
 
 // Auth API calls
 export const authAPI = {
@@ -199,9 +282,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
   const storedToken = getStoredToken();
   const authHeader = storedToken ? `Bearer ${storedToken}` : '';
 
-  const API_URL = getApiBaseUrl();
-
-  const response = await fetch(`${API_URL}/api/v1/medical/query/stream`, {
+  const response = await fetchWithLegacyFallback('/api/v1/medical/query/stream', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

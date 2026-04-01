@@ -34,10 +34,7 @@ import {
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
-import { getApiBaseUrl } from "../config/apiBase";
 import "../animations.css";
-
-const API_BASE = getApiBaseUrl();
 
 // Year labels (no year 5 — no books there)
 const YEAR_LABELS = {
@@ -234,8 +231,8 @@ const BookReferencePage = () => {
   const fetchBooks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/v1/library`);
-      const data = await res.json();
+      const res = await api.get('/api/v1/library');
+      const data = res.data;
       setBooks(data.books || []);
       setLastUpdated(data.lastUpdated);
     } catch (error) {
