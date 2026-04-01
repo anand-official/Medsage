@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
     Box, Typography, Grid, Button, CircularProgress, Stack, Tabs, Tab,
     Paper, List, ListItem, ListItemIcon, ListItemText, Alert, Checkbox, Grow,
-    Chip, Collapse, Divider, Tooltip, IconButton
+    Collapse, Divider, Tooltip, IconButton
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -19,18 +19,23 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 import { useStudyContext } from '../contexts/StudyContext';
+import { useAuth } from '../contexts/AuthContext';
 import PlannerSetup from '../components/planner/PlannerSetup';
 import TodoList from '../components/planner/TodoList';
 import ProgressRing from '../components/planner/ProgressRing';
 import PerformanceChart from '../components/planner/PerformanceChart';
 import StreakCounter from '../components/planner/StreakCounter';
 import GoalTimeline from '../components/planner/GoalTimeline';
+import SystemDiagnosticsPanel from '../components/system/SystemDiagnosticsPanel';
 
 export default function StudyPlannerPage() {
   const {
     studyPlan, getStudyPlan, fetchToday, fetchAnalytics, tickTask,
-    todayData, analyticsData, loading, error, setError
+    todayData, analyticsData,
+    planState, todayState, analyticsState,
+    planLoading, generateError, planError, todayError, analyticsError,
   } = useStudyContext();
+  const { authStatus } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -61,9 +66,9 @@ export default function StudyPlannerPage() {
     const loadData = async () => {
       try {
         const plan = await getStudyPlan();
-        if (!plan) {
+        if (plan === null) {
           setShowSetup(true);
-        } else {
+        } else if (plan) {
           await fetchToday();
           await fetchAnalytics();
         }
@@ -90,7 +95,7 @@ export default function StudyPlannerPage() {
     }
   }, [studyPlan, showSetup, fetchToday, fetchAnalytics]);
 
-  if (initLoad || loading) {
+  if ((initLoad || planLoading) && !studyPlan) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
         <CircularProgress />
@@ -98,7 +103,7 @@ export default function StudyPlannerPage() {
     );
   }
 
-  if (showSetup || !studyPlan) {
+  if (showSetup || planState === 'empty' || (!studyPlan && planState !== 'error')) {
     return (
       <Box sx={{ pb: 10, maxWidth: 1000, mx: 'auto' }}>
         <PlannerSetup onCancel={studyPlan ? () => setShowSetup(false) : undefined} />
@@ -106,9 +111,25 @@ export default function StudyPlannerPage() {
     );
   }
 
+  if (!studyPlan && planState === 'error') {
+    return (
+      <Box sx={{ maxWidth: 760, mx: 'auto', py: 8 }}>
+        <Alert severity="error" sx={{ borderRadius: 3, mb: 3 }}>
+          {planError || 'We could not load your planner.'}
+        </Alert>
+        <Button variant="contained" onClick={() => getStudyPlan()}>
+          Retry Planner Load
+        </Button>
+      </Box>
+    );
+  }
+
   const totalToday = todayData?.tasks?.length || 0;
   const doneToday = todayData?.tasks?.filter(t => t.completed).length || 0;
   const completionRate = totalToday > 0 ? Math.round((doneToday / totalToday) * 100) : 0;
+  const partialFailure = todayState === 'error' || analyticsState === 'error';
+  const failureCount = [planState, todayState, analyticsState].filter((state) => state === 'error').length;
+  const diagnosticsError = planError || todayError || analyticsError || generateError || null;
 
   const toggleCalResource = (taskId) => {
     setExpandedCalResources(prev => {
@@ -176,11 +197,34 @@ export default function StudyPlannerPage() {
         </Stack>
       </Stack>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }} onClose={() => setError(null)}>
-          {error}
+      {generateError && (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>
+          {generateError}
         </Alert>
       )}
+      {partialFailure && (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 3 }}>
+          {todayState === 'error' && (todayError || 'Today view is temporarily unavailable.')}
+          {todayState === 'error' && analyticsState === 'error' ? ' ' : ''}
+          {analyticsState === 'error' && (analyticsError || 'Analytics are temporarily unavailable.')}
+        </Alert>
+      )}
+      <Box sx={{ mb: { xs: 3, md: 4 } }}>
+        <SystemDiagnosticsPanel
+          dataTestId="planner-diagnostics"
+          authStatus={authStatus}
+          planState={planState}
+          todayState={todayState}
+          analyticsState={analyticsState}
+          latestIssue={diagnosticsError}
+          failureCount={failureCount}
+          actions={(
+            <Button size="small" variant="text" onClick={() => navigate('/status')}>
+              Open Full Status
+            </Button>
+          )}
+        />
+      </Box>
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: { xs: 2, md: 4 } }}>
@@ -215,15 +259,15 @@ export default function StudyPlannerPage() {
                 <Stack spacing={4}>
                   <Box sx={{ display: 'flex', gap: { xs: 2, md: 4 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box className="glass-panel" sx={{ flex: 1, display: 'flex', justifyContent: 'center', p: { xs: 2, md: 3 }, bgcolor: 'transparent' }}>
-                      <ProgressRing percentage={completionRate} size={140} />
+                      <ProgressRing percentage={todayState === 'ready' ? completionRate : 0} size={140} />
                     </Box>
                     <Box className="glass-panel" sx={{ flex: 1, p: 0, bgcolor: 'transparent' }}>
                       <StreakCounter streakData={analyticsData?.streak} />
                     </Box>
                   </Box>
-                  <Box className="glass-panel" sx={{ height: 220, p: 0, bgcolor: 'transparent' }}>
-                    <PerformanceChart heatmap={analyticsData?.heatmap} />
-                  </Box>
+                    <Box className="glass-panel" sx={{ height: 220, p: 0, bgcolor: 'transparent' }}>
+                      <PerformanceChart heatmap={analyticsData?.heatmap} />
+                    </Box>
                   <Box className="glass-panel" sx={{ height: 280, p: 0, bgcolor: 'transparent' }}>
                     <GoalTimeline goals={studyPlan?.goals} />
                   </Box>

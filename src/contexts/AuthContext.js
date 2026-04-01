@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { googleLogout } from '@react-oauth/google';
-import { authAPI } from '../services/api';
+import { authAPI, formatRequestIdLabel } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -8,7 +8,6 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Decode JWT payload without verification (verification happens on the server)
 function decodeJwt(token) {
   try {
     return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -17,53 +16,83 @@ function decodeJwt(token) {
   }
 }
 
+function buildUserFromPayload(payload) {
+  return {
+    uid: payload.sub,
+    email: payload.email,
+    displayName: payload.name || payload.email,
+    photoURL: payload.picture || null,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
-  const lastSyncedUidRef = useRef(null);
+  const [authStatus, setAuthStatus] = useState('loading');
+  const [authError, setAuthError] = useState(null);
+
   const refreshTimerRef = useRef(null);
 
-  // Restore session from localStorage on mount
-  useEffect(() => {
-    const token = localStorage.getItem('google_id_token');
-    if (token) {
-      const payload = decodeJwt(token);
-      // Check if token is still valid (with 5-minute buffer)
-      if (payload && payload.exp * 1000 > Date.now() + 5 * 60 * 1000) {
-        const user = {
-          uid: payload.sub,
-          email: payload.email,
-          displayName: payload.name || payload.email,
-          photoURL: payload.picture || null,
-        };
-        setCurrentUser(user);
-        syncWithBackend(user);
-        scheduleTokenRefresh(payload.exp);
-      } else {
-        // Token expired — clear it
-        localStorage.removeItem('google_id_token');
-        setLoading(false);
-      }
-    } else {
-      setLoading(false);
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
     }
-  }, []); // runs once on mount — intentional
+  }, []);
 
-  const scheduleTokenRefresh = (expEpochSeconds) => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    // Warn 5 minutes before expiry
+  const scheduleTokenRefresh = useCallback((expEpochSeconds) => {
+    clearRefreshTimer();
     const msUntilRefresh = expEpochSeconds * 1000 - Date.now() - 5 * 60 * 1000;
     if (msUntilRefresh > 0) {
       refreshTimerRef.current = setTimeout(() => {
-        console.warn('[Auth] Google ID token expiring soon — user will need to re-login');
+        console.warn('[Auth] Google ID token expiring soon - user will need to re-login');
       }, msUntilRefresh);
     }
-  };
+  }, [clearRefreshTimer]);
 
-  const syncWithBackend = async (user) => {
-    if (user.uid === lastSyncedUidRef.current) return;
-    lastSyncedUidRef.current = user.uid;
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('google_id_token');
+    clearRefreshTimer();
+    setCurrentUser(null);
+    setUserProfile(null);
+    setAuthError(null);
+  }, [clearRefreshTimer]);
+
+  const formatAuthError = useCallback((error) => {
+    const requestIdText = formatRequestIdLabel(error?.requestId);
+    if (error?.statusCode === 401) {
+      return 'Your session expired. Please sign in again.';
+    }
+    if (error?.retryable) {
+      return requestIdText
+        ? `We could not reach your Medsage account. ${requestIdText}`
+        : 'We could not reach your Medsage account. Please try again.';
+    }
+    return requestIdText
+      ? `${error?.message || 'Authentication failed.'} ${requestIdText}`
+      : (error?.message || 'Authentication failed.');
+  }, []);
+
+  const bootstrapFromToken = useCallback(async (token) => {
+    if (!token) {
+      clearSession();
+      setAuthStatus('signed_out');
+      return 'signed_out';
+    }
+
+    const payload = decodeJwt(token);
+    if (!payload || payload.exp * 1000 <= Date.now() + 5 * 60 * 1000) {
+      clearSession();
+      setAuthStatus('signed_out');
+      return 'signed_out';
+    }
+
+    const user = buildUserFromPayload(payload);
+    setCurrentUser(user);
+    setAuthStatus('loading');
+    setAuthError(null);
+    scheduleTokenRefresh(payload.exp);
+
     try {
       const profile = await authAPI.createOrUpdateUser({
         email: user.email,
@@ -72,81 +101,93 @@ export function AuthProvider({ children }) {
         uid: user.uid,
       });
       setUserProfile(profile?.data ?? profile);
+      setAuthStatus('authenticated');
+      return 'authenticated';
     } catch (error) {
-      console.error('Backend sync failed — using Google user as fallback:', error);
-      setUserProfile({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL || '',
-        mbbs_year: '',
-        college: '',
-        country: 'India',
-        onboarded: true,
-        _fallback: true,
-      });
+      if (error?.statusCode === 401) {
+        clearSession();
+        setAuthStatus('signed_out');
+        return 'signed_out';
+      }
+      setUserProfile(null);
+      setAuthError(formatAuthError(error));
+      setAuthStatus('degraded');
+      return 'degraded';
     }
-    setLoading(false);
-  };
+  }, [clearSession, formatAuthError, scheduleTokenRefresh]);
 
-  // Called by GoogleLogin onSuccess
-  const handleGoogleSuccess = async (credentialResponse) => {
-    const credential = credentialResponse.credential;
+  useEffect(() => {
+    const token = localStorage.getItem('google_id_token');
+    if (!token) {
+      setAuthStatus('signed_out');
+      return;
+    }
+    bootstrapFromToken(token);
+  }, [bootstrapFromToken]);
+
+  const retryBootstrap = useCallback(async () => {
+    const token = localStorage.getItem('google_id_token');
+    return bootstrapFromToken(token);
+  }, [bootstrapFromToken]);
+
+  const handleGoogleSuccess = useCallback(async (credentialResponse) => {
+    const credential = credentialResponse?.credential;
+    if (!credential) {
+      throw new Error('Google sign-in did not return a credential');
+    }
     localStorage.setItem('google_id_token', credential);
+    return bootstrapFromToken(credential);
+  }, [bootstrapFromToken]);
 
-    const payload = decodeJwt(credential);
-    const user = {
-      uid: payload.sub,
-      email: payload.email,
-      displayName: payload.name || payload.email,
-      photoURL: payload.picture || null,
-    };
-    setCurrentUser(user);
-    scheduleTokenRefresh(payload.exp);
-    await syncWithBackend(user);
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
     googleLogout();
-    localStorage.removeItem('google_id_token');
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    lastSyncedUidRef.current = null;
-    setCurrentUser(null);
-    setUserProfile(null);
-  };
+    clearSession();
+    setAuthStatus('signed_out');
+  }, [clearSession]);
 
-  const updateStudyPreferences = async (preferences) => {
+  const ensureAuthenticated = useCallback(() => {
+    if (authStatus !== 'authenticated') {
+      throw new Error('You must be signed in before updating your account.');
+    }
+  }, [authStatus]);
+
+  const updateStudyPreferences = useCallback(async (preferences) => {
+    ensureAuthenticated();
     const updatedProfile = await authAPI.updatePreferences(preferences);
     setUserProfile(updatedProfile.data);
     return updatedProfile.data;
-  };
+  }, [ensureAuthenticated]);
 
-  const updateOnboardingProfile = async (profileData) => {
+  const updateOnboardingProfile = useCallback(async (profileData) => {
+    ensureAuthenticated();
     const updatedProfile = await authAPI.updateProfile(profileData);
     setUserProfile(updatedProfile.data);
     return updatedProfile.data;
-  };
+  }, [ensureAuthenticated]);
 
-  const deleteAccount = async () => {
+  const deleteAccount = useCallback(async () => {
+    ensureAuthenticated();
     await authAPI.deleteAccount();
     logout();
-  };
+  }, [ensureAuthenticated, logout]);
 
   const value = {
     currentUser,
     userProfile,
-    handleGoogleSuccess,  // pass to GoogleLogin onSuccess
+    authStatus,
+    authError,
+    handleGoogleSuccess,
     logout,
+    retryBootstrap,
     updateStudyPreferences,
     updateOnboardingProfile,
     deleteAccount,
-    // signInWithGoogle is no longer a function — components must use <GoogleLogin> component
     signInWithGoogle: null,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

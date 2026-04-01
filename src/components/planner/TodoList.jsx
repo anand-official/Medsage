@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     Box, Typography, Paper, Checkbox, IconButton,
     List, ListItem, ListItemIcon,
-    Grow, TextField, Tooltip, Collapse, Button, LinearProgress,
+    Grow, TextField, Tooltip, Collapse, Button, LinearProgress, Alert,
 } from '@mui/material';
 import {
     CheckCircle as CheckCircleIcon,
@@ -200,7 +200,7 @@ function StudyKitPanel({ task, isExpanded }) {
 }
 
 export default function TodoList() {
-    const { todayData, tickTask, addNewTask, updateTaskText } = useStudyContext();
+    const { todayData, todayError, tickTask, addNewTask, updateTaskText } = useStudyContext();
     const navigate = useNavigate();
 
     const [editingTaskId, setEditingTaskId] = useState(null);
@@ -255,8 +255,6 @@ export default function TodoList() {
         try {
             setIsSaving(true);
             await updateTaskText(todayData.date, editingTaskId, editDraft.trim());
-        } catch (error) {
-            console.error(error);
         } finally {
             setEditingTaskId(null);
             setIsSaving(false);
@@ -274,8 +272,6 @@ export default function TodoList() {
             setIsSaving(true);
             await addNewTask(todayData.date, newTaskDraft.trim());
             setNewTaskDraft('');
-        } catch (error) {
-            console.error(error);
         } finally {
             setAddingTask(false);
             setIsSaving(false);
@@ -297,6 +293,11 @@ export default function TodoList() {
         }}>
             {/* ── Header ── */}
             <Box sx={{ mb: 2.5 }}>
+                {todayError && (
+                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 2.5 }}>
+                        {todayError}
+                    </Alert>
+                )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                     <Box>
                         <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: '-0.5px', lineHeight: 1.2 }}>

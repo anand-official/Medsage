@@ -13,6 +13,33 @@ const api = axios.create({
   },
 });
 
+function getResponseRequestId(response) {
+  return response?.headers?.['x-request-id'] || response?.data?.requestId || null;
+}
+
+function getFetchResponseRequestId(response, payload = null) {
+  return response?.headers?.get?.('x-request-id') || payload?.requestId || null;
+}
+
+function createApiError({
+  message,
+  statusCode,
+  requestId = null,
+  retryable = false,
+  endpoint = '',
+}) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  err.requestId = requestId;
+  err.retryable = retryable;
+  err.endpoint = endpoint;
+  return err;
+}
+
+export function formatRequestIdLabel(requestId) {
+  return requestId ? `Request ID: ${requestId}` : '';
+}
+
 function splitEndpointAndQuery(endpoint) {
   const [path, query = ''] = endpoint.split('?');
   return {
@@ -64,13 +91,47 @@ async function fetchWithLegacyFallback(endpoint, init = {}) {
   return lastResponse;
 }
 
+async function parseFetchPayload(response) {
+  const contentType = response?.headers?.get?.('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeApiErrorMessage(payload, fallbackStatusText, statusCode) {
+  const pickMessage = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) {
+      return value.map((item) => pickMessage(item)).filter(Boolean).join('; ');
+    }
+    if (typeof value === 'object') {
+      return (
+        pickMessage(value.error) ||
+        pickMessage(value.message) ||
+        pickMessage(value.msg) ||
+        pickMessage(value.errors)
+      );
+    }
+    return '';
+  };
+
+  return pickMessage(payload) || fallbackStatusText || `HTTP ${statusCode}`;
+}
+
 // Add request interceptor to attach Google ID token on every request.
-// The UID is NOT sent as a header — the backend decodes it from the token.
+// The UID is NOT sent as a header, the backend decodes it from the token.
 api.interceptors.request.use(
   (config) => {
     const token = getStoredToken();
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -93,15 +154,16 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      // Clear expired/invalid Google ID token and redirect to sign-in
+      error.requestId = getResponseRequestId(error.response);
       localStorage.removeItem('google_id_token');
       window.location.href = '/signin';
     }
+
     return Promise.reject(error);
   }
 );
 
-// Helper function to make API calls — attaches Google ID token when available
+// Helper function to make API calls, attaches Google ID token when available
 export const apiCall = async (endpoint, options = {}) => {
   try {
     const token = getStoredToken();
@@ -110,7 +172,7 @@ export const apiCall = async (endpoint, options = {}) => {
       ...options,
       headers: {
         ...options.headers,
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       signal: options.signal
     });
@@ -118,39 +180,26 @@ export const apiCall = async (endpoint, options = {}) => {
   } catch (error) {
     if (error.response) {
       const status = error.response.status;
+      const requestId = getResponseRequestId(error.response);
       const message = normalizeApiErrorMessage(error.response.data, error.response.statusText, status);
-      const err = new Error(`${message}`);
-      err.statusCode = status;
-      err.retryable = status >= 500; // 5xx errors are worth retrying; 4xx are client errors
-      throw err;
+      throw createApiError({
+        message,
+        statusCode: status,
+        requestId,
+        retryable: status >= 500,
+        endpoint,
+      });
     }
-    // Network error (no response received)
-    const err = new Error(error.message || 'Network error — check your connection and try again.');
-    err.retryable = true;
-    throw err;
+
+    throw createApiError({
+      message: error.message || 'Network error - check your connection and try again.',
+      statusCode: error.statusCode,
+      requestId: error.requestId || null,
+      retryable: true,
+      endpoint,
+    });
   }
 };
-
-function normalizeApiErrorMessage(payload, fallbackStatusText, statusCode) {
-  const pickMessage = (value) => {
-    if (!value) return '';
-    if (typeof value === 'string') return value;
-    if (Array.isArray(value)) {
-      return value.map((item) => pickMessage(item)).filter(Boolean).join('; ');
-    }
-    if (typeof value === 'object') {
-      return (
-        pickMessage(value.error) ||
-        pickMessage(value.message) ||
-        pickMessage(value.msg) ||
-        pickMessage(value.errors)
-      );
-    }
-    return '';
-  };
-
-  return pickMessage(payload) || fallbackStatusText || `HTTP ${statusCode}`;
-}
 
 // Auth API calls
 export const authAPI = {
@@ -182,6 +231,46 @@ export const authAPI = {
   deleteAccount: () => apiCall('/api/v1/auth/profile', { method: 'DELETE' }),
 };
 
+export const systemAPI = {
+  getHealthStatus: async () => {
+    try {
+      const response = await fetchWithLegacyFallback('/healthz', {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      const payload = await parseFetchPayload(response);
+      const requestId = getFetchResponseRequestId(response, payload);
+
+      if (!response.ok) {
+        throw createApiError({
+          message: normalizeApiErrorMessage(payload, response.statusText, response.status),
+          statusCode: response.status,
+          requestId,
+          retryable: response.status >= 500,
+          endpoint: '/healthz',
+        });
+      }
+
+      return {
+        data: payload,
+        statusCode: response.status,
+        requestId,
+      };
+    } catch (error) {
+      if (error.statusCode || error.requestId) {
+        throw error;
+      }
+
+      throw createApiError({
+        message: error.message || 'Failed to reach the API health endpoint.',
+        retryable: true,
+        endpoint: '/healthz',
+      });
+    }
+  },
+};
 
 export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = 'Indian MBBS', history = [], imageBase64 = null, signal = null, subject = null) => {
   const response = await apiCall('/api/v1/medical/query', {
@@ -197,18 +286,26 @@ export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = '
     signal
   });
 
-  // Guard: server must return a truthy success flag and a data object.
-  // Any deviation (null body, missing data, success:false) is surfaced as a
-  // user-friendly error so the component can display a fallback message.
   if (!response || typeof response !== 'object') {
-    throw new Error('The server returned an empty response. Please try again.');
+    throw createApiError({
+      message: 'The server returned an empty response. Please try again.',
+      endpoint: '/api/v1/medical/query',
+    });
   }
   if (response.success === false) {
     const serverMsg = response.error || response.errors?.[0]?.msg;
-    throw new Error(serverMsg || 'The server could not process your question. Please try again.');
+    throw createApiError({
+      message: serverMsg || 'The server could not process your question. Please try again.',
+      statusCode: response.statusCode,
+      requestId: response.requestId || null,
+      endpoint: '/api/v1/medical/query',
+    });
   }
   if (!response.data && !response.text && !response.answer) {
-    throw new Error('The server returned an incomplete response. Please try again.');
+    throw createApiError({
+      message: 'The server returned an incomplete response. Please try again.',
+      endpoint: '/api/v1/medical/query',
+    });
   }
 
   const payload = response?.data ?? response ?? {};
@@ -252,7 +349,7 @@ export const fetchSessionMessages = async (sessionId, page = 1, limit = 50) => {
   const response = await api.get(
     `/api/v1/chat/sessions/${sessionId}?page=${page}&limit=${limit}`
   );
-  return response.data; // { success, session: { messages, ... }, pagination }
+  return response.data;
 };
 
 export const submitFeedback = async (logId, rating) => {
@@ -262,23 +359,19 @@ export const submitFeedback = async (logId, rating) => {
   });
 };
 
-
-
-
 /**
- * streamMedicalQuery — streams Cortex tokens via SSE.
+ * streamMedicalQuery - streams Cortex tokens via SSE.
  *
- * @param {string}   query      - The medical question
- * @param {object}   options    - { mode, history, subject }
- * @param {function} onToken    - Called with each text chunk as it arrives
- * @param {function} onDone     - Called when stream completes
- * @param {function} onError    - Called on stream error
- * @param {AbortSignal} signal  - Optional AbortController signal to cancel
+ * @param {string} query
+ * @param {object} options
+ * @param {function} onToken
+ * @param {function} onDone
+ * @param {function} onError
+ * @param {AbortSignal} signal
  */
 export const streamMedicalQuery = async (query, options = {}, onToken, onDone, onError, signal = null) => {
   const { mode = 'conceptual', history = [], subject = null, onStart = null } = options;
 
-  // Get stored Google ID token
   const storedToken = getStoredToken();
   const authHeader = storedToken ? `Bearer ${storedToken}` : '';
 
@@ -310,7 +403,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let tokenBuffer = ''; // accumulates all tokens received so far
+  let tokenBuffer = '';
   let currentEvent = 'message';
   let doneSignaled = false;
 
@@ -321,7 +414,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete line in buffer
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (line.startsWith('event: ')) {
@@ -337,7 +430,9 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
             } else if (currentEvent === 'error' && onError) {
               onError(new Error(payload.message || 'Stream error from server'));
             }
-          } catch (_) { /* skip malformed */ }
+          } catch (_) {
+            // skip malformed events
+          }
         } else if (!line.trim()) {
           if (currentEvent === 'done' && onDone && !doneSignaled) {
             doneSignaled = true;
@@ -350,9 +445,8 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
     if (onDone && !doneSignaled) onDone();
   } catch (err) {
     if (err.name === 'AbortError') return;
-    // If we buffered partial content, append an interrupted notice before surfacing the error
     if (tokenBuffer && onToken) {
-      onToken('\n\n… (stream interrupted)');
+      onToken('\n\n... (stream interrupted)');
     }
     if (onError) onError(err);
   }

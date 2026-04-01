@@ -1,5 +1,5 @@
 // src/pages/HomePage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Button, useTheme, useMediaQuery,
   Stack, LinearProgress, Chip, Paper, TextField,
@@ -18,12 +18,17 @@ import {
   ArrowForward as ArrowIcon,
   TrendingUp as TrendingIcon,
   EmojiEvents as TrophyIcon,
+  AutoStories as ReviewIcon,
   KeyboardArrowRight as ChevronIcon,
   AccessTime as ClockIcon,
   CalendarToday as CalendarIcon,
+  Bolt as BoltIcon,
+  Tune as TuneIcon,
+  TrackChanges as FocusIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudyContext } from '../contexts/StudyContext';
+import sm2API from '../services/sm2Service';
 import '../animations.css';
 
 // ─── Colour constants ─────────────────────────────────────────────────────────
@@ -291,6 +296,30 @@ function Card({ children, isDark, sx = {} }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+function getTaskTypeCopy(taskType) {
+  if (taskType === 'review') {
+    return {
+      label: 'Review',
+      tone: 'Retention',
+      gradient: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+    };
+  }
+
+  if (taskType === 'mock_exam') {
+    return {
+      label: 'Mock',
+      tone: 'Pressure',
+      gradient: 'linear-gradient(135deg, #ef4444, #f97316)',
+    };
+  }
+
+  return {
+    label: 'Learn',
+    tone: 'Depth',
+    gradient: 'linear-gradient(135deg, #6366f1, #a855f7)',
+  };
+}
+
 const HomePage = () => {
   const theme   = useTheme();
   const isDark  = theme.palette.mode === 'dark';
@@ -303,6 +332,11 @@ const HomePage = () => {
   } = useStudyContext();
 
   const [query, setQuery] = useState('');
+  const [reviewStats, setReviewStats] = useState({
+    loading: true,
+    data: null,
+    error: null,
+  });
 
   // Greeting & date
   const firstName = userProfile?.displayName?.split(' ')[0] || 'Doctor';
@@ -317,16 +351,51 @@ const HomePage = () => {
     if (!analyticsData) fetchAnalytics();
   }, []); // eslint-disable-line
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadReviewStats = async () => {
+      try {
+        const data = await sm2API.getStats();
+        if (cancelled) return;
+        setReviewStats({
+          loading: false,
+          data,
+          error: null,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setReviewStats({
+          loading: false,
+          data: null,
+          error: error?.message || 'Review stats unavailable',
+        });
+      }
+    };
+
+    loadReviewStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const totalTasks     = todayData?.tasks?.length ?? 0;
   const doneTasks      = todayData?.tasks?.filter(t => t.completed).length ?? 0;
   const completionPct  = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const streak         = analyticsData?.streak?.current ?? todayData?.streak?.current ?? 0;
   const topicsDone     = analyticsData?.totalCompleted ?? studyPlan?.completedTopics ?? 0;
+  const dueReviewCount = reviewStats?.data?.due_now ?? 0;
+  const retentionRate = reviewStats?.data?.avg_retention ?? null;
+  const reviewDeckSize = reviewStats?.data?.total_cards ?? 0;
 
   const plannerMode = studyPlan?.plan_mode || (studyPlan?.exam_date ? 'exam' : null);
   const planDurationDays = studyPlan?.plan_duration_days || studyPlan?.daily_plan?.length || null;
   const subjectCount = studyPlan?.subjects_selected?.length || 0;
   const customScopeCount = studyPlan?.selected_topic_keys?.length || 0;
+  const weakTopics = studyPlan?.weak_topics || [];
+  const strongTopics = studyPlan?.strong_topics || [];
+  const incompleteTasks = todayData?.tasks?.filter((task) => !task.completed) || [];
+  const nextTask = incompleteTasks[0] || null;
 
   // Exam countdown
   const examDate  = plannerMode === 'exam' && studyPlan?.exam_date ? new Date(studyPlan.exam_date) : null;
@@ -347,11 +416,179 @@ const HomePage = () => {
       setSessions([]);
     }
   }, []);
+  const lastSession = sessions[0] || null;
 
   const submitAsk = () => {
     const q = query.trim();
     if (q) navigate('/question', { state: { initialQuery: q } });
   };
+
+  const commandCenter = useMemo(() => {
+    if (!studyPlan) {
+      return {
+        eyebrow: 'Build your study OS',
+        title: 'Generate a plan that knows your year, scope, and pressure window.',
+        body: 'Start with the planner so Medsage can map today, revision load, and the chapters that deserve extra repetition.',
+        ctaLabel: 'Create Study Plan',
+        ctaAction: () => navigate('/planner'),
+        secondaryLabel: 'Ask Cortex First',
+        secondaryAction: () => navigate('/question'),
+        chips: ['No plan yet', 'Personalization locked', 'Daily loop inactive'],
+        accent: 'linear-gradient(135deg, #6366f1, #a855f7)',
+      };
+    }
+
+    if (dueReviewCount > 0) {
+      return {
+        eyebrow: 'Highest leverage right now',
+        title: `Clear ${dueReviewCount} due review card${dueReviewCount === 1 ? '' : 's'} before learning anything new.`,
+        body: retentionRate !== null
+          ? `Your current retention is ${retentionRate}%. Locking recall first will make the rest of today’s work compound better.`
+          : 'Your review queue is live. Finish the due cards first to protect long-term recall before you push new topics.',
+        ctaLabel: 'Start Review Session',
+        ctaAction: () => navigate('/review'),
+        secondaryLabel: nextTask ? 'Open Planner' : 'Ask Cortex',
+        secondaryAction: () => navigate(nextTask ? '/planner' : '/question'),
+        chips: [
+          `${dueReviewCount} due now`,
+          reviewDeckSize > 0 ? `${reviewDeckSize} cards in deck` : 'Review active',
+          plannerMode === 'exam' ? 'Exam retention mode' : 'Self-study retention mode',
+        ],
+        accent: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+      };
+    }
+
+    if (nextTask) {
+      const taskTypeCopy = getTaskTypeCopy(nextTask.type);
+      const taskTopic = nextTask.topic || weakTopics[0] || studyPlan?.subjects_selected?.[0] || 'your next topic';
+      return {
+        eyebrow: `${taskTypeCopy.tone} block ready`,
+        title: nextTask.text,
+        body: plannerMode === 'exam' && daysToExam !== null
+          ? `${daysToExam} day${daysToExam === 1 ? '' : 's'} left. This is the next block Medsage wants you to finish to stay on pace.`
+          : 'This is the next block in your mastery path. Completing it keeps your momentum and weak-area coverage intact.',
+        ctaLabel: nextTask.type === 'review' ? 'Open Review' : 'Study This Topic',
+        ctaAction: () => {
+          if (nextTask.type === 'review') {
+            navigate('/review');
+            return;
+          }
+
+          navigate('/question', {
+            state: {
+              initialQuery: `Teach me ${taskTopic} at my MBBS level. Make it high-yield, structured, and exam-focused.`,
+            },
+          });
+        },
+        secondaryLabel: 'Open Planner',
+        secondaryAction: () => navigate('/planner'),
+        chips: [
+          taskTypeCopy.label,
+          nextTask.topic || 'Planner-guided topic',
+          completionPct === 100 ? 'Today complete' : `${completionPct}% of today done`,
+        ],
+        accent: taskTypeCopy.gradient,
+      };
+    }
+
+    if (lastSession) {
+      return {
+        eyebrow: 'Resume your flow',
+        title: 'Your planner is clear. Continue your last Cortex study session.',
+        body: 'Use the gap to deepen one concept, turn it into notes, or create the next revision loop from that conversation.',
+        ctaLabel: 'Continue Cortex Session',
+        ctaAction: () => navigate('/question', { state: { sessionId: lastSession.id } }),
+        secondaryLabel: 'Open Library',
+        secondaryAction: () => navigate('/books'),
+        chips: ['Planner caught up', 'Cortex context ready', 'Use spare depth block'],
+        accent: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+      };
+    }
+
+    return {
+      eyebrow: 'Stay in motion',
+      title: 'Your core tasks are done. Use Cortex to reinforce a weak topic before you log off.',
+      body: weakTopics.length > 0
+        ? `Recommended weak area: ${weakTopics[0]}. One extra high-yield pass now is worth more than passive revision later.`
+        : 'Open Cortex for a focused recap, viva drill, or rapid-fire revision round while your momentum is high.',
+      ctaLabel: 'Open Cortex',
+      ctaAction: () => navigate('/question', {
+        state: {
+          initialQuery: weakTopics[0]
+            ? `Give me a rapid revision drill on ${weakTopics[0]} with high-yield exam points and recall questions.`
+            : 'Give me a rapid revision drill for one high-yield medical topic at my MBBS level.',
+        },
+      }),
+      secondaryLabel: 'Open Review',
+      secondaryAction: () => navigate('/review'),
+      chips: ['Momentum preserved', 'Use a quick reinforcement block', plannerMode === 'exam' ? 'Exam mode active' : 'Mastery mode active'],
+      accent: 'linear-gradient(135deg, #10b981, #059669)',
+    };
+  }, [
+    completionPct,
+    daysToExam,
+    dueReviewCount,
+    lastSession,
+    navigate,
+    nextTask,
+    plannerMode,
+    retentionRate,
+    reviewDeckSize,
+    studyPlan,
+    weakTopics,
+  ]);
+
+  const focusSignals = useMemo(() => {
+    const signals = [];
+
+    if (plannerMode === 'exam' && daysToExam !== null) {
+      signals.push({
+        icon: <CalendarIcon sx={{ fontSize: 16 }} />,
+        label: 'Exam Pressure',
+        value: daysToExam === 0 ? 'Exam day' : `${daysToExam} day${daysToExam === 1 ? '' : 's'} left`,
+        tone: daysToExam < 7 ? C.streak : C.amber,
+      });
+    } else if (planDurationDays) {
+      signals.push({
+        icon: <PlannerIcon sx={{ fontSize: 16 }} />,
+        label: 'Study Horizon',
+        value: `${planDurationDays} days`,
+        tone: C.emerald,
+      });
+    }
+
+    signals.push({
+      icon: <FocusIcon sx={{ fontSize: 16 }} />,
+      label: 'Scope',
+      value: customScopeCount > 0 ? `${customScopeCount} custom chapters` : `${subjectCount || 0} subjects`,
+      tone: C.indigo,
+    });
+
+    signals.push({
+      icon: <ReviewIcon sx={{ fontSize: 16 }} />,
+      label: 'Review Queue',
+      value: reviewStats.loading ? 'Checking...' : `${dueReviewCount} due now`,
+      tone: dueReviewCount > 0 ? C.amber : C.emerald,
+    });
+
+    signals.push({
+      icon: <TuneIcon sx={{ fontSize: 16 }} />,
+      label: 'Weak Areas',
+      value: weakTopics.length > 0 ? weakTopics.slice(0, 2).join(' · ') : 'Not marked yet',
+      tone: weakTopics.length > 0 ? C.streak : C.purple,
+    });
+
+    return signals;
+  }, [
+    customScopeCount,
+    daysToExam,
+    dueReviewCount,
+    planDurationDays,
+    plannerMode,
+    reviewStats.loading,
+    subjectCount,
+    weakTopics,
+  ]);
 
   // ── render ──────────────────────────────────────────────────────────────────
   return (
@@ -428,6 +665,80 @@ const HomePage = () => {
         </Button>
       </MotionBox>
 
+      <MotionBox variants={fadeUp} custom={0.5} sx={{ mb: { xs: 3, md: 3.5 } }}>
+        <Card
+          isDark={isDark}
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
+            background: isDark
+              ? 'linear-gradient(135deg, rgba(10,12,26,0.96), rgba(20,14,40,0.94))'
+              : 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(247,244,255,0.98))',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.08)'}`,
+          }}
+        >
+          <Box sx={{ position: 'absolute', inset: 0, background: commandCenter.accent, opacity: isDark ? 0.12 : 0.08, pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', top: -90, right: -70, width: 240, height: 240, borderRadius: '50%', background: commandCenter.accent, opacity: isDark ? 0.18 : 0.12, filter: 'blur(55px)', pointerEvents: 'none' }} />
+
+          <Box sx={{ position: 'relative', p: { xs: 2.5, md: 3.5 } }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.45fr 1fr' }, gap: { xs: 2.5, lg: 3 }, alignItems: 'stretch' }}>
+              <Box>
+                <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 800, letterSpacing: '0.14em' }}>
+                  Study Operating System
+                </Typography>
+                <Typography sx={{ mt: 0.25, fontWeight: 900, fontSize: { xs: '1.75rem', md: '2.35rem' }, letterSpacing: '-0.05em', lineHeight: 1.02 }}>
+                  Today Command Center
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 640, fontSize: { xs: '0.92rem', md: '1rem' } }}>
+                  {commandCenter.eyebrow}. Medsage is prioritizing the next move that keeps your recall, planner pace, and weak-topic coverage aligned.
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, rowGap: 1 }}>
+                  {commandCenter.chips.map((chip) => (
+                    <Chip
+                      key={chip}
+                      label={chip}
+                      size="small"
+                      sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700, bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.72)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(99,102,241,0.08)'}` }}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+
+              <Box sx={{ p: { xs: 2, md: 2.5 }, borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.78)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(99,102,241,0.08)'}`, boxShadow: isDark ? '0 18px 40px rgba(0,0,0,0.28)' : '0 18px 40px rgba(99,102,241,0.08)' }}>
+                <Box sx={{ width: 42, height: 42, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: commandCenter.accent, color: '#fff', boxShadow: '0 8px 24px rgba(99,102,241,0.28)', mb: 1.5 }}>
+                  <BoltIcon sx={{ fontSize: 20 }} />
+                </Box>
+                <Typography sx={{ fontSize: '0.76rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'text.secondary' }}>
+                  Next Best Move
+                </Typography>
+                <Typography sx={{ mt: 0.75, fontWeight: 800, fontSize: { xs: '1rem', md: '1.15rem' }, lineHeight: 1.2 }}>
+                  {commandCenter.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.1, lineHeight: 1.7 }}>
+                  {commandCenter.body}
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mt: 2.25 }}>
+                  <Button
+                    onClick={commandCenter.ctaAction}
+                    startIcon={<BoltIcon />}
+                    sx={{ borderRadius: 3, fontWeight: 800, px: 2.5, py: 1.1, color: '#fff', background: commandCenter.accent, boxShadow: '0 10px 24px rgba(99,102,241,0.24)' }}
+                  >
+                    {commandCenter.ctaLabel}
+                  </Button>
+                  <Button
+                    onClick={commandCenter.secondaryAction}
+                    variant="outlined"
+                    sx={{ borderRadius: 3, fontWeight: 700, px: 2.25, py: 1.1, borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(99,102,241,0.14)' }}
+                  >
+                    {commandCenter.secondaryLabel}
+                  </Button>
+                </Stack>
+              </Box>
+            </Box>
+          </Box>
+        </Card>
+      </MotionBox>
+
       {/* ══ B) STATS STRIP ═════════════════════════════════════════════════════ */}
       <Box
         component={motion.div}
@@ -455,18 +766,24 @@ const HomePage = () => {
           label="Topics Mastered" color={C.emerald}
           loading={todayLoading} custom={3}
         />
+        <StatPill
+          icon={<ReviewIcon />}
+          value={reviewStats.loading ? null : dueReviewCount}
+          label="Due Reviews" color={C.amber}
+          loading={reviewStats.loading} custom={4}
+        />
         {plannerMode === 'exam' && daysToExam !== null && (
           <StatPill
             icon={<CalendarIcon />} value={daysToExam}
             label="Days to Exam" color={C.amber}
-            loading={false} custom={4}
+            loading={false} custom={5}
           />
         )}
         {plannerMode === 'self_study' && planDurationDays !== null && (
           <StatPill
             icon={<PlannerIcon />} value={planDurationDays}
             label="Study Horizon" color={C.emerald}
-            loading={false} custom={4}
+            loading={false} custom={5}
           />
         )}
       </Box>
@@ -682,12 +999,105 @@ const HomePage = () => {
                   onClick={() => navigate('/planner')} custom={8}
                 />
                 <LaunchRow
+                  icon={<ReviewIcon />} label="Daily Review" desc="Spaced repetition session"
+                  gradient="linear-gradient(135deg, #f59e0b, #ea580c)" glow="rgba(245,158,11,0.35)"
+                  onClick={() => navigate('/review')} custom={9}
+                />
+                <LaunchRow
                   icon={<LibraryIcon />} label="Book Library" desc="Medical references"
                   gradient="linear-gradient(135deg, #0ea5e9, #6366f1)" glow="rgba(14,165,233,0.35)"
-                  onClick={() => navigate('/books')} custom={9}
+                  onClick={() => navigate('/books')} custom={10}
                 />
               </Stack>
               <Box sx={{ height: 6 }} />
+            </Card>
+          </MotionBox>
+
+          <MotionBox variants={fadeUp} custom={9.5}>
+            <Card isDark={isDark}>
+              <Box sx={{ px: 2.5, pt: 2.5, pb: 2.5 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.08em', color: 'text.secondary', textTransform: 'uppercase', mb: 2 }}>
+                  Study Pulse
+                </Typography>
+
+                <Stack spacing={1.1}>
+                  {focusSignals.map((signal) => (
+                    <Box
+                      key={signal.label}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.25,
+                        p: 1.35,
+                        borderRadius: 2.5,
+                        border: `1px solid ${signal.tone}22`,
+                        background: `${signal.tone}10`,
+                      }}
+                    >
+                      <Box sx={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: signal.tone,
+                        background: `${signal.tone}20`,
+                      }}>
+                        {signal.icon}
+                      </Box>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', lineHeight: 1.1 }}>
+                          {signal.label}
+                        </Typography>
+                        <Typography sx={{ fontWeight: 800, fontSize: '0.82rem', lineHeight: 1.25 }}>
+                          {signal.value}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+
+                <Box sx={{ mt: 2.25 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.08em', color: 'text.secondary', textTransform: 'uppercase', mb: 1.1 }}>
+                    Personalization Layer
+                  </Typography>
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ rowGap: 0.75 }}>
+                    {(weakTopics.length > 0 ? weakTopics.slice(0, 3) : ['Add weak topics in planner']).map((topic) => (
+                      <Chip
+                        key={`weak-${topic}`}
+                        icon={<TuneIcon sx={{ fontSize: '13px !important' }} />}
+                        label={topic}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          bgcolor: 'rgba(239,68,68,0.12)',
+                          color: weakTopics.length > 0 ? C.streak : 'text.secondary',
+                          border: '1px solid rgba(239,68,68,0.18)',
+                        }}
+                      />
+                    ))}
+                    {strongTopics.slice(0, 2).map((topic) => (
+                      <Chip
+                        key={`strong-${topic}`}
+                        icon={<FocusIcon sx={{ fontSize: '13px !important' }} />}
+                        label={topic}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          bgcolor: 'rgba(16,185,129,0.12)',
+                          color: C.emerald,
+                          border: '1px solid rgba(16,185,129,0.18)',
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              </Box>
             </Card>
           </MotionBox>
 

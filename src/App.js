@@ -1,8 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link as RouterLink } from 'react-router-dom';
 import {
   ThemeProvider,
-  CssBaseline
+  CssBaseline,
+  Box,
+  Button,
+  CircularProgress,
+  Typography,
 } from '@mui/material';
 
 import './App.css';
@@ -20,6 +24,8 @@ import ProfilePage from './pages/ProfilePage';
 import Onboarding from './components/auth/Onboarding';
 import LandingPage from './pages/LandingPage';
 import TeamPage from './pages/TeamPage';
+import ReviewSession from './pages/ReviewSession';
+import SystemStatusPage from './pages/SystemStatusPage';
 
 // Import contexts and theme
 import { StudyProvider } from './contexts/StudyContext';
@@ -32,7 +38,39 @@ export { ThemeContext }; // re-export so existing `from '../App'` imports keep w
 
 // Protected Route component
 function ProtectedRoute({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, authStatus, authError, retryBootstrap } = useAuth();
+
+  if (authStatus === 'loading') {
+    return (
+      <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2 }}>
+        <CircularProgress />
+        <Typography color="text.secondary">Loading your Medsage workspace...</Typography>
+      </Box>
+    );
+  }
+
+  if (authStatus === 'degraded') {
+    return (
+      <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
+        <Box sx={{ maxWidth: 520, textAlign: 'center' }}>
+          <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>
+            We could not load your account
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 3 }}>
+            {authError || 'Please retry account bootstrap before opening protected pages.'}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="contained" onClick={retryBootstrap}>
+              Retry
+            </Button>
+            <Button component={RouterLink} to="/status" variant="outlined">
+              Open Status
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 
   if (!currentUser) {
     return <Navigate to="/landing" />;
@@ -127,6 +165,12 @@ function App() {
                       <ProfilePage />
                     </ProtectedRoute>
                   } />
+                  <Route path="review" element={
+                    <ProtectedRoute>
+                      <ReviewSession />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="status" element={<SystemStatusPage />} />
                   <Route path="settings" element={<Navigate to="/profile" replace />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>

@@ -64,7 +64,11 @@ export default function SignIn() {
   const onGoogleSuccess = async (credentialResponse) => {
     try {
       setError('');
-      await handleGoogleSuccess(credentialResponse);
+      const status = await handleGoogleSuccess(credentialResponse);
+      if (status !== 'authenticated') {
+        setError('Sign-in succeeded, but Medsage could not load your account. Please try again.');
+        return;
+      }
       navigate('/');
     } catch (err) {
       setError(err.message || 'Failed to sign in with Google');
