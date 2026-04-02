@@ -657,10 +657,10 @@ export default function ProfilePage() {
                                     </Typography>
                                     <Chip label={yearLabel} size="small" sx={{
                                         height: 22, fontSize: '0.7rem', fontWeight: 800,
-                                        background: `linear-gradient(135deg, ${phase.color}25, ${phase.color}10)`,
-                                        color: phase.color,
-                                        border: `1px solid ${phase.color}40`,
-                                        boxShadow: `0 2px 8px ${phase.color}20`,
+                                        background: `linear-gradient(135deg, ${T.indigo}25, ${T.indigo}10)`,
+                                        color: T.indigo,
+                                        border: `1px solid ${T.indigo}40`,
+                                        boxShadow: `0 2px 8px ${T.indigo}20`,
                                         '& .MuiChip-label': { px: 1.25 },
                                     }} />
                                 </Box>
