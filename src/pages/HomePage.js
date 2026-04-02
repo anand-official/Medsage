@@ -92,37 +92,47 @@ function StatPill({ icon, value, label, color, loading, custom = 0 }) {
       sx={{
         flex: '1 1 0',
         minWidth: 0,
-        display: 'flex', alignItems: 'center', gap: 1.25,
-        px: 2, py: 1.5, borderRadius: 3,
+        display: 'flex', alignItems: 'center', gap: 1.5,
+        px: 2.25, py: 1.75, borderRadius: 3.5,
         border: `1px solid ${color}22`,
-        background: `${color}09`,
+        background: `linear-gradient(145deg, ${color}10 0%, rgba(0,0,0,0.2) 100%)`,
+        boxShadow: `0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05)`,
         position: 'relative', overflow: 'hidden',
+        transition: 'all 0.3s',
+        '&:hover': {
+            background: `linear-gradient(145deg, ${color}18 0%, rgba(0,0,0,0.25) 100%)`,
+            transform: 'translateY(-2px)',
+            boxShadow: `0 8px 24px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)`,
+            borderColor: `${color}35`,
+        }
       }}
     >
       {/* accent glow */}
       <Box sx={{
-        position: 'absolute', top: -16, right: -16,
-        width: 56, height: 56, borderRadius: '50%',
-        background: `${color}20`, filter: 'blur(16px)',
+        position: 'absolute', top: -20, right: -20,
+        width: 70, height: 70, borderRadius: '50%',
+        background: color, filter: 'blur(25px)', opacity: 0.15,
         pointerEvents: 'none',
       }} />
       <Box sx={{
-        width: 34, height: 34, borderRadius: 2, flexShrink: 0,
-        background: `${color}18`, border: `1px solid ${color}28`,
+        width: 38, height: 38, borderRadius: 2, flexShrink: 0,
+        background: `linear-gradient(135deg, ${color}25, ${color}10)`,
+        border: `1px solid ${color}35`,
+        boxShadow: `0 2px 10px ${color}15`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color,
-        '& .MuiSvgIcon-root': { fontSize: 17 },
+        '& .MuiSvgIcon-root': { fontSize: 18 },
       }}>
         {icon}
       </Box>
-      <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ minWidth: 0, position: 'relative', zIndex: 1 }}>
         {loading
           ? <Skeleton width={40} height={22} sx={{ bgcolor: 'rgba(255,255,255,0.07)' }} />
-          : <Typography sx={{ fontSize: '1.15rem', fontWeight: 900, lineHeight: 1, color }}>
+          : <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, lineHeight: 1, color, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
               {value ?? '—'}
             </Typography>
         }
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, lineHeight: 1, display: 'block' }}>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 700, lineHeight: 1, display: 'block', mt: 0.5, letterSpacing: '0.02em' }}>
           {label}
         </Typography>
       </Box>
@@ -143,32 +153,42 @@ function LaunchRow({ icon, label, desc, gradient, glow, onClick, custom = 0 }) {
       sx={{
         display: 'flex', alignItems: 'center', gap: 1.75,
         px: 2, py: 1.5, cursor: 'pointer', borderRadius: 3,
-        transition: 'background 0.18s',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         background: hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        border: '1px solid transparent',
+        borderColor: hovered ? 'rgba(255,255,255,0.08)' : 'transparent',
+        boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.1)' : 'none',
         '&:active': { background: 'rgba(255,255,255,0.07)' },
       }}
     >
       <Box sx={{
-        width: 40, height: 40, borderRadius: 2.5, flexShrink: 0,
+        width: 42, height: 42, borderRadius: 2.5, flexShrink: 0,
         background: gradient,
-        boxShadow: hovered ? `0 6px 18px ${glow}` : `0 3px 10px ${glow.replace('0.35','0.18')}`,
+        boxShadow: hovered ? `0 8px 24px ${glow}` : `0 4px 12px ${glow.replace('0.35','0.18')}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#fff',
-        transition: 'box-shadow 0.2s, transform 0.2s',
-        transform: hovered ? 'scale(1.08)' : 'scale(1)',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: hovered ? 'scale(1.1) translateY(-2px)' : 'scale(1)',
+        border: '1px solid rgba(255,255,255,0.2)',
+        position: 'relative',
+        '&::before': {
+            content: '""', position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%)',
+            pointerEvents: 'none', borderRadius: 'inherit'
+        },
         '& .MuiSvgIcon-root': { fontSize: 20 },
       }}>
         {icon}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography fontWeight={700} sx={{ fontSize: '0.875rem', lineHeight: 1.2 }}>{label}</Typography>
-        <Typography variant="caption" color="text.secondary">{desc}</Typography>
+        <Typography fontWeight={800} sx={{ fontSize: '0.9rem', lineHeight: 1.2, color: hovered ? '#fff' : 'text.primary', transition: 'color 0.2s' }}>{label}</Typography>
+        <Typography variant="caption" sx={{ color: hovered ? 'rgba(255,255,255,0.6)' : 'text.secondary', transition: 'color 0.2s' }}>{desc}</Typography>
       </Box>
       <ChevronIcon sx={{
         fontSize: 18, flexShrink: 0,
-        color: hovered ? C.indigoL : 'text.disabled',
-        transition: 'color 0.2s, transform 0.2s',
-        transform: hovered ? 'translateX(3px)' : 'none',
+        color: hovered ? '#fff' : 'text.disabled',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: hovered ? 'translateX(4px)' : 'none',
       }} />
     </MotionBox>
   );
@@ -284,9 +304,12 @@ function Card({ children, isDark, sx = {} }) {
   return (
     <Paper elevation={0} sx={{
       borderRadius: 4,
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-      background: isDark ? 'rgba(12,10,22,0.7)' : 'rgba(255,255,255,0.92)',
-      backdropFilter: 'blur(20px)',
+      border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+      background: isDark 
+        ? 'linear-gradient(145deg, rgba(20,20,38,0.7) 0%, rgba(10,10,20,0.85) 100%)' 
+        : 'linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(247,244,255,0.98) 100%)',
+      backdropFilter: 'blur(24px)',
+      boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.05)',
       overflow: 'hidden',
       ...sx,
     }}>
@@ -672,63 +695,65 @@ const HomePage = () => {
             position: 'relative',
             overflow: 'hidden',
             background: isDark
-              ? 'linear-gradient(135deg, rgba(10,12,26,0.96), rgba(20,14,40,0.94))'
+              ? 'linear-gradient(145deg, rgba(20,20,38,0.7) 0%, rgba(10,10,20,0.85) 100%)'
               : 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(247,244,255,0.98))',
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.08)'}`,
           }}
         >
-          <Box sx={{ position: 'absolute', inset: 0, background: commandCenter.accent, opacity: isDark ? 0.12 : 0.08, pointerEvents: 'none' }} />
-          <Box sx={{ position: 'absolute', top: -90, right: -70, width: 240, height: 240, borderRadius: '50%', background: commandCenter.accent, opacity: isDark ? 0.18 : 0.12, filter: 'blur(55px)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', inset: 0, background: commandCenter.accent, opacity: isDark ? 0.08 : 0.04, pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', top: -120, right: -80, width: 300, height: 300, borderRadius: '50%', background: commandCenter.accent, opacity: isDark ? 0.15 : 0.08, filter: 'blur(45px)', pointerEvents: 'none', animation: 'flowBg 15s ease-in-out infinite alternate', '@keyframes flowBg': { '0%': { transform: 'translate(0, 0)' }, '100%': { transform: 'translate(-20px, 10px)' } } }} />
+          <Box sx={{ position: 'absolute', bottom: -100, left: -60, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
-          <Box sx={{ position: 'relative', p: { xs: 2.5, md: 3.5 } }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.45fr 1fr' }, gap: { xs: 2.5, lg: 3 }, alignItems: 'stretch' }}>
+          <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 4 } }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.45fr 1fr' }, gap: { xs: 3, lg: 4 }, alignItems: 'stretch' }}>
               <Box>
-                <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 800, letterSpacing: '0.14em' }}>
+                <Typography variant="overline" sx={{ color: commandCenter.accent.includes('indigo') ? '#818cf8' : commandCenter.accent.includes('amber') ? '#fbbf24' : '#34d399', fontWeight: 900, letterSpacing: '0.18em', textShadow: '0 2px 8px rgba(0,0,0,0.4)', textTransform: 'uppercase' }}>
                   Study Operating System
                 </Typography>
-                <Typography sx={{ mt: 0.25, fontWeight: 900, fontSize: { xs: '1.75rem', md: '2.35rem' }, letterSpacing: '-0.05em', lineHeight: 1.02 }}>
+                <Typography sx={{ mt: 0.5, fontWeight: 900, fontSize: { xs: '1.85rem', md: '2.5rem' }, letterSpacing: '-0.04em', lineHeight: 1.05, textShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
                   Today Command Center
                 </Typography>
-                <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 640, fontSize: { xs: '0.92rem', md: '1rem' } }}>
+                <Typography sx={{ mt: 1.5, maxWidth: 640, fontSize: { xs: '0.95rem', md: '1.05rem' }, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
                   {commandCenter.eyebrow}. Medsage is prioritizing the next move that keeps your recall, planner pace, and weak-topic coverage aligned.
                 </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, rowGap: 1 }}>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" sx={{ mt: 3, rowGap: 1.5 }}>
                   {commandCenter.chips.map((chip) => (
                     <Chip
                       key={chip}
                       label={chip}
                       size="small"
-                      sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700, bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.72)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(99,102,241,0.08)'}` }}
+                      sx={{ height: 26, fontSize: '0.75rem', fontWeight: 800, bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.72)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(99,102,241,0.15)'}`, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
                     />
                   ))}
                 </Stack>
               </Box>
 
-              <Box sx={{ p: { xs: 2, md: 2.5 }, borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.78)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(99,102,241,0.08)'}`, boxShadow: isDark ? '0 18px 40px rgba(0,0,0,0.28)' : '0 18px 40px rgba(99,102,241,0.08)' }}>
-                <Box sx={{ width: 42, height: 42, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: commandCenter.accent, color: '#fff', boxShadow: '0 8px 24px rgba(99,102,241,0.28)', mb: 1.5 }}>
-                  <BoltIcon sx={{ fontSize: 20 }} />
+              <Box sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 4, background: isDark ? 'rgba(20,20,38,0.5)' : 'rgba(255,255,255,0.78)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.15)'}`, boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.3)' : '0 18px 40px rgba(99,102,241,0.08)', backdropFilter: 'blur(12px)', position: 'relative', overflow: 'hidden' }}>
+                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: commandCenter.accent }} />
+                <Box sx={{ width: 48, height: 48, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: commandCenter.accent, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', mb: 2, border: '1px solid rgba(255,255,255,0.2)' }}>
+                  <BoltIcon sx={{ fontSize: 24 }} />
                 </Box>
-                <Typography sx={{ fontSize: '0.76rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'text.secondary' }}>
+                <Typography sx={{ fontSize: '0.76rem', fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>
                   Next Best Move
                 </Typography>
-                <Typography sx={{ mt: 0.75, fontWeight: 800, fontSize: { xs: '1rem', md: '1.15rem' }, lineHeight: 1.2 }}>
+                <Typography sx={{ mt: 0.75, fontWeight: 800, fontSize: { xs: '1.1rem', md: '1.25rem' }, lineHeight: 1.25, color: '#fff' }}>
                   {commandCenter.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.1, lineHeight: 1.7 }}>
+                <Typography variant="body2" sx={{ mt: 1.25, lineHeight: 1.7, color: 'rgba(255,255,255,0.65)' }}>
                   {commandCenter.body}
                 </Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mt: 2.25 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 3 }}>
                   <Button
                     onClick={commandCenter.ctaAction}
                     startIcon={<BoltIcon />}
-                    sx={{ borderRadius: 3, fontWeight: 800, px: 2.5, py: 1.1, color: '#fff', background: commandCenter.accent, boxShadow: '0 10px 24px rgba(99,102,241,0.24)' }}
+                    sx={{ borderRadius: 3, fontWeight: 800, px: 3, py: 1.2, color: '#fff', background: commandCenter.accent, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 12px 28px rgba(0,0,0,0.4)' } }}
                   >
                     {commandCenter.ctaLabel}
                   </Button>
                   <Button
                     onClick={commandCenter.secondaryAction}
                     variant="outlined"
-                    sx={{ borderRadius: 3, fontWeight: 700, px: 2.25, py: 1.1, borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(99,102,241,0.14)' }}
+                    sx={{ borderRadius: 3, fontWeight: 800, px: 2.5, py: 1.2, borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(99,102,241,0.2)', color: isDark ? '#fff' : C.indigo, '&:hover': { background: 'rgba(255,255,255,0.05)', borderColor: isDark ? 'rgba(255,255,255,0.4)' : C.indigoL } }}
                   >
                     {commandCenter.secondaryLabel}
                   </Button>

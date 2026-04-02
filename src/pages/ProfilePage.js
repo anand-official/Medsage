@@ -170,47 +170,61 @@ const rise = {
 
 // ─── Radial arc stat ──────────────────────────────────────────────────────────
 function ArcStat({ icon, value, label, color, pct = 0 }) {
-    const R = 18;
+    const R = 22;
     const circ = 2 * Math.PI * R;
     const filled = Math.min(1, Math.max(0, pct)) * circ;
 
     return (
+        <motion.div whileHover={{ y: -4 }} style={{ flex: 1, minWidth: 90 }}>
         <Box sx={{
-            flex: 1, minWidth: 80, display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 0.5, py: { xs: 2.5, md: 3 },
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 1.25, py: { xs: 2.5, md: 3.5 }, px: 1,
             position: 'relative',
-            '&:not(:last-child)::after': {
-                content: '""', position: 'absolute', right: 0,
-                top: '20%', height: '60%', width: '1px',
-                background: T.border,
+            borderRadius: 4,
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.1) 100%)',
+            border: '1px solid rgba(255,255,255,0.04)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            mx: 0.5,
+            overflow: 'hidden',
+            '&:hover': {
+                background: `linear-gradient(180deg, ${color}12 0%, rgba(0,0,0,0.2) 100%)`,
+                borderColor: `${color}30`,
+                boxShadow: `0 8px 24px rgba(0,0,0,0.3), inset 0 1px 1px ${color}20`,
             },
         }}>
-            <Box sx={{ position: 'relative', width: 50, height: 50 }}>
-                <svg width={50} height={50} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-                    <circle cx={25} cy={25} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={2.5} />
+            <Box sx={{ position: 'absolute', top: -20, width: 80, height: 80, borderRadius: '50%', background: color, opacity: 0.08, filter: 'blur(20px)', pointerEvents: 'none' }} />
+            <Box sx={{ position: 'relative', width: 60, height: 60 }}>
+                <svg width={60} height={60} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)', filter: `drop-shadow(0 2px 6px rgba(0,0,0,0.3))` }}>
+                    <circle cx={30} cy={30} r={R} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth={3.5} />
+                    <circle cx={30} cy={30} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={3.5} />
                     <motion.circle
-                        cx={25} cy={25} r={R} fill="none"
-                        stroke={color} strokeWidth={2.5} strokeLinecap="round"
+                        cx={30} cy={30} r={R} fill="none"
+                        stroke={color} strokeWidth={3.5} strokeLinecap="round"
                         initial={{ strokeDasharray: `0 ${circ}` }}
                         animate={{ strokeDasharray: `${filled} ${circ}` }}
-                        transition={{ duration: 1.1, delay: 0.4, ease: 'easeOut' }}
-                        style={{ filter: `drop-shadow(0 0 5px ${color}70)` }}
+                        transition={{ duration: 1.5, delay: 0.2, ease: 'easeOut' }}
+                        style={{ filter: `drop-shadow(0 0 6px ${color}80)` }}
                     />
                 </svg>
                 <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
-                    {icon}
+                    <Box sx={{ filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.4))` }}>{icon}</Box>
                 </Box>
             </Box>
-            <Typography sx={{
-                fontSize: '1.3rem', fontWeight: 900, color, lineHeight: 1,
-                letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
-            }}>
-                {value}
-            </Typography>
-            <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.muted }}>
-                {label}
-            </Typography>
+            <Box sx={{ textAlign: 'center', zIndex: 1 }}>
+                <Typography sx={{
+                    fontSize: '1.45rem', fontWeight: 900, color, lineHeight: 1.1,
+                    letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.4)'
+                }}>
+                    {value}
+                </Typography>
+                <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', mt: 0.5 }}>
+                    {label}
+                </Typography>
+            </Box>
         </Box>
+        </motion.div>
     );
 }
 
@@ -316,26 +330,44 @@ function LaunchBtn({ icon, label, onClick, primary }) {
         <Button
             size="small"
             onClick={onClick}
-            endIcon={<ArrowIcon sx={{ fontSize: '13px !important' }} />}
+            endIcon={<ArrowIcon sx={{ fontSize: '13px !important', ml: -0.2 }} />}
             sx={{
-                borderRadius: 2, textTransform: 'none', fontWeight: 700,
-                fontSize: '0.78rem', px: 1.75, py: 0.8,
+                borderRadius: 2.5, textTransform: 'none', fontWeight: 700,
+                fontSize: '0.8rem', px: 2, py: 0.9,
                 flexShrink: 0,
+                position: 'relative',
+                overflow: 'hidden',
                 ...(primary ? {
-                    background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
                     color: '#fff',
-                    boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
-                    '&:hover': { boxShadow: '0 6px 22px rgba(99,102,241,0.5)', filter: 'brightness(1.08)' },
+                    boxShadow: '0 4px 16px rgba(99,102,241,0.3)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    '&:hover': { 
+                        boxShadow: '0 8px 24px rgba(99,102,241,0.5)', 
+                        transform: 'translateY(-2px)',
+                    },
+                    '&::before': {
+                        content: '""', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%)',
+                        pointerEvents: 'none'
+                    }
                 } : {
-                    color: T.sub,
-                    border: `1px solid ${T.border}`,
-                    '&:hover': { borderColor: T.borderStrong, color: T.text, bgcolor: T.surfaceHov },
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01))',
+                    color: T.text,
+                    border: `1px solid rgba(255,255,255,0.1)`,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    '&:hover': { 
+                        borderColor: 'rgba(255,255,255,0.25)', 
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03))',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+                    },
                 }),
-                transition: 'all 0.18s',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 gap: 0.6,
             }}
         >
-            {icon && <Box component="span" sx={{ display: 'flex', fontSize: '14px', mr: 0.25 }}>{icon}</Box>}
+            {icon && <Box component="span" sx={{ display: 'flex', fontSize: '15px', mr: 0.2 }}>{icon}</Box>}
             {label}
         </Button>
     );
@@ -413,32 +445,43 @@ function TipCard({ tip, index }) {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 + index * 0.065, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            whileHover={{ y: -2, transition: { duration: 0.14 } }}
+            transition={{ delay: 0.1 + index * 0.08, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ scale: 1.015, y: -2, transition: { duration: 0.2 } }}
         >
             <Box sx={{
-                display: 'flex', gap: 1.5, p: '12px 14px',
-                borderRadius: 2,
-                border: `1px solid ${T.border}`,
-                borderLeft: `3px solid ${accent}`,
-                background: T.surface,
-                transition: 'background 0.16s, box-shadow 0.16s',
+                display: 'flex', gap: 1.75, p: '14px 18px',
+                borderRadius: 3,
+                border: `1px solid rgba(255,255,255,0.06)`,
+                borderLeft: `4px solid ${accent}`,
+                background: 'linear-gradient(120deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.1) 100%)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                position: 'relative',
+                overflow: 'hidden',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                    background: `${accent}0a`,
-                    boxShadow: `0 6px 24px rgba(0,0,0,0.2), inset 0 0 0 1px ${accent}18`,
+                    background: `linear-gradient(120deg, ${accent}15 0%, rgba(0,0,0,0.15) 100%)`,
+                    boxShadow: `0 8px 24px rgba(0,0,0,0.25), inset 0 0 0 1px ${accent}25`,
+                    borderColor: 'rgba(255,255,255,0.12)'
                 },
             }}>
                 <Box sx={{
-                    width: 28, height: 28, borderRadius: 1.25, flexShrink: 0,
-                    background: `${accent}14`, border: `1px solid ${accent}22`,
+                    position: 'absolute', top: -30, right: -30, width: 80, height: 80,
+                    borderRadius: '50%', background: accent, opacity: 0.08, filter: 'blur(20px)', pointerEvents: 'none'
+                }}/>
+                <Box sx={{
+                    width: 32, height: 32, borderRadius: 2, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${accent}25, ${accent}10)`,
+                    border: `1px solid ${accent}40`,
+                    boxShadow: `0 2px 10px ${accent}20`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.95rem',
+                    fontSize: '1.05rem',
+                    position: 'relative', zIndex: 1
                 }}>
                     {tip.icon}
                 </Box>
-                <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.68, color: T.sub, flex: 1, pt: 0.1 }}>
+                <Typography sx={{ fontSize: '0.85rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.7)', flex: 1, pt: 0.2, position: 'relative', zIndex: 1, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                     {tip.text}
                 </Typography>
             </Box>
@@ -450,9 +493,11 @@ function TipCard({ tip, index }) {
 function Panel({ children, sx }) {
     return (
         <Box sx={{
-            borderRadius: 3, overflow: 'hidden',
-            border: `1px solid ${T.border}`,
-            background: T.surface,
+            borderRadius: 4, overflow: 'hidden',
+            border: `1px solid rgba(255,255,255,0.08)`,
+            background: 'linear-gradient(145deg, rgba(20,20,38,0.7) 0%, rgba(10,10,20,0.85) 100%)',
+            backdropFilter: 'blur(24px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
             ...sx,
         }}>
             {children}
@@ -464,24 +509,26 @@ function PanelHead({ icon, title, subtitle, badge, right }) {
     return (
         <Box sx={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            px: 2.5, py: 1.75, borderBottom: `1px solid ${T.border}`,
+            px: 3, py: 2, borderBottom: `1px solid rgba(255,255,255,0.05)`,
+            background: 'rgba(255,255,255,0.02)'
         }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Box sx={{
-                    width: 28, height: 28, borderRadius: 1.25, flexShrink: 0,
-                    background: 'linear-gradient(135deg, rgba(99,102,241,0.22), rgba(168,85,247,0.14))',
-                    border: '1px solid rgba(99,102,241,0.22)',
+                    width: 34, height: 34, borderRadius: 1.75, flexShrink: 0,
+                    background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.15))',
+                    border: '1px solid rgba(99,102,241,0.3)',
+                    boxShadow: 'inset 0 0 12px rgba(168,85,247,0.1), 0 4px 12px rgba(99,102,241,0.15)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#a5b4fc',
+                    color: '#c7d2fe',
                 }}>
                     {icon}
                 </Box>
                 <Box>
-                    <Typography sx={{ fontSize: '0.845rem', fontWeight: 700, color: T.text, lineHeight: 1.2 }}>
+                    <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: T.text, lineHeight: 1.1, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
                         {title}
                     </Typography>
                     {subtitle && (
-                        <Typography sx={{ fontSize: '0.66rem', color: T.muted, mt: 0.1 }}>
+                        <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', mt: 0.2 }}>
                             {subtitle}
                         </Typography>
                     )}
@@ -620,31 +667,39 @@ export default function ProfilePage() {
             {/* ══ TOP BAR ══════════════════════════════════════════════════════ */}
             <motion.div initial="hidden" animate="show" custom={0} variants={rise}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 3, pt: 0.5 }}>
-                    <Box>
-                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(99,102,241,0.6)' }}>
-                            Your Space
-                        </Typography>
-                        <Typography sx={{ fontSize: { xs: '1.5rem', md: '1.85rem' }, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, mt: 0.2, color: T.text }}>
-                            Command{' '}
-                            <Box component="span" sx={{ background: 'linear-gradient(120deg, #6366f1 15%, #a855f7 55%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                Center
-                            </Box>
-                        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 3.5, pt: 1, px: 0.5 }}>
+            <Box>
+                <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(99,102,241,0.8)', textShadow: '0 2px 10px rgba(99,102,241,0.4)', mb: 0.5 }}>
+                    Your Space
+                </Typography>
+                <Typography sx={{ fontSize: { xs: '1.75rem', md: '2.15rem' }, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: T.text, textShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+                    Command{' '}
+                    <Box component="span" sx={{ position: 'relative', display: 'inline-block' }}>
+                        <Box component="span" sx={{ background: 'linear-gradient(120deg, #6366f1 15%, #a855f7 50%, #ec4899 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', position: 'relative', zIndex: 1 }}>
+                            Center
+                        </Box>
+                        {/* Glow text effect */}
+                        <Box component="span" sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, #6366f1, #a855f7, #ec4899)', filter: 'blur(12px)', opacity: 0.45, zIndex: 0 }} />
                     </Box>
-                    <Button
-                        size="small" onClick={handleLogout}
-                        startIcon={<LogoutIcon sx={{ fontSize: '13px !important' }} />}
-                        sx={{
-                            borderRadius: 2, textTransform: 'none', fontWeight: 600,
-                            fontSize: '0.77rem', color: T.muted, px: 1.75, py: 0.8,
-                            border: `1px solid ${T.border}`, mb: 0.5,
-                            '&:hover': { borderColor: T.red, color: T.red, bgcolor: 'rgba(239,68,68,0.06)' },
-                            transition: 'all 0.16s',
-                        }}
-                    >
-                        Sign out
-                    </Button>
-                </Box>
+                </Typography>
+            </Box>
+            <Button
+                size="small" onClick={handleLogout}
+                startIcon={<LogoutIcon sx={{ fontSize: '13px !important' }} />}
+                sx={{
+                    borderRadius: 2, textTransform: 'none', fontWeight: 700,
+                    fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', px: 2, py: 0.9,
+                    border: `1px solid rgba(255,255,255,0.08)`,
+                    background: 'rgba(255,255,255,0.02)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    '&:hover': { borderColor: 'rgba(239,68,68,0.4)', color: T.red, bgcolor: 'rgba(239,68,68,0.06)', boxShadow: '0 6px 16px rgba(239,68,68,0.15)' },
+                    transition: 'all 0.2s',
+                }}
+            >
+                Sign out
+            </Button>
+        </Box>
             </motion.div>
 
             {userProfile?._fallback && (
@@ -661,67 +716,74 @@ export default function ProfilePage() {
             {/* ══ HERO ════════════════════════════════════════════════════════ */}
             <motion.div initial="hidden" animate="show" custom={1} variants={rise}>
                 <Box sx={{
-                    borderRadius: 3, overflow: 'hidden', mb: 2.5,
-                    border: `1px solid ${T.border}`,
-                    background: 'linear-gradient(150deg, rgba(99,102,241,0.13) 0%, rgba(8,7,18,0.98) 40%, rgba(168,85,247,0.08) 100%)',
+                    borderRadius: 4, overflow: 'hidden', mb: 3,
+                    border: `1px solid rgba(255,255,255,0.08)`,
+                    background: 'linear-gradient(145deg, rgba(20,20,38,0.65) 0%, rgba(10,10,20,0.85) 100%)',
+                    backdropFilter: 'blur(30px)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
                     position: 'relative',
                 }}>
-                    {/* Glows */}
-                    <Box sx={{ position: 'absolute', top: -70, left: -50, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-                    <Box sx={{ position: 'absolute', bottom: -50, right: 80, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                    {/* Glows & Abstract background elements */}
+                    <Box sx={{ position: 'absolute', top: -100, left: -80, width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none', animation: 'flowBg 15s ease-in-out infinite alternate', '@keyframes flowBg': { '0%': { transform: 'translate(0, 0)' }, '100%': { transform: 'translate(30px, 20px)' } } }} />
+                    <Box sx={{ position: 'absolute', bottom: -120, right: -40, width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none', animation: 'flowBg2 20s ease-in-out infinite alternate-reverse', '@keyframes flowBg2': { '0%': { transform: 'translate(0, 0)' }, '100%': { transform: 'translate(-40px, -30px)' } } }} />
+                    <Box sx={{ position: 'absolute', top: '20%', right: '40%', width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(236,72,153,0.05) 0%, transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
 
-                    <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 2.5, md: 3.5 } }}>
+                    <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 4.5 } }}>
 
                         {/* Identity row */}
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 2, md: 2.5 }, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 2.5, md: 3.5 }, flexWrap: 'wrap' }}>
                             {/* Avatar */}
                             <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                                <Box sx={{ borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)', p: '2.5px' }}>
-                                    <Avatar src={userProfile.photoURL || undefined} sx={{
-                                        width: { xs: 68, md: 84 }, height: { xs: 68, md: 84 },
-                                        fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 900,
-                                        background: 'linear-gradient(135deg, #1c1a44, #2d1266)',
-                                        color: '#c4b5fd', border: '3px solid #07080f',
-                                    }}>
-                                        {initials}
-                                    </Avatar>
-                                </Box>
+                                <motion.div whileHover={{ scale: 1.05 }} transition={{ type: 'spring', stiffness: 300, damping: 15 }}>
+                                    <Box sx={{ borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)', p: '3px', boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)' }}>
+                                        <Avatar src={userProfile.photoURL || undefined} sx={{
+                                            width: { xs: 72, md: 96 }, height: { xs: 72, md: 96 },
+                                            fontSize: { xs: '1.8rem', md: '2.4rem' }, fontWeight: 900,
+                                            background: 'linear-gradient(135deg, #1c1a44, #2d1266)',
+                                            color: '#e0e7ff', border: '3px solid rgba(10,10,20,0.9)',
+                                            boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.5)'
+                                        }}>
+                                            {initials}
+                                        </Avatar>
+                                    </Box>
+                                </motion.div>
                                 <Box sx={{
-                                    position: 'absolute', bottom: 4, right: 4,
-                                    width: 12, height: 12, borderRadius: '50%',
-                                    background: T.green, border: `2.5px solid #07080f`,
-                                    boxShadow: `0 0 8px ${T.green}90`,
+                                    position: 'absolute', bottom: 6, right: 6,
+                                    width: 14, height: 14, borderRadius: '50%',
+                                    background: T.green, border: `2.5px solid rgba(10,10,20,0.9)`,
+                                    boxShadow: `0 0 10px ${T.green}, inset 0 0 4px rgba(255,255,255,0.8)`,
                                 }} />
                             </Box>
 
                             {/* Name + meta + journey + actions */}
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Box sx={{ flex: 1, minWidth: 0, pt: { xs: 0, md: 1 } }}>
                                 {/* Name row */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 0.5 }}>
-                                    <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.6rem' }, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1 }}>
+                                    <Typography sx={{ fontSize: { xs: '1.4rem', md: '1.85rem' }, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
                                         {userProfile.displayName || 'Student'}
                                     </Typography>
                                     <Chip label={yearLabel} size="small" sx={{
-                                        height: 20, fontSize: '0.66rem', fontWeight: 700,
-                                        background: `${phase.color}22`,
+                                        height: 22, fontSize: '0.7rem', fontWeight: 800,
+                                        background: `linear-gradient(135deg, ${phase.color}25, ${phase.color}10)`,
                                         color: phase.color,
-                                        border: `1px solid ${phase.color}38`,
-                                        '& .MuiChip-label': { px: 1.1 },
+                                        border: `1px solid ${phase.color}40`,
+                                        boxShadow: `0 2px 8px ${phase.color}20`,
+                                        '& .MuiChip-label': { px: 1.25 },
                                     }} />
                                 </Box>
 
                                 {/* Meta */}
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 0.3, mb: 2 }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 0.5, mb: 2.5 }}>
                                     {[
-                                        userProfile.email   && { icon: <EmailIcon    sx={{ fontSize: 11 }} />, text: userProfile.email },
-                                        userProfile.college && { icon: <SchoolIcon   sx={{ fontSize: 11 }} />, text: userProfile.college },
-                                        userProfile.country && { icon: <LocationIcon sx={{ fontSize: 11 }} />, text: userProfile.country },
+                                        userProfile.email   && { icon: <EmailIcon    sx={{ fontSize: 13 }} />, text: userProfile.email },
+                                        userProfile.college && { icon: <SchoolIcon   sx={{ fontSize: 13 }} />, text: userProfile.college },
+                                        userProfile.country && { icon: <LocationIcon sx={{ fontSize: 13 }} />, text: userProfile.country },
                                     ].filter(Boolean).map((m, i, arr) => (
-                                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.4, mr: i < arr.length - 1 ? 2 : 0 }}>
-                                            <Box sx={{ color: T.muted, display: 'flex' }}>{m.icon}</Box>
+                                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mr: i < arr.length - 1 ? 2.5 : 0 }}>
+                                            <Box sx={{ color: 'rgba(255,255,255,0.4)', display: 'flex', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>{m.icon}</Box>
                                             <Typography sx={{
-                                                fontSize: '0.76rem', color: T.sub,
-                                                maxWidth: { xs: 155, sm: 210, md: 'none' },
+                                                fontSize: '0.8rem', color: 'rgba(255,255,255,0.65)', fontWeight: 500,
+                                                maxWidth: { xs: 155, sm: 240, md: 'none' },
                                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                             }}>
                                                 {m.text}
@@ -730,34 +792,30 @@ export default function ProfilePage() {
                                     ))}
                                 </Box>
 
-                                {/* MBBS Journey timeline */}
-                                <Box sx={{ mb: 2.5, p: 1.75, borderRadius: 2, border: `1px solid ${T.border}`, background: 'rgba(255,255,255,0.02)' }}>
-                                    <JourneyTimeline year={userProfile.mbbs_year} />
-                                </Box>
-
                                 {/* Quick launch */}
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                    <LaunchBtn primary icon={<BrainIcon sx={{ fontSize: 14 }} />} label="Ask Cortex" onClick={() => navigate('/question')} />
-                                    <LaunchBtn icon={<SparkleIcon sx={{ fontSize: 14 }} />} label="Today's Plan" onClick={() => navigate('/planner')} />
-                                    <LaunchBtn icon={<ReviewIcon sx={{ fontSize: 14 }} />} label="Review" onClick={() => navigate('/review')} />
-                                    <LaunchBtn icon={<BookIcon sx={{ fontSize: 14 }} />} label="Library" onClick={() => navigate('/books')} />
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mb: 2 }}>
+                                    <LaunchBtn primary icon={<BrainIcon sx={{ fontSize: 16 }} />} label="Ask Cortex" onClick={() => navigate('/question')} />
+                                    <LaunchBtn icon={<SparkleIcon sx={{ fontSize: 16 }} />} label="Today's Plan" onClick={() => navigate('/planner')} />
+                                    <LaunchBtn icon={<ReviewIcon sx={{ fontSize: 16 }} />} label="Review" onClick={() => navigate('/review')} />
+                                    <LaunchBtn icon={<BookIcon sx={{ fontSize: 16 }} />} label="Library" onClick={() => navigate('/books')} />
+                                </Box>
+                                
+                                {/* MBBS Journey timeline */}
+                                <Box sx={{ p: 2, borderRadius: 2.5, border: `1px solid rgba(255,255,255,0.06)`, background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)' }}>
+                                    <JourneyTimeline year={userProfile.mbbs_year} />
                                 </Box>
                             </Box>
                         </Box>
 
                         {/* Stats strip */}
                         <Box sx={{
-                            display: 'flex', mt: 3, borderTop: `1px solid ${T.border}`,
-                            overflowX: { xs: 'auto', sm: 'visible' },
-                            '&::-webkit-scrollbar': { display: 'none' },
-                            scrollbarWidth: 'none',
+                            display: 'flex', mt: 4, pt: 0.5, borderTop: `1px solid rgba(255,255,255,0.06)`,
+                            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                            gap: { xs: 1, lg: 1.5 },
                         }}>
                             {STATS.map((s) => <ArcStat key={s.label} {...s} />)}
                         </Box>
                     </Box>
-
-                    {/* Bottom accent */}
-                    <Box sx={{ height: '2px', background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899, transparent)', opacity: 0.5 }} />
                 </Box>
             </motion.div>
 
