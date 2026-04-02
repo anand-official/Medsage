@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Typography, Avatar, TextField, Button, Grid,
-    Paper, Divider, CircularProgress, Alert, MenuItem,
+    Divider, CircularProgress, Alert, MenuItem,
     Stack, Chip, LinearProgress,
     Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-    Autocomplete,
+    Autocomplete, Paper,
 } from '@mui/material';
 import {
     Edit as EditIcon,
@@ -22,6 +22,9 @@ import {
     School as SchoolIcon,
     Email as EmailIcon,
     LocationOn as LocationIcon,
+    ArrowForward as ArrowIcon,
+    MenuBook as BookIcon,
+    Replay as ReviewIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -40,6 +43,17 @@ const YEARS = [
     { value: 5, label: 'Internship / PG' },
 ];
 const COUNTRIES = ['India', 'Nepal', 'United States', 'United Kingdom', 'Australia', 'Singapore', 'Other'];
+
+// MBBS journey phases — the macro view of a student's career
+const PHASES = [
+    { label: 'Pre-Clinical', years: [1, 2], color: '#6366f1' },
+    { label: 'Clinical',     years: [3, 4], color: '#a855f7' },
+    { label: 'Internship',   years: [5],    color: '#22c55e' },
+];
+
+function getPhase(year) {
+    return PHASES.find(p => p.years.includes(year)) || PHASES[0];
+}
 
 function detectCountryFromCollege(college) {
     if (!college) return null;
@@ -105,127 +119,250 @@ function generateInsights({ streak, progressPct, daysLeft, mbbs_year, planMode }
 }
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const C = {
-    bg:             '#07080f',
-    surface:        'rgba(255,255,255,0.025)',
-    surfaceHover:   'rgba(255,255,255,0.042)',
-    border:         'rgba(255,255,255,0.07)',
-    borderStrong:   'rgba(255,255,255,0.13)',
-    text:           'rgba(255,255,255,0.88)',
-    textSub:        'rgba(255,255,255,0.50)',
-    textMuted:      'rgba(255,255,255,0.28)',
-    indigo:         '#6366f1',
-    purple:         '#a855f7',
-    pink:           '#ec4899',
-    green:          '#22c55e',
-    orange:         '#f97316',
-    amber:          '#f59e0b',
-    red:            '#ef4444',
+const T = {
+    bg:           '#07080f',
+    surface:      'rgba(255,255,255,0.028)',
+    surfaceHov:   'rgba(255,255,255,0.045)',
+    border:       'rgba(255,255,255,0.07)',
+    borderStrong: 'rgba(255,255,255,0.13)',
+    text:         'rgba(255,255,255,0.90)',
+    sub:          'rgba(255,255,255,0.52)',
+    muted:        'rgba(255,255,255,0.28)',
+    indigo:       '#6366f1',
+    purple:       '#a855f7',
+    pink:         '#ec4899',
+    green:        '#22c55e',
+    orange:       '#f97316',
+    amber:        '#f59e0b',
+    red:          '#ef4444',
 };
 
-// ─── Input sx ─────────────────────────────────────────────────────────────────
 const inputSx = {
     '& .MuiOutlinedInput-root': {
         borderRadius: 1.5,
         background: 'rgba(255,255,255,0.035)',
-        fontSize: '0.88rem',
-        color: C.text,
-        '& fieldset': { borderColor: C.border },
-        '&:hover fieldset': { borderColor: C.borderStrong },
-        '&.Mui-focused fieldset': { borderColor: C.indigo },
-        '& .MuiSelect-select': { color: C.text },
+        fontSize: '0.875rem',
+        color: T.text,
+        '& fieldset': { borderColor: T.border },
+        '&:hover fieldset': { borderColor: T.borderStrong },
+        '&.Mui-focused fieldset': { borderColor: T.indigo },
+        '& .MuiSelect-select': { color: T.text },
     },
-    '& .MuiInputLabel-root': { color: C.textMuted, fontSize: '0.83rem' },
-    '& .MuiInputLabel-root.Mui-focused': { color: C.indigo },
+    '& .MuiInputLabel-root': { color: T.muted, fontSize: '0.83rem' },
+    '& .MuiInputLabel-root.Mui-focused': { color: T.indigo },
+};
+
+const menuProps = {
+    PaperProps: {
+        sx: { background: '#111220', border: `1px solid ${T.border}`, borderRadius: 2, mt: 0.5 },
+    },
+};
+
+// ─── Motion ───────────────────────────────────────────────────────────────────
+const rise = {
+    hidden: { opacity: 0, y: 20 },
+    show: (i = 0) => ({
+        opacity: 1, y: 0,
+        transition: { duration: 0.4, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] },
+    }),
 };
 
 // ─── Radial arc stat ──────────────────────────────────────────────────────────
-function RadialStat({ value, label, icon, color, pct }) {
-    const R = 19;
+function ArcStat({ icon, value, label, color, pct = 0 }) {
+    const R = 18;
     const circ = 2 * Math.PI * R;
-    const filled = Math.max(0, Math.min(1, pct || 0)) * circ;
+    const filled = Math.min(1, Math.max(0, pct)) * circ;
 
     return (
         <Box sx={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 0.5, py: { xs: 2, md: 2.5 }, px: 1,
+            gap: 0.5, py: { xs: 2.5, md: 3 },
             position: 'relative',
             '&:not(:last-child)::after': {
-                content: '""', position: 'absolute', right: 0, top: '18%',
-                height: '64%', width: '1px', background: C.border,
+                content: '""', position: 'absolute', right: 0,
+                top: '20%', height: '60%', width: '1px',
+                background: T.border,
             },
         }}>
-            {/* Arc */}
-            <Box sx={{ position: 'relative', width: 54, height: 54, flexShrink: 0 }}>
-                <svg width={54} height={54} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-                    <circle cx={27} cy={27} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={2.5} />
+            <Box sx={{ position: 'relative', width: 50, height: 50 }}>
+                <svg width={50} height={50} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
+                    <circle cx={25} cy={25} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={2.5} />
                     <motion.circle
-                        cx={27} cy={27} r={R} fill="none" stroke={color} strokeWidth={2.5}
-                        strokeLinecap="round"
+                        cx={25} cy={25} r={R} fill="none"
+                        stroke={color} strokeWidth={2.5} strokeLinecap="round"
                         initial={{ strokeDasharray: `0 ${circ}` }}
                         animate={{ strokeDasharray: `${filled} ${circ}` }}
-                        transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
+                        transition={{ duration: 1.1, delay: 0.4, ease: 'easeOut' }}
                         style={{ filter: `drop-shadow(0 0 5px ${color}70)` }}
                     />
                 </svg>
-                <Box sx={{
-                    position: 'absolute', inset: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color,
-                }}>
+                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
                     {icon}
                 </Box>
             </Box>
-
-            {/* Number */}
             <Typography sx={{
-                fontSize: '1.35rem', fontWeight: 900, color, lineHeight: 1,
+                fontSize: '1.3rem', fontWeight: 900, color, lineHeight: 1,
                 letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
             }}>
                 {value}
             </Typography>
-
-            {/* Label */}
-            <Typography sx={{
-                fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em',
-                textTransform: 'uppercase', color: C.textMuted,
-            }}>
+            <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.muted }}>
                 {label}
             </Typography>
         </Box>
     );
 }
 
+// ─── MBBS journey timeline ────────────────────────────────────────────────────
+function JourneyTimeline({ year }) {
+    const currentPhaseIdx = PHASES.findIndex(p => p.years.includes(year));
+    const journeyPct = ((year || 1) / 5) * 100;
+
+    return (
+        <Box sx={{ px: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.muted }}>
+                    MBBS Journey
+                </Typography>
+                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: T.sub }}>
+                    Year {year || '?'} of 5
+                </Typography>
+            </Box>
+
+            {/* Phase nodes + connecting track */}
+            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', mb: 1 }}>
+                {/* Track */}
+                <Box sx={{
+                    position: 'absolute', left: 0, right: 0, top: '50%',
+                    height: '2px', transform: 'translateY(-50%)',
+                    background: T.border, borderRadius: 2,
+                }} />
+                {/* Filled track */}
+                <Box sx={{
+                    position: 'absolute', left: 0, top: '50%',
+                    height: '2px', transform: 'translateY(-50%)',
+                    width: `${journeyPct}%`,
+                    background: `linear-gradient(90deg, ${T.indigo}, ${T.purple})`,
+                    borderRadius: 2,
+                    boxShadow: `0 0 8px ${T.purple}80`,
+                    transition: 'width 1s ease',
+                }} />
+
+                {/* Phase nodes */}
+                {PHASES.map((phase, i) => {
+                    const isActive = i <= currentPhaseIdx;
+                    const isCurrent = i === currentPhaseIdx;
+                    return (
+                        <Box key={phase.label} sx={{
+                            flex: i < PHASES.length - 1 ? 1 : 0,
+                            display: 'flex',
+                            justifyContent: i === 0 ? 'flex-start' : i === PHASES.length - 1 ? 'flex-end' : 'center',
+                        }}>
+                            <Box sx={{
+                                width: isCurrent ? 14 : 10,
+                                height: isCurrent ? 14 : 10,
+                                borderRadius: '50%',
+                                background: isActive ? phase.color : 'transparent',
+                                border: `2px solid ${isActive ? phase.color : T.border}`,
+                                boxShadow: isCurrent ? `0 0 10px ${phase.color}90` : 'none',
+                                zIndex: 1,
+                                transition: 'all 0.3s',
+                                position: 'relative',
+                            }}>
+                                {isCurrent && (
+                                    <Box sx={{
+                                        position: 'absolute', inset: -4, borderRadius: '50%',
+                                        background: `${phase.color}20`,
+                                        animation: 'ripple 2s ease-in-out infinite',
+                                        '@keyframes ripple': {
+                                            '0%': { transform: 'scale(0.8)', opacity: 1 },
+                                            '100%': { transform: 'scale(1.8)', opacity: 0 },
+                                        },
+                                    }} />
+                                )}
+                            </Box>
+                        </Box>
+                    );
+                })}
+            </Box>
+
+            {/* Phase labels */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                {PHASES.map((phase, i) => {
+                    const isCurrent = i === currentPhaseIdx;
+                    return (
+                        <Typography key={phase.label} sx={{
+                            fontSize: '0.6rem', fontWeight: isCurrent ? 800 : 500,
+                            color: isCurrent ? phase.color : T.muted,
+                            textAlign: i === 0 ? 'left' : i === PHASES.length - 1 ? 'right' : 'center',
+                            flex: i < PHASES.length - 1 ? 1 : 0,
+                            transition: 'color 0.3s',
+                        }}>
+                            {phase.label}
+                        </Typography>
+                    );
+                })}
+            </Box>
+        </Box>
+    );
+}
+
+// ─── Quick launch button ──────────────────────────────────────────────────────
+function LaunchBtn({ icon, label, onClick, primary }) {
+    return (
+        <Button
+            size="small"
+            onClick={onClick}
+            endIcon={<ArrowIcon sx={{ fontSize: '13px !important' }} />}
+            sx={{
+                borderRadius: 2, textTransform: 'none', fontWeight: 700,
+                fontSize: '0.78rem', px: 1.75, py: 0.8,
+                flexShrink: 0,
+                ...(primary ? {
+                    background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                    color: '#fff',
+                    boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                    '&:hover': { boxShadow: '0 6px 22px rgba(99,102,241,0.5)', filter: 'brightness(1.08)' },
+                } : {
+                    color: T.sub,
+                    border: `1px solid ${T.border}`,
+                    '&:hover': { borderColor: T.borderStrong, color: T.text, bgcolor: T.surfaceHov },
+                }),
+                transition: 'all 0.18s',
+                gap: 0.6,
+            }}
+        >
+            {icon && <Box component="span" sx={{ display: 'flex', fontSize: '14px', mr: 0.25 }}>{icon}</Box>}
+            {label}
+        </Button>
+    );
+}
+
 // ─── Profile field row (view mode) ────────────────────────────────────────────
-function FieldRow({ icon, label, value, noBorder }) {
+function FieldRow({ icon, label, value, last }) {
     return (
         <>
             <Box sx={{
-                display: 'flex', alignItems: 'center', gap: 2,
-                py: 1.4, px: 1, borderRadius: 1.5,
-                transition: 'background 0.15s',
-                '&:hover': { background: C.surfaceHover },
+                display: 'flex', alignItems: 'center', gap: 1.75,
+                py: 1.35, px: 1, borderRadius: 1.5,
+                transition: 'background 0.14s',
+                '&:hover': { background: T.surfaceHov },
             }}>
-                <Box sx={{ color: C.textMuted, display: 'flex', flexShrink: 0, fontSize: 15 }}>
-                    {icon}
-                </Box>
+                <Box sx={{ color: T.muted, display: 'flex', flexShrink: 0 }}>{icon}</Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{
-                        fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em',
-                        textTransform: 'uppercase', color: C.textMuted, mb: 0.2,
-                    }}>
+                    <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.muted, mb: 0.18 }}>
                         {label}
                     </Typography>
                     <Typography sx={{
                         fontSize: '0.875rem', fontWeight: 500,
-                        color: value ? C.text : 'rgba(255,255,255,0.2)',
+                        color: value ? T.text : 'rgba(255,255,255,0.2)',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
                         {value || 'Not set'}
                     </Typography>
                 </Box>
             </Box>
-            {!noBorder && <Box sx={{ height: '1px', background: C.border, mx: 1, ml: 5.5 }} />}
+            {!last && <Box sx={{ height: '1px', background: T.border, mx: 0.75, ml: 5 }} />}
         </>
     );
 }
@@ -234,32 +371,31 @@ function FieldRow({ icon, label, value, noBorder }) {
 function HabitRow({ habit, index }) {
     return (
         <motion.div
-            initial={{ opacity: 0, x: -10 }}
+            initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.08 + index * 0.06, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ delay: 0.07 + index * 0.055, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
             <Box sx={{
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'space-between',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 py: 1.1, px: 1, borderRadius: 1.5,
-                transition: 'background 0.15s',
-                '&:hover': { background: C.surfaceHover },
+                transition: 'background 0.14s',
+                '&:hover': { background: T.surfaceHov },
             }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.4 }}>
                     <Box sx={{
                         width: 7, height: 7, borderRadius: '50%',
                         background: habit.color, flexShrink: 0,
-                        boxShadow: `0 0 6px ${habit.color}90`,
+                        boxShadow: `0 0 7px ${habit.color}95`,
                     }} />
-                    <Typography sx={{ fontSize: '0.83rem', color: C.textSub, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: '0.825rem', color: T.sub, fontWeight: 500, letterSpacing: '-0.01em' }}>
                         {habit.label}
                     </Typography>
                 </Box>
                 <Chip label={habit.value} size="small" sx={{
                     height: 21, fontSize: '0.7rem', fontWeight: 700,
-                    background: `${habit.color}18`,
+                    background: `${habit.color}16`,
                     color: habit.color,
-                    border: `1px solid ${habit.color}35`,
+                    border: `1px solid ${habit.color}32`,
                     '& .MuiChip-label': { px: 1.1 },
                 }} />
             </Box>
@@ -267,42 +403,39 @@ function HabitRow({ habit, index }) {
     );
 }
 
-// ─── Tip card ─────────────────────────────────────────────────────────────────
+// ─── Tip card ("Cortex Recommends") ──────────────────────────────────────────
 function TipCard({ tip, index }) {
-    const accents = [C.indigo, C.purple, C.pink];
-    const accent = accents[index % 3];
+    const accents = [T.indigo, T.purple, T.pink, T.indigo, T.purple, T.pink];
+    const accent = accents[index];
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + index * 0.07, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            whileHover={{ y: -2, transition: { duration: 0.15 } }}
+            transition={{ delay: 0.08 + index * 0.065, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -2, transition: { duration: 0.14 } }}
         >
             <Box sx={{
-                display: 'flex', gap: 1.5, p: '13px 14px',
+                display: 'flex', gap: 1.5, p: '12px 14px',
                 borderRadius: 2,
-                border: `1px solid ${C.border}`,
+                border: `1px solid ${T.border}`,
                 borderLeft: `3px solid ${accent}`,
-                background: C.surface,
-                cursor: 'default',
-                transition: 'background 0.18s, box-shadow 0.18s',
+                background: T.surface,
+                transition: 'background 0.16s, box-shadow 0.16s',
                 '&:hover': {
-                    background: `${accent}0c`,
-                    boxShadow: `0 6px 28px rgba(0,0,0,0.22), inset 0 0 0 1px ${accent}20`,
+                    background: `${accent}0a`,
+                    boxShadow: `0 6px 24px rgba(0,0,0,0.2), inset 0 0 0 1px ${accent}18`,
                 },
             }}>
-                {/* Icon box */}
                 <Box sx={{
                     width: 28, height: 28, borderRadius: 1.25, flexShrink: 0,
-                    background: `${accent}15`,
-                    border: `1px solid ${accent}25`,
+                    background: `${accent}14`, border: `1px solid ${accent}22`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '0.95rem',
                 }}>
                     {tip.icon}
                 </Box>
-                <Typography sx={{ fontSize: '0.825rem', lineHeight: 1.68, color: C.textSub, flex: 1, pt: 0.1 }}>
+                <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.68, color: T.sub, flex: 1, pt: 0.1 }}>
                     {tip.text}
                 </Typography>
             </Box>
@@ -310,37 +443,49 @@ function TipCard({ tip, index }) {
     );
 }
 
-// ─── Section header ───────────────────────────────────────────────────────────
-function SectionHeader({ icon, title, subtitle, badge, action }) {
+// ─── Panel wrapper ────────────────────────────────────────────────────────────
+function Panel({ children, sx }) {
+    return (
+        <Box sx={{
+            borderRadius: 3, overflow: 'hidden',
+            border: `1px solid ${T.border}`,
+            background: T.surface,
+            ...sx,
+        }}>
+            {children}
+        </Box>
+    );
+}
+
+function PanelHead({ icon, title, subtitle, badge, right }) {
     return (
         <Box sx={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            px: 2.5, py: 1.75,
-            borderBottom: `1px solid ${C.border}`,
+            px: 2.5, py: 1.75, borderBottom: `1px solid ${T.border}`,
         }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                 <Box sx={{
-                    width: 28, height: 28, borderRadius: 1.25,
-                    background: 'linear-gradient(135deg, #6366f130, #a855f720)',
-                    border: `1px solid #6366f130`,
+                    width: 28, height: 28, borderRadius: 1.25, flexShrink: 0,
+                    background: 'linear-gradient(135deg, rgba(99,102,241,0.22), rgba(168,85,247,0.14))',
+                    border: '1px solid rgba(99,102,241,0.22)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#818cf8', flexShrink: 0,
+                    color: '#a5b4fc',
                 }}>
                     {icon}
                 </Box>
                 <Box>
-                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: C.text, lineHeight: 1.2 }}>
+                    <Typography sx={{ fontSize: '0.845rem', fontWeight: 700, color: T.text, lineHeight: 1.2 }}>
                         {title}
                     </Typography>
                     {subtitle && (
-                        <Typography sx={{ fontSize: '0.68rem', color: C.textMuted }}>
+                        <Typography sx={{ fontSize: '0.66rem', color: T.muted, mt: 0.1 }}>
                             {subtitle}
                         </Typography>
                     )}
                 </Box>
                 {badge}
             </Box>
-            {action}
+            {right}
         </Box>
     );
 }
@@ -403,108 +548,79 @@ export default function ProfilePage() {
 
     if (!userProfile) return (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 2 }}>
-            <CircularProgress size={26} sx={{ color: C.indigo }} />
-            <Typography sx={{ color: C.textSub, fontSize: '0.9rem' }}>Loading…</Typography>
+            <CircularProgress size={26} sx={{ color: T.indigo }} />
+            <Typography sx={{ color: T.sub, fontSize: '0.9rem' }}>Loading profile…</Typography>
         </Box>
     );
 
-    // ── Computed metrics ──
-    const streak = analyticsData?.streak?.current || 0;
+    // ── Metrics ───────────────────────────────────────────────────────────────
+    const streak       = analyticsData?.streak?.current || 0;
     const progressTotal = studyPlan?.analytics?.total_tasks || 0;
-    const progressDone = studyPlan?.analytics?.completed || 0;
-    const progressPct = progressTotal > 0 ? Math.round((progressDone / progressTotal) * 100) : null;
-    const planMode = studyPlan?.plan_mode || (studyPlan?.exam_date ? 'exam' : null);
-    const daysLeft = planMode === 'exam' && studyPlan?.exam_date ? differenceInDays(new Date(studyPlan.exam_date), new Date()) : null;
+    const progressDone  = studyPlan?.analytics?.completed || 0;
+    const progressPct   = progressTotal > 0 ? Math.round((progressDone / progressTotal) * 100) : null;
+    const planMode      = studyPlan?.plan_mode || (studyPlan?.exam_date ? 'exam' : null);
+    const daysLeft      = planMode === 'exam' && studyPlan?.exam_date
+        ? differenceInDays(new Date(studyPlan.exam_date), new Date()) : null;
 
     const { habits, tips } = useMemo(
         () => generateInsights({ streak, progressPct, daysLeft, mbbs_year: userProfile.mbbs_year, planMode }),
         [streak, progressPct, daysLeft, userProfile.mbbs_year, planMode]
     );
 
-    const yearLabel = YEARS.find(y => y.value === userProfile.mbbs_year)?.label || `Year ${userProfile.mbbs_year || '?'}`;
-    const initials = (userProfile.displayName || userProfile.email || 'M')[0].toUpperCase();
+    const yearLabel  = YEARS.find(y => y.value === userProfile.mbbs_year)?.label || `Year ${userProfile.mbbs_year || '?'}`;
+    const phase      = getPhase(userProfile.mbbs_year);
+    const initials   = (userProfile.displayName || userProfile.email || 'M')[0].toUpperCase();
+
+    // Momentum copy — emotional, not just numeric
+    const momentumMsg = streak === 0
+        ? { text: 'Start your streak today — consistency is everything.', color: T.amber }
+        : streak < 3
+        ? { text: `${streak}-day streak. Keep going — 3 days builds the habit.`, color: T.amber }
+        : streak < 7
+        ? { text: `${streak}-day streak. You're building real momentum.`, color: T.orange }
+        : streak < 30
+        ? { text: `${streak} days strong. You're in a great study rhythm.`, color: T.green }
+        : { text: `${streak} days. Elite consistency. Stay focused.`, color: T.green };
 
     const STATS = [
+        { icon: <FireIcon   sx={{ fontSize: 17 }} />, value: `${streak}d`,                                    label: 'Streak',    color: T.orange, pct: Math.min(streak / 30, 1) },
+        { icon: <TrendIcon  sx={{ fontSize: 17 }} />, value: progressPct != null ? `${progressPct}%` : '—',   label: 'Progress',  color: T.indigo, pct: (progressPct || 0) / 100 },
+        { icon: <SparkleIcon sx={{ fontSize: 17 }}/>, value: progressDone > 0 ? `${progressDone}` : '—',      label: 'Tasks',     color: T.purple, pct: Math.min((progressDone || 0) / Math.max(progressTotal, 1), 1) },
         {
-            icon: <FireIcon sx={{ fontSize: 18 }} />,
-            value: `${streak}d`,
-            label: 'Streak',
-            color: C.orange,
-            pct: Math.min(streak / 30, 1),
-        },
-        {
-            icon: <TrendIcon sx={{ fontSize: 18 }} />,
-            value: progressPct !== null ? `${progressPct}%` : '—',
-            label: 'Progress',
-            color: C.indigo,
-            pct: (progressPct || 0) / 100,
-        },
-        {
-            icon: <SparkleIcon sx={{ fontSize: 18 }} />,
-            value: progressDone > 0 ? `${progressDone}` : '—',
-            label: 'Tasks Done',
-            color: C.purple,
-            pct: Math.min((progressDone || 0) / Math.max(progressTotal, 1), 1),
-        },
-        {
-            icon: <TimerIcon sx={{ fontSize: 18 }} />,
+            icon: <TimerIcon  sx={{ fontSize: 17 }} />,
             value: daysLeft != null && daysLeft > 0 ? `${daysLeft}d` : '—',
             label: 'To Exam',
-            color: daysLeft != null && daysLeft < 14 ? C.red : daysLeft != null && daysLeft < 30 ? C.amber : C.green,
-            pct: daysLeft != null ? Math.max(0, Math.min(daysLeft / 365, 1)) : 0,
+            color: daysLeft != null && daysLeft < 14 ? T.red : daysLeft != null && daysLeft < 30 ? T.amber : T.green,
+            pct: daysLeft != null ? Math.min(Math.max(daysLeft, 0) / 365, 1) : 0,
         },
     ];
 
-    const fadeUp = {
-        hidden: { opacity: 0, y: 18 },
-        show: (i) => ({ opacity: 1, y: 0, transition: { duration: 0.38, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] } }),
-    };
-
     return (
-        <Box sx={{
-            maxWidth: 1200, mx: 'auto',
-            px: { xs: 1.5, sm: 2.5, md: 3.5 },
-            pb: { xs: 10, md: 8 },
-        }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1.5, sm: 2.5, md: 3.5 }, pb: { xs: 12, md: 8 } }}>
 
-            {/* ══ TOP BAR ════════════════════════════════════════════════════ */}
-            <motion.div initial="hidden" animate="show" custom={0} variants={fadeUp}>
-                <Box sx={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    mb: 3, pt: 0.5,
-                }}>
+            {/* ══ TOP BAR ══════════════════════════════════════════════════════ */}
+            <motion.div initial="hidden" animate="show" custom={0} variants={rise}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 3, pt: 0.5 }}>
                     <Box>
-                        <Typography sx={{
-                            fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em',
-                            textTransform: 'uppercase', color: 'rgba(99,102,241,0.6)',
-                        }}>
-                            Profile &amp; Settings
+                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(99,102,241,0.6)' }}>
+                            Your Space
                         </Typography>
-                        <Typography sx={{
-                            fontSize: { xs: '1.55rem', md: '1.9rem' },
-                            fontWeight: 900, letterSpacing: '-0.04em',
-                            lineHeight: 1, color: C.text, mt: 0.2,
-                        }}>
+                        <Typography sx={{ fontSize: { xs: '1.5rem', md: '1.85rem' }, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, mt: 0.2, color: T.text }}>
                             Command{' '}
-                            <Box component="span" sx={{
-                                background: 'linear-gradient(120deg, #6366f1 20%, #a855f7 65%, #ec4899 100%)',
-                                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                            }}>
+                            <Box component="span" sx={{ background: 'linear-gradient(120deg, #6366f1 15%, #a855f7 55%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                 Center
                             </Box>
                         </Typography>
                     </Box>
-
                     <Button
-                        size="small"
+                        size="small" onClick={handleLogout}
                         startIcon={<LogoutIcon sx={{ fontSize: '13px !important' }} />}
-                        onClick={handleLogout}
                         sx={{
                             borderRadius: 2, textTransform: 'none', fontWeight: 600,
-                            fontSize: '0.78rem', color: C.textMuted, px: 1.75, py: 0.8,
-                            border: `1px solid ${C.border}`,
-                            '&:hover': { borderColor: C.red, color: C.red, bgcolor: 'rgba(239,68,68,0.06)' },
-                            transition: 'all 0.18s',
+                            fontSize: '0.77rem', color: T.muted, px: 1.75, py: 0.8,
+                            border: `1px solid ${T.border}`, mb: 0.5,
+                            '&:hover': { borderColor: T.red, color: T.red, bgcolor: 'rgba(239,68,68,0.06)' },
+                            transition: 'all 0.16s',
                         }}
                     >
                         Sign out
@@ -518,81 +634,70 @@ export default function ProfilePage() {
                 </Alert>
             )}
 
-            {/* ══ HERO ═══════════════════════════════════════════════════════ */}
-            <motion.div initial="hidden" animate="show" custom={1} variants={fadeUp}>
+            {/* ══ HERO ════════════════════════════════════════════════════════ */}
+            <motion.div initial="hidden" animate="show" custom={1} variants={rise}>
                 <Box sx={{
                     borderRadius: 3, overflow: 'hidden', mb: 2.5,
-                    border: `1px solid ${C.border}`,
-                    background: 'linear-gradient(145deg, rgba(99,102,241,0.14) 0%, rgba(10,9,22,0.97) 45%, rgba(168,85,247,0.09) 100%)',
+                    border: `1px solid ${T.border}`,
+                    background: 'linear-gradient(150deg, rgba(99,102,241,0.13) 0%, rgba(8,7,18,0.98) 40%, rgba(168,85,247,0.08) 100%)',
                     position: 'relative',
                 }}>
-                    {/* ambient glows */}
-                    <Box sx={{ position: 'absolute', top: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-                    <Box sx={{ position: 'absolute', top: -40, right: 60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.13) 0%, transparent 70%)', pointerEvents: 'none' }} />
-                    <Box sx={{ position: 'absolute', bottom: -50, right: -30, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(236,72,153,0.10) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                    {/* Glows */}
+                    <Box sx={{ position: 'absolute', top: -70, left: -50, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                    <Box sx={{ position: 'absolute', bottom: -50, right: 80, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-                    {/* Identity row */}
-                    <Box sx={{ position: 'relative', zIndex: 1, px: { xs: 2.5, md: 3.5 }, pt: { xs: 2.5, md: 3 }, pb: 0 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
+                    <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 2.5, md: 3.5 } }}>
 
+                        {/* Identity row */}
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 2, md: 2.5 }, flexWrap: 'wrap' }}>
                             {/* Avatar */}
                             <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                                <Box sx={{
-                                    borderRadius: '50%',
-                                    background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)',
-                                    p: '2.5px',
-                                }}>
-                                    <Avatar
-                                        src={userProfile.photoURL || undefined}
-                                        sx={{
-                                            width: { xs: 72, md: 88 }, height: { xs: 72, md: 88 },
-                                            fontSize: { xs: '1.7rem', md: '2rem' }, fontWeight: 900,
-                                            background: 'linear-gradient(135deg, #1a1740, #2a1160)',
-                                            color: '#c4b5fd', border: '3px solid #07080f',
-                                        }}
-                                    >
+                                <Box sx={{ borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)', p: '2.5px' }}>
+                                    <Avatar src={userProfile.photoURL || undefined} sx={{
+                                        width: { xs: 68, md: 84 }, height: { xs: 68, md: 84 },
+                                        fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 900,
+                                        background: 'linear-gradient(135deg, #1c1a44, #2d1266)',
+                                        color: '#c4b5fd', border: '3px solid #07080f',
+                                    }}>
                                         {initials}
                                     </Avatar>
                                 </Box>
                                 <Box sx={{
                                     position: 'absolute', bottom: 4, right: 4,
                                     width: 12, height: 12, borderRadius: '50%',
-                                    background: C.green, border: `2.5px solid #07080f`,
-                                    boxShadow: `0 0 8px ${C.green}90`,
+                                    background: T.green, border: `2.5px solid #07080f`,
+                                    boxShadow: `0 0 8px ${T.green}90`,
                                 }} />
                             </Box>
 
-                            {/* Name + meta */}
+                            {/* Name + meta + journey + actions */}
                             <Box sx={{ flex: 1, minWidth: 0 }}>
+                                {/* Name row */}
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 0.5 }}>
-                                    <Typography sx={{
-                                        fontSize: { xs: '1.3rem', md: '1.65rem' },
-                                        fontWeight: 900, color: '#fff',
-                                        letterSpacing: '-0.03em', lineHeight: 1,
-                                    }}>
+                                    <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.6rem' }, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>
                                         {userProfile.displayName || 'Student'}
                                     </Typography>
                                     <Chip label={yearLabel} size="small" sx={{
-                                        height: 20, fontSize: '0.67rem', fontWeight: 700,
-                                        background: 'rgba(99,102,241,0.18)',
-                                        color: '#a5b4fc',
-                                        border: '1px solid rgba(99,102,241,0.32)',
+                                        height: 20, fontSize: '0.66rem', fontWeight: 700,
+                                        background: `${phase.color}22`,
+                                        color: phase.color,
+                                        border: `1px solid ${phase.color}38`,
                                         '& .MuiChip-label': { px: 1.1 },
                                     }} />
                                 </Box>
 
-                                {/* Meta row */}
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0, rowGap: 0.3 }}>
+                                {/* Meta */}
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 0.3, mb: 2 }}>
                                     {[
-                                        userProfile.email && { icon: <EmailIcon sx={{ fontSize: 11 }} />, text: userProfile.email },
-                                        userProfile.college && { icon: <SchoolIcon sx={{ fontSize: 11 }} />, text: userProfile.college },
+                                        userProfile.email   && { icon: <EmailIcon    sx={{ fontSize: 11 }} />, text: userProfile.email },
+                                        userProfile.college && { icon: <SchoolIcon   sx={{ fontSize: 11 }} />, text: userProfile.college },
                                         userProfile.country && { icon: <LocationIcon sx={{ fontSize: 11 }} />, text: userProfile.country },
                                     ].filter(Boolean).map((m, i, arr) => (
                                         <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.4, mr: i < arr.length - 1 ? 2 : 0 }}>
-                                            <Box sx={{ color: C.textMuted, display: 'flex' }}>{m.icon}</Box>
+                                            <Box sx={{ color: T.muted, display: 'flex' }}>{m.icon}</Box>
                                             <Typography sx={{
-                                                fontSize: '0.77rem', color: C.textSub,
-                                                maxWidth: { xs: 160, sm: 200, md: 'none' },
+                                                fontSize: '0.76rem', color: T.sub,
+                                                maxWidth: { xs: 155, sm: 210, md: 'none' },
                                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                             }}>
                                                 {m.text}
@@ -600,86 +705,73 @@ export default function ProfilePage() {
                                         </Box>
                                     ))}
                                 </Box>
+
+                                {/* MBBS Journey timeline */}
+                                <Box sx={{ mb: 2.5, p: 1.75, borderRadius: 2, border: `1px solid ${T.border}`, background: 'rgba(255,255,255,0.02)' }}>
+                                    <JourneyTimeline year={userProfile.mbbs_year} />
+                                </Box>
+
+                                {/* Quick launch */}
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    <LaunchBtn primary icon={<BrainIcon sx={{ fontSize: 14 }} />} label="Ask Cortex" onClick={() => navigate('/question')} />
+                                    <LaunchBtn icon={<SparkleIcon sx={{ fontSize: 14 }} />} label="Today's Plan" onClick={() => navigate('/planner')} />
+                                    <LaunchBtn icon={<ReviewIcon sx={{ fontSize: 14 }} />} label="Review" onClick={() => navigate('/review')} />
+                                    <LaunchBtn icon={<BookIcon sx={{ fontSize: 14 }} />} label="Library" onClick={() => navigate('/books')} />
+                                </Box>
                             </Box>
                         </Box>
 
                         {/* Stats strip */}
-                        <Box sx={{
-                            display: 'flex', mt: 2.5,
-                            pt: 0, borderTop: `1px solid ${C.border}`,
-                        }}>
-                            {STATS.map((s) => (
-                                <RadialStat key={s.label} {...s} />
-                            ))}
+                        <Box sx={{ display: 'flex', mt: 3, borderTop: `1px solid ${T.border}` }}>
+                            {STATS.map((s) => <ArcStat key={s.label} {...s} />)}
                         </Box>
                     </Box>
 
-                    {/* Bottom gradient line */}
-                    <Box sx={{
-                        height: '2px',
-                        background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899, transparent)',
-                        opacity: 0.55,
-                    }} />
+                    {/* Bottom accent */}
+                    <Box sx={{ height: '2px', background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899, transparent)', opacity: 0.5 }} />
                 </Box>
             </motion.div>
 
-            {/* ══ MAIN GRID ══════════════════════════════════════════════════ */}
+            {/* ══ MAIN GRID ═══════════════════════════════════════════════════ */}
             <Grid container spacing={2} alignItems="flex-start">
 
-                {/* ── LEFT: Profile Settings ───────────────────────────────── */}
+                {/* ── LEFT: Profile + Danger ───────────────────────────────── */}
                 <Grid item xs={12} md={5}>
-                    <motion.div initial="hidden" animate="show" custom={2} variants={fadeUp}>
+                    <motion.div initial="hidden" animate="show" custom={2} variants={rise}>
                         <Stack spacing={2}>
 
-                            {/* Settings card */}
-                            <Box sx={{
-                                borderRadius: 3, overflow: 'hidden',
-                                border: `1px solid ${C.border}`,
-                                background: C.surface,
-                            }}>
-                                <SectionHeader
+                            {/* Profile settings */}
+                            <Panel>
+                                <PanelHead
                                     icon={<PersonIcon sx={{ fontSize: 14 }} />}
-                                    title="Account Settings"
-                                    action={
+                                    title="Profile"
+                                    subtitle="Your academic identity"
+                                    right={
                                         <AnimatePresence mode="wait">
                                             {!isEditing ? (
-                                                <motion.div key="btn-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                                <motion.div key="e" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                                                     <Button
-                                                        size="small"
+                                                        size="small" onClick={() => setIsEditing(true)}
                                                         startIcon={<EditIcon sx={{ fontSize: '12px !important' }} />}
-                                                        onClick={() => setIsEditing(true)}
                                                         sx={{
-                                                            borderRadius: 1.75, textTransform: 'none',
-                                                            fontWeight: 700, fontSize: '0.75rem',
-                                                            color: '#818cf8', px: 1.5, py: 0.6,
-                                                            border: '1px solid rgba(99,102,241,0.25)',
-                                                            '&:hover': { bgcolor: 'rgba(99,102,241,0.09)', borderColor: 'rgba(99,102,241,0.5)' },
+                                                            borderRadius: 1.75, textTransform: 'none', fontWeight: 700,
+                                                            fontSize: '0.74rem', color: '#818cf8', px: 1.5, py: 0.6,
+                                                            border: '1px solid rgba(99,102,241,0.22)',
+                                                            '&:hover': { bgcolor: 'rgba(99,102,241,0.09)', borderColor: 'rgba(99,102,241,0.45)' },
                                                         }}
                                                     >
                                                         Edit
                                                     </Button>
                                                 </motion.div>
                                             ) : (
-                                                <motion.div key="btn-save" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                                <motion.div key="s" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                                                     <Box sx={{ display: 'flex', gap: 0.75 }}>
-                                                        <Button size="small" onClick={cancelEdit} sx={{
-                                                            borderRadius: 1.75, textTransform: 'none', fontWeight: 600,
-                                                            fontSize: '0.75rem', color: C.textSub, px: 1.25, py: 0.6,
-                                                        }}>
+                                                        <Button size="small" onClick={cancelEdit} sx={{ borderRadius: 1.75, textTransform: 'none', fontWeight: 600, fontSize: '0.74rem', color: T.sub, px: 1.25, py: 0.6 }}>
                                                             Cancel
                                                         </Button>
                                                         <Button size="small" variant="contained" onClick={handleSave} disabled={saving}
-                                                            startIcon={saving
-                                                                ? <CircularProgress size={10} color="inherit" />
-                                                                : <CheckIcon sx={{ fontSize: '12px !important' }} />
-                                                            }
-                                                            sx={{
-                                                                borderRadius: 1.75, textTransform: 'none', fontWeight: 700,
-                                                                fontSize: '0.75rem', px: 1.5, py: 0.6,
-                                                                background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                                                                boxShadow: 'none',
-                                                            }}
-                                                        >
+                                                            startIcon={saving ? <CircularProgress size={10} color="inherit" /> : <CheckIcon sx={{ fontSize: '12px !important' }} />}
+                                                            sx={{ borderRadius: 1.75, textTransform: 'none', fontWeight: 700, fontSize: '0.74rem', px: 1.5, py: 0.6, background: 'linear-gradient(135deg, #6366f1, #a855f7)', boxShadow: 'none' }}>
                                                             Save
                                                         </Button>
                                                     </Box>
@@ -689,89 +781,43 @@ export default function ProfilePage() {
                                     }
                                 />
 
-                                <Box sx={{ px: 1.5, py: 1.5 }}>
-                                    {/* Error / success */}
+                                <Box sx={{ px: 1.5, py: 1.25 }}>
                                     <AnimatePresence>
                                         {(error || success) && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                style={{ overflow: 'hidden' }}
-                                            >
-                                                <Alert
-                                                    severity={error ? 'error' : 'success'}
-                                                    sx={{ mb: 1.5, borderRadius: 1.5, py: 0.5 }}
-                                                    onClose={() => { setError(''); setSuccess(''); }}
-                                                >
+                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                                                <Alert severity={error ? 'error' : 'success'} sx={{ mb: 1.5, borderRadius: 1.5, py: 0.4 }} onClose={() => { setError(''); setSuccess(''); }}>
                                                     {error || success}
                                                 </Alert>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
 
-                                    {/* View / Edit toggle */}
                                     <AnimatePresence mode="wait">
                                         {!isEditing ? (
-                                            <motion.div
-                                                key="view"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.2 }}
-                                            >
-                                                <FieldRow icon={<PersonIcon sx={{ fontSize: 15 }} />} label="Display Name" value={userProfile.displayName} />
-                                                <FieldRow icon={<SchoolIcon sx={{ fontSize: 15 }} />} label="Academic Stage" value={yearLabel} />
-                                                <Box sx={{ height: '1px', background: C.border, my: 0.5, mx: 1 }} />
-                                                <FieldRow icon={<SchoolIcon sx={{ fontSize: 15 }} />} label="Institution" value={userProfile.college} />
-                                                <FieldRow icon={<LocationIcon sx={{ fontSize: 15 }} />} label="Country" value={userProfile.country} noBorder />
+                                            <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+                                                <FieldRow icon={<PersonIcon   sx={{ fontSize: 15 }} />} label="Display Name"   value={userProfile.displayName} />
+                                                <FieldRow icon={<SchoolIcon   sx={{ fontSize: 15 }} />} label="Academic Stage" value={yearLabel} />
+                                                <Box sx={{ height: '1px', background: T.border, my: 0.5, mx: 1 }} />
+                                                <FieldRow icon={<SchoolIcon   sx={{ fontSize: 15 }} />} label="Institution"    value={userProfile.college} />
+                                                <FieldRow icon={<LocationIcon sx={{ fontSize: 15 }} />} label="Country"        value={userProfile.country} last />
                                             </motion.div>
                                         ) : (
-                                            <motion.div
-                                                key="edit"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.2 }}
-                                            >
-                                                <Stack spacing={2} sx={{ px: 0.5, py: 0.5 }}>
-                                                    <TextField
-                                                        fullWidth size="small" label="Display Name"
-                                                        value={form.displayName}
-                                                        onChange={handleField('displayName')}
-                                                        sx={inputSx}
-                                                    />
-                                                    <TextField
-                                                        select fullWidth size="small" label="Academic Stage"
-                                                        value={form.mbbs_year}
-                                                        onChange={handleField('mbbs_year')}
-                                                        sx={inputSx}
-                                                        SelectProps={{
-                                                            MenuProps: {
-                                                                PaperProps: {
-                                                                    sx: { background: '#12131f', border: `1px solid ${C.border}` },
-                                                                },
-                                                            },
-                                                        }}
-                                                    >
-                                                        {YEARS.map(y => (
-                                                            <MenuItem key={y.value} value={y.value} sx={{ fontSize: '0.85rem', color: C.text }}>
-                                                                {y.label}
-                                                            </MenuItem>
-                                                        ))}
+                                            <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+                                                <Stack spacing={2} sx={{ py: 0.5 }}>
+                                                    <TextField fullWidth size="small" label="Display Name" value={form.displayName} onChange={handleField('displayName')} sx={inputSx} />
+                                                    <TextField select fullWidth size="small" label="Academic Stage" value={form.mbbs_year} onChange={handleField('mbbs_year')} sx={inputSx} SelectProps={{ MenuProps: menuProps }}>
+                                                        {YEARS.map(y => <MenuItem key={y.value} value={y.value} sx={{ fontSize: '0.85rem', color: T.text }}>{y.label}</MenuItem>)}
                                                     </TextField>
-
-                                                    <Divider sx={{ borderColor: C.border }} />
-
+                                                    <Divider sx={{ borderColor: T.border }} />
                                                     <Autocomplete
                                                         freeSolo
-                                                        options={Array.isArray(collegesData.colleges) ? collegesData.colleges : []}
+                                                        options={Array.isArray(collegesData?.colleges) ? collegesData.colleges : []}
                                                         value={form.college}
                                                         onChange={(_, v) => handleCollege(v)}
                                                         onInputChange={(_, v) => handleCollege(v)}
                                                         size="small"
                                                         PaperComponent={({ children, ...p }) => (
-                                                            <Paper {...p} sx={{ background: '#12131f', border: `1px solid ${C.border}`, borderRadius: 1.5 }}>
+                                                            <Paper {...p} sx={{ background: '#111220', border: `1px solid ${T.border}`, borderRadius: 2 }}>
                                                                 {children}
                                                             </Paper>
                                                         )}
@@ -779,173 +825,145 @@ export default function ProfilePage() {
                                                             <TextField {...params} fullWidth label="Institution" placeholder="e.g. AIIMS Delhi" sx={inputSx} />
                                                         )}
                                                     />
-
                                                     <TextField
                                                         select fullWidth size="small" label="Country"
-                                                        value={form.country}
-                                                        onChange={handleField('country')}
-                                                        sx={inputSx}
-                                                        helperText={
-                                                            <Box component="span" sx={{ fontSize: '0.7rem', color: '#818cf8' }}>
-                                                                Auto-detected from college
-                                                            </Box>
-                                                        }
-                                                        SelectProps={{
-                                                            MenuProps: {
-                                                                PaperProps: {
-                                                                    sx: { background: '#12131f', border: `1px solid ${C.border}` },
-                                                                },
-                                                            },
-                                                        }}
+                                                        value={form.country} onChange={handleField('country')} sx={inputSx}
+                                                        SelectProps={{ MenuProps: menuProps }}
+                                                        helperText={<Box component="span" sx={{ fontSize: '0.68rem', color: '#818cf8' }}>Auto-detected from institution</Box>}
                                                     >
-                                                        {COUNTRIES.map(c => (
-                                                            <MenuItem key={c} value={c} sx={{ fontSize: '0.85rem', color: C.text }}>
-                                                                {c}
-                                                            </MenuItem>
-                                                        ))}
+                                                        {COUNTRIES.map(c => <MenuItem key={c} value={c} sx={{ fontSize: '0.85rem', color: T.text }}>{c}</MenuItem>)}
                                                     </TextField>
                                                 </Stack>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
                                 </Box>
-                            </Box>
+                            </Panel>
 
-                            {/* Danger zone — compact row */}
+                            {/* Danger zone */}
                             <Box sx={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                px: 2, py: 1.5, borderRadius: 2.5,
-                                border: '1px solid rgba(239,68,68,0.14)',
-                                background: 'rgba(239,68,68,0.025)',
+                                px: 2, py: 1.4, borderRadius: 2.5,
+                                border: '1px solid rgba(239,68,68,0.13)',
+                                background: 'rgba(239,68,68,0.02)',
                             }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                                    <WarningIcon sx={{ fontSize: 15, color: '#ef444480' }} />
+                                    <WarningIcon sx={{ fontSize: 14, color: 'rgba(239,68,68,0.55)' }} />
                                     <Box>
-                                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#ef4444cc' }}>
+                                        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(239,68,68,0.8)', lineHeight: 1.2 }}>
                                             Danger Zone
                                         </Typography>
-                                        <Typography sx={{ fontSize: '0.68rem', color: C.textMuted, lineHeight: 1.3 }}>
+                                        <Typography sx={{ fontSize: '0.66rem', color: T.muted }}>
                                             Permanently delete account &amp; all data.
                                         </Typography>
                                     </Box>
                                 </Box>
-                                <Button
-                                    size="small"
-                                    startIcon={<DeleteIcon sx={{ fontSize: '12px !important' }} />}
-                                    onClick={() => setDeleteOpen(true)}
-                                    sx={{
-                                        borderRadius: 1.75, textTransform: 'none', fontWeight: 700,
-                                        fontSize: '0.73rem', color: '#ef4444', px: 1.5, py: 0.6,
-                                        border: '1px solid rgba(239,68,68,0.25)',
-                                        flexShrink: 0,
-                                        '&:hover': { bgcolor: 'rgba(239,68,68,0.08)', borderColor: C.red },
-                                    }}
-                                >
+                                <Button size="small" startIcon={<DeleteIcon sx={{ fontSize: '12px !important' }} />} onClick={() => setDeleteOpen(true)} sx={{
+                                    borderRadius: 1.75, textTransform: 'none', fontWeight: 700,
+                                    fontSize: '0.72rem', color: T.red, px: 1.4, py: 0.6, flexShrink: 0,
+                                    border: '1px solid rgba(239,68,68,0.22)',
+                                    '&:hover': { bgcolor: 'rgba(239,68,68,0.08)', borderColor: T.red },
+                                }}>
                                     Delete
                                 </Button>
                             </Box>
-
                         </Stack>
                     </motion.div>
                 </Grid>
 
                 {/* ── RIGHT: Study Intelligence ─────────────────────────────── */}
                 <Grid item xs={12} md={7}>
-                    <motion.div initial="hidden" animate="show" custom={3} variants={fadeUp}>
+                    <motion.div initial="hidden" animate="show" custom={3} variants={rise}>
                         <Stack spacing={2}>
 
                             {/* Study DNA */}
-                            <Box sx={{
-                                borderRadius: 3, overflow: 'hidden',
-                                border: `1px solid ${C.border}`,
-                                background: C.surface,
-                            }}>
-                                <SectionHeader
+                            <Panel>
+                                <PanelHead
                                     icon={<BrainIcon sx={{ fontSize: 14 }} />}
                                     title="Study DNA"
                                     subtitle="Live analysis of your learning patterns"
                                     badge={
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, ml: 0.5 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, ml: 0.75 }}>
                                             <Box sx={{
-                                                width: 6, height: 6, borderRadius: '50%',
-                                                background: C.green,
-                                                boxShadow: `0 0 8px ${C.green}`,
-                                                animation: 'pulse 2s ease-in-out infinite',
-                                                '@keyframes pulse': {
-                                                    '0%,100%': { opacity: 1 },
-                                                    '50%': { opacity: 0.4 },
-                                                },
+                                                width: 6, height: 6, borderRadius: '50%', background: T.green,
+                                                boxShadow: `0 0 7px ${T.green}`,
+                                                animation: 'livePulse 2.2s ease-in-out infinite',
+                                                '@keyframes livePulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.35 } },
                                             }} />
-                                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: C.green }}>Live</Typography>
+                                            <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: T.green }}>Live</Typography>
                                         </Box>
                                     }
                                 />
-
-                                <Box sx={{ px: 1.5, py: 1.5 }}>
+                                <Box sx={{ px: 1.5, py: 1.25 }}>
                                     {habits.length === 0 ? (
                                         <Box sx={{ py: 4, textAlign: 'center' }}>
-                                            <BrainIcon sx={{ fontSize: 34, color: 'rgba(255,255,255,0.06)', mb: 1 }} />
-                                            <Typography sx={{ fontSize: '0.83rem', color: C.textMuted, fontStyle: 'italic' }}>
-                                                Start studying to generate your fingerprint.
+                                            <BrainIcon sx={{ fontSize: 32, color: 'rgba(255,255,255,0.06)', mb: 1 }} />
+                                            <Typography sx={{ fontSize: '0.82rem', color: T.muted, mb: 1.5 }}>
+                                                No patterns yet — start studying to unlock this.
                                             </Typography>
+                                            <Button size="small" onClick={() => navigate('/question')} endIcon={<ArrowIcon sx={{ fontSize: '13px !important' }} />}
+                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', color: T.indigo, border: `1px solid rgba(99,102,241,0.28)`, px: 1.75, '&:hover': { bgcolor: 'rgba(99,102,241,0.08)' } }}>
+                                                Ask Cortex to begin
+                                            </Button>
                                         </Box>
                                     ) : (
                                         <>
+                                            {/* Momentum signal */}
+                                            <Box sx={{
+                                                display: 'flex', alignItems: 'center', gap: 1, mb: 1.25,
+                                                px: 1.25, py: 0.9, borderRadius: 1.75,
+                                                background: `${momentumMsg.color}0e`,
+                                                border: `1px solid ${momentumMsg.color}22`,
+                                            }}>
+                                                <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: momentumMsg.color, flexShrink: 0, boxShadow: `0 0 6px ${momentumMsg.color}` }} />
+                                                <Typography sx={{ fontSize: '0.78rem', color: momentumMsg.color, fontWeight: 600, lineHeight: 1.4 }}>
+                                                    {momentumMsg.text}
+                                                </Typography>
+                                            </Box>
+
                                             {habits.map((h, i) => <HabitRow key={i} habit={h} index={i} />)}
 
                                             {progressPct !== null && (
-                                                <Box sx={{ mt: 1.5, pt: 1.5, borderTop: `1px solid ${C.border}`, px: 1 }}>
+                                                <Box sx={{ mt: 1.25, pt: 1.25, borderTop: `1px solid ${T.border}`, px: 1 }}>
                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                                                        <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.textMuted }}>
+                                                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted }}>
                                                             Plan Progress
                                                         </Typography>
                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: C.green }}>
-                                                                {progressPct}%
-                                                            </Typography>
-                                                            <Typography sx={{ fontSize: '0.68rem', color: C.textMuted }}>
-                                                                {progressDone}/{progressTotal} topics
-                                                            </Typography>
+                                                            <Typography sx={{ fontSize: '0.78rem', fontWeight: 800, color: T.green }}>{progressPct}%</Typography>
+                                                            <Typography sx={{ fontSize: '0.67rem', color: T.muted }}>{progressDone}/{progressTotal} topics</Typography>
                                                         </Box>
                                                     </Box>
-                                                    <LinearProgress
-                                                        variant="determinate"
-                                                        value={progressPct}
-                                                        sx={{
-                                                            height: 5, borderRadius: 6,
-                                                            bgcolor: 'rgba(16,185,129,0.1)',
-                                                            '& .MuiLinearProgress-bar': {
-                                                                background: 'linear-gradient(90deg, #10b981, #22c55e)',
-                                                                borderRadius: 6,
-                                                            },
-                                                        }}
-                                                    />
+                                                    <LinearProgress variant="determinate" value={progressPct} sx={{
+                                                        height: 5, borderRadius: 6,
+                                                        bgcolor: 'rgba(34,197,94,0.1)',
+                                                        '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #10b981, #22c55e)', borderRadius: 6 },
+                                                    }} />
                                                 </Box>
                                             )}
                                         </>
                                     )}
                                 </Box>
-                            </Box>
+                            </Panel>
 
-                            {/* AI Insights */}
-                            <Box sx={{
-                                borderRadius: 3, overflow: 'hidden',
-                                border: `1px solid ${C.border}`,
-                                background: C.surface,
-                            }}>
-                                <SectionHeader
+                            {/* Cortex Recommends */}
+                            <Panel>
+                                <PanelHead
                                     icon={<InsightsIcon sx={{ fontSize: 14 }} />}
-                                    title="AI Insights"
-                                    subtitle="Personalised to your usage &amp; habits"
+                                    title="Cortex Recommends"
+                                    subtitle="Personalised to your year, habits &amp; progress"
                                 />
-
-                                <Box sx={{ px: 1.5, py: 1.5 }}>
+                                <Box sx={{ px: 1.5, py: 1.25 }}>
                                     {tips.length === 0 ? (
                                         <Box sx={{ py: 4, textAlign: 'center' }}>
-                                            <InsightsIcon sx={{ fontSize: 34, color: 'rgba(255,255,255,0.06)', mb: 1 }} />
-                                            <Typography sx={{ fontSize: '0.83rem', color: C.textMuted, fontStyle: 'italic' }}>
-                                                Complete your profile and start studying for personalised tips.
+                                            <InsightsIcon sx={{ fontSize: 32, color: 'rgba(255,255,255,0.06)', mb: 1 }} />
+                                            <Typography sx={{ fontSize: '0.82rem', color: T.muted, mb: 1.5 }}>
+                                                Complete your profile to unlock Cortex recommendations.
                                             </Typography>
+                                            <Button size="small" onClick={() => setIsEditing(true)} endIcon={<ArrowIcon sx={{ fontSize: '13px !important' }} />}
+                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: '0.78rem', color: T.purple, border: `1px solid rgba(168,85,247,0.28)`, px: 1.75, '&:hover': { bgcolor: 'rgba(168,85,247,0.08)' } }}>
+                                                Complete your profile
+                                            </Button>
                                         </Box>
                                     ) : (
                                         <Stack spacing={1}>
@@ -953,23 +971,21 @@ export default function ProfilePage() {
                                         </Stack>
                                     )}
                                 </Box>
-                            </Box>
+                            </Panel>
 
                         </Stack>
                     </motion.div>
                 </Grid>
             </Grid>
 
-            {/* ══ DELETE DIALOG ══════════════════════════════════════════════ */}
+            {/* ══ DELETE DIALOG ═══════════════════════════════════════════════ */}
             <Dialog
                 open={deleteOpen}
                 onClose={() => !deleting && setDeleteOpen(false)}
                 PaperProps={{
                     sx: {
-                        background: '#0d0e1c',
-                        border: `1px solid rgba(239,68,68,0.22)`,
-                        borderRadius: { xs: '20px 20px 0 0', md: 2.5 },
-                        p: 0.5,
+                        background: '#0d0e1c', border: `1px solid rgba(239,68,68,0.22)`,
+                        borderRadius: { xs: '20px 20px 0 0', md: 2.5 }, p: 0.5,
                         width: { xs: '100%', md: 'auto' }, maxWidth: 400,
                         m: { xs: 0, md: 'auto' },
                         position: { xs: 'fixed', md: 'relative' },
@@ -977,41 +993,34 @@ export default function ProfilePage() {
                     },
                 }}
             >
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: C.red, fontWeight: 800, fontSize: '1rem' }}>
-                    <WarningIcon sx={{ fontSize: 18 }} /> Delete Account
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: T.red, fontWeight: 800, fontSize: '0.975rem' }}>
+                    <WarningIcon sx={{ fontSize: 17 }} /> Delete Account
                 </DialogTitle>
                 <DialogContent>
-                    <DialogContentText sx={{ color: C.textSub, mb: 2.5, lineHeight: 1.72, fontSize: '0.875rem' }}>
-                        This permanently deletes your account and all data. Type{' '}
-                        <Box component="strong" sx={{ color: C.text }}>DELETE</Box> to confirm.
+                    <DialogContentText sx={{ color: T.sub, mb: 2.5, lineHeight: 1.72, fontSize: '0.865rem' }}>
+                        This will permanently delete your account, all study plans, Cortex history, and analytics. Type{' '}
+                        <Box component="strong" sx={{ color: T.text }}>DELETE</Box> to confirm.
                     </DialogContentText>
                     <TextField
                         autoFocus fullWidth variant="outlined" placeholder="DELETE"
-                        value={deleteText}
-                        onChange={(e) => setDeleteText(e.target.value)}
-                        disabled={deleting}
+                        value={deleteText} onChange={(e) => setDeleteText(e.target.value)} disabled={deleting}
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 borderRadius: 2, background: 'rgba(239,68,68,0.06)',
-                                color: C.red, fontWeight: 800,
+                                color: T.red, fontWeight: 800,
                                 '& fieldset': { borderColor: 'rgba(239,68,68,0.28)' },
                                 '&:hover fieldset': { borderColor: 'rgba(239,68,68,0.5)' },
-                                '&.Mui-focused fieldset': { borderColor: C.red },
+                                '&.Mui-focused fieldset': { borderColor: T.red },
                             },
                         }}
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 2, gap: 1 }}>
-                    <Button
-                        onClick={() => { setDeleteOpen(false); setDeleteText(''); }}
-                        disabled={deleting}
-                        sx={{ color: C.textSub, fontWeight: 700, textTransform: 'none', borderRadius: 2 }}
-                    >
+                    <Button onClick={() => { setDeleteOpen(false); setDeleteText(''); }} disabled={deleting} sx={{ color: T.sub, fontWeight: 700, textTransform: 'none', borderRadius: 2 }}>
                         Cancel
                     </Button>
                     <Button
-                        onClick={handleDelete}
-                        disabled={deleteText !== 'DELETE' || deleting}
+                        onClick={handleDelete} disabled={deleteText !== 'DELETE' || deleting}
                         color="error" variant="contained"
                         startIcon={deleting && <CircularProgress size={13} color="inherit" />}
                         sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none', boxShadow: 'none', px: 2.5 }}
