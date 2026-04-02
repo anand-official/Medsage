@@ -20,6 +20,7 @@ import {
     Person as PersonIcon,
     Psychology as BrainIcon,
     School as SchoolIcon,
+    AccountBalance as InstitutionIcon,
     Email as EmailIcon,
     LocationOn as LocationIcon,
     ArrowForward as ArrowIcon,
@@ -175,7 +176,7 @@ function ArcStat({ icon, value, label, color, pct = 0 }) {
 
     return (
         <Box sx={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+            flex: 1, minWidth: 80, display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: 0.5, py: { xs: 2.5, md: 3 },
             position: 'relative',
             '&:not(:last-child)::after': {
@@ -216,7 +217,9 @@ function ArcStat({ icon, value, label, color, pct = 0 }) {
 // ─── MBBS journey timeline ────────────────────────────────────────────────────
 function JourneyTimeline({ year }) {
     const currentPhaseIdx = PHASES.findIndex(p => p.years.includes(year));
-    const journeyPct = ((year || 1) / 5) * 100;
+    // Map years 1-5 to 0-100% so the fill precisely reaches each phase node:
+    // Year 1 = 0% (Pre-Clinical node), Year 3 = 50% (Clinical node), Year 5 = 100% (Internship node)
+    const journeyPct = (((year || 1) - 1) / 4) * 100;
 
     return (
         <Box sx={{ px: 0.5 }}>
@@ -597,7 +600,7 @@ export default function ProfilePage() {
         : { text: `${streak} days. Elite consistency. Stay focused.`, color: T.green };
 
     const STATS = [
-        { icon: <FireIcon   sx={{ fontSize: 17 }} />, value: `${streak}d`,                                    label: 'Streak',    color: T.orange, pct: Math.min(streak / 30, 1) },
+        { icon: <FireIcon   sx={{ fontSize: 17 }} />, value: streak > 0 ? `${streak}d` : '—',                label: 'Streak',    color: streak > 0 ? T.orange : T.muted, pct: Math.min(streak / 30, 1) },
         { icon: <TrendIcon  sx={{ fontSize: 17 }} />, value: progressPct != null ? `${progressPct}%` : '—',   label: 'Progress',  color: T.indigo, pct: (progressPct || 0) / 100 },
         { icon: <SparkleIcon sx={{ fontSize: 17 }}/>, value: progressDone > 0 ? `${progressDone}` : '—',      label: 'Tasks',     color: T.purple, pct: Math.min((progressDone || 0) / Math.max(progressTotal, 1), 1) },
         {
@@ -743,7 +746,12 @@ export default function ProfilePage() {
                         </Box>
 
                         {/* Stats strip */}
-                        <Box sx={{ display: 'flex', mt: 3, borderTop: `1px solid ${T.border}` }}>
+                        <Box sx={{
+                            display: 'flex', mt: 3, borderTop: `1px solid ${T.border}`,
+                            overflowX: { xs: 'auto', sm: 'visible' },
+                            '&::-webkit-scrollbar': { display: 'none' },
+                            scrollbarWidth: 'none',
+                        }}>
                             {STATS.map((s) => <ArcStat key={s.label} {...s} />)}
                         </Box>
                     </Box>
@@ -816,11 +824,11 @@ export default function ProfilePage() {
                                     <AnimatePresence mode="wait">
                                         {!isEditing ? (
                                             <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-                                                <FieldRow icon={<PersonIcon   sx={{ fontSize: 15 }} />} label="Display Name"   value={userProfile.displayName} />
-                                                <FieldRow icon={<SchoolIcon   sx={{ fontSize: 15 }} />} label="Academic Stage" value={yearLabel} />
-                                                <Box sx={{ height: '1px', background: T.border, my: 0.5, mx: 1 }} />
-                                                <FieldRow icon={<SchoolIcon   sx={{ fontSize: 15 }} />} label="Institution"    value={userProfile.college} />
-                                                <FieldRow icon={<LocationIcon sx={{ fontSize: 15 }} />} label="Country"        value={userProfile.country} last />
+                                                <FieldRow icon={<PersonIcon       sx={{ fontSize: 15 }} />} label="Display Name"   value={userProfile.displayName} />
+                                                <FieldRow icon={<SchoolIcon       sx={{ fontSize: 15 }} />} label="Academic Stage" value={yearLabel} last />
+                                                <Box sx={{ height: '1px', background: T.borderStrong, my: 0.75, mx: 1 }} />
+                                                <FieldRow icon={<InstitutionIcon  sx={{ fontSize: 15 }} />} label="Institution"    value={userProfile.college} />
+                                                <FieldRow icon={<LocationIcon     sx={{ fontSize: 15 }} />} label="Country"        value={userProfile.country} last />
                                             </motion.div>
                                         ) : (
                                             <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
@@ -841,6 +849,11 @@ export default function ProfilePage() {
                                                             <Paper {...p} sx={{ background: '#111220', border: `1px solid ${T.border}`, borderRadius: 2 }}>
                                                                 {children}
                                                             </Paper>
+                                                        )}
+                                                        renderOption={(props, option) => (
+                                                            <li {...props}>
+                                                                <Typography sx={{ fontSize: '0.85rem', color: T.text }}>{option}</Typography>
+                                                            </li>
                                                         )}
                                                         renderInput={(params) => (
                                                             <TextField {...params} fullWidth label="Institution" placeholder="e.g. AIIMS Delhi" sx={inputSx} />
