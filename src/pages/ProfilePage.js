@@ -503,6 +503,7 @@ export default function ProfilePage() {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteText, setDeleteText] = useState('');
     const [deleting, setDeleting] = useState(false);
+    const [logoutError, setLogoutError] = useState('');
     const [form, setForm] = useState({ displayName: '', mbbs_year: '', college: '', country: 'India' });
 
     useEffect(() => {
@@ -521,24 +522,37 @@ export default function ProfilePage() {
         if (!todayData) fetchToday();
     }, []); // eslint-disable-line
 
+    // Auto-dismiss success banner after 3 seconds
+    useEffect(() => {
+        if (!success) return;
+        const t = setTimeout(() => setSuccess(''), 3000);
+        return () => clearTimeout(t);
+    }, [success]);
+
     const handleField = (name) => (e) => { setForm(p => ({ ...p, [name]: e.target.value })); setError(''); setSuccess(''); };
     const handleCollege = (value) => {
         const college = value || '';
         const detected = detectCountryFromCollege(college);
-        setForm(p => ({ ...p, college, country: detected ?? (p.country === 'Nepal' ? 'India' : p.country) }));
+        // Only override country when we positively detected one — never reset a user's manual selection
+        setForm(p => ({ ...p, college, ...(detected ? { country: detected } : {}) }));
         setError(''); setSuccess('');
     };
     const cancelEdit = () => {
         setIsEditing(false);
         setForm({ displayName: userProfile?.displayName || '', mbbs_year: userProfile?.mbbs_year || '', college: userProfile?.college || '', country: userProfile?.country || 'India' });
         setError('');
+        setSuccess('');
     };
     const handleSave = async () => {
-        try { setSaving(true); setError(''); setSuccess(''); await updateOnboardingProfile(form); setSuccess('Saved!'); setIsEditing(false); }
+        if (!form.displayName.trim()) { setError('Display name cannot be empty.'); return; }
+        try { setSaving(true); setError(''); setSuccess(''); await updateOnboardingProfile(form); setSuccess('Profile saved!'); setIsEditing(false); }
         catch (e) { setError(e.message || 'Failed to save'); }
         finally { setSaving(false); }
     };
-    const handleLogout = async () => { try { await logout(); navigate('/signin'); } catch (e) { console.error(e); } };
+    const handleLogout = async () => {
+        try { await logout(); navigate('/signin'); }
+        catch (e) { setLogoutError(e.message || 'Sign-out failed. Please try again.'); }
+    };
     const handleDelete = async () => {
         if (deleteText !== 'DELETE') return;
         try { setDeleting(true); await deleteAccount(); navigate('/signin'); }
@@ -590,8 +604,10 @@ export default function ProfilePage() {
             icon: <TimerIcon  sx={{ fontSize: 17 }} />,
             value: daysLeft != null && daysLeft > 0 ? `${daysLeft}d` : '—',
             label: 'To Exam',
-            color: daysLeft != null && daysLeft < 14 ? T.red : daysLeft != null && daysLeft < 30 ? T.amber : T.green,
-            pct: daysLeft != null ? Math.min(Math.max(daysLeft, 0) / 365, 1) : 0,
+            // Color reflects urgency; muted when no exam is set
+            color: daysLeft == null ? T.muted : daysLeft < 14 ? T.red : daysLeft < 30 ? T.amber : T.green,
+            // Arc fills as exam approaches — more filled = more urgent
+            pct: daysLeft != null ? Math.max(0, 1 - Math.min(daysLeft / 365, 1)) : 0,
         },
     ];
 
@@ -631,6 +647,11 @@ export default function ProfilePage() {
             {userProfile?._fallback && (
                 <Alert severity="warning" sx={{ mb: 2.5, borderRadius: 2 }}>
                     Offline mode — changes may not save until the backend is reachable.
+                </Alert>
+            )}
+            {logoutError && (
+                <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }} onClose={() => setLogoutError('')}>
+                    {logoutError}
                 </Alert>
             )}
 
@@ -951,7 +972,7 @@ export default function ProfilePage() {
                                 <PanelHead
                                     icon={<InsightsIcon sx={{ fontSize: 14 }} />}
                                     title="Cortex Recommends"
-                                    subtitle="Personalised to your year, habits &amp; progress"
+                                    subtitle="Personalised to your year, habits & progress"
                                 />
                                 <Box sx={{ px: 1.5, py: 1.25 }}>
                                     {tips.length === 0 ? (
@@ -981,7 +1002,7 @@ export default function ProfilePage() {
             {/* ══ DELETE DIALOG ═══════════════════════════════════════════════ */}
             <Dialog
                 open={deleteOpen}
-                onClose={() => !deleting && setDeleteOpen(false)}
+                onClose={() => { if (!deleting) { setDeleteOpen(false); setDeleteText(''); } }}
                 PaperProps={{
                     sx: {
                         background: '#0d0e1c', border: `1px solid rgba(239,68,68,0.22)`,
