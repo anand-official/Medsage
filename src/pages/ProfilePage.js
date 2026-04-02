@@ -104,80 +104,275 @@ function generateInsights({ streak, progressPct, daysLeft, mbbs_year, planMode }
     return { habits, tips: tips.slice(0, 6) };
 }
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
-const inputSx = (editing) => ({
-    '& .MuiOutlinedInput-root': {
-        borderRadius: 2,
-        bgcolor: editing ? 'rgba(255,255,255,0.04)' : 'transparent',
-        transition: 'all 0.2s',
-        '& fieldset': { borderColor: editing ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)' },
-        '&:hover fieldset': { borderColor: editing ? 'rgba(99,102,241,0.45)' : 'rgba(255,255,255,0.05)' },
-        '&.Mui-focused fieldset': { borderColor: '#6366f1' },
-        '&.Mui-disabled': { bgcolor: 'transparent', opacity: 0.7 },
-        '& input, & .MuiSelect-select': { fontSize: 14 },
-    },
-    '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
-    '& .MuiInputLabel-root.Mui-focused': { color: '#818cf8' },
-});
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const ACCENT = {
+    indigo: '#6366f1',
+    purple: '#a855f7',
+    pink: '#ec4899',
+    indigoDim: 'rgba(99,102,241,0.12)',
+    purpleDim: 'rgba(168,85,247,0.12)',
+    pinkDim: 'rgba(236,72,153,0.10)',
+};
 
-function FieldLabel({ children }) {
+const GLASS = {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    backdropFilter: 'blur(16px)',
+};
+
+// ─── Motion variants ──────────────────────────────────────────────────────────
+const fadeUp = {
+    hidden: { opacity: 0, y: 22 },
+    visible: (i = 0) => ({
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.38, delay: i * 0.055, ease: [0.22, 1, 0.36, 1] },
+    }),
+};
+
+const slideDown = {
+    hidden: { opacity: 0, height: 0, overflow: 'hidden' },
+    visible: { opacity: 1, height: 'auto', overflow: 'visible', transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
+    exit: { opacity: 0, height: 0, overflow: 'hidden', transition: { duration: 0.22 } },
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function GlowBlob({ color, sx }) {
     return (
-        <Typography variant="caption" sx={{
-            display: 'block', mb: 0.75,
-            fontWeight: 700, fontSize: 10,
-            textTransform: 'uppercase', letterSpacing: '1px',
-            color: 'rgba(255,255,255,0.35)',
-        }}>
-            {children}
-        </Typography>
+        <Box
+            sx={{
+                position: 'absolute',
+                borderRadius: '50%',
+                filter: 'blur(64px)',
+                pointerEvents: 'none',
+                background: color,
+                ...sx,
+            }}
+        />
     );
 }
 
-// ─── SectionCard ──────────────────────────────────────────────────────────────
-function SectionCard({ icon, title, subtitle, accentColor = '#6366f1', badge, children, headerRight }) {
+function StatColumn({ icon, value, label, color, isLast }) {
     return (
-        <Paper elevation={0} sx={{
-            borderRadius: 4, overflow: 'hidden',
-            border: `1px solid ${accentColor}20`,
-            background: `linear-gradient(145deg, ${accentColor}08 0%, rgba(10,10,20,0.6) 100%)`,
-            backdropFilter: 'blur(12px)',
-        }}>
-            {/* Card header */}
-            <Stack direction="row" alignItems="center" justifyContent="space-between"
-                sx={{ px: 3, py: 2, borderBottom: `1px solid ${accentColor}15` }}>
-                <Stack direction="row" alignItems="center" gap={1.5}>
-                    <Box sx={{
-                        width: 32, height: 32, borderRadius: 2,
-                        background: `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: `0 4px 14px ${accentColor}35`,
+        <Box
+            sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 0.4,
+                position: 'relative',
+                '&:not(:last-child)::after': {
+                    content: '""',
+                    position: 'absolute',
+                    right: 0,
+                    top: '10%',
+                    height: '80%',
+                    width: '1px',
+                    background: 'rgba(255,255,255,0.08)',
+                },
+            }}
+        >
+            <Box sx={{ color, display: 'flex', alignItems: 'center' }}>{icon}</Box>
+            <Typography
+                sx={{
+                    fontSize: '1.75rem',
+                    fontWeight: 900,
+                    color,
+                    lineHeight: 1,
+                    letterSpacing: '-0.02em',
+                    fontVariantNumeric: 'tabular-nums',
+                }}
+            >
+                {value}
+            </Typography>
+            <Typography
+                sx={{
+                    fontSize: '0.6rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.38)',
+                }}
+            >
+                {label}
+            </Typography>
+        </Box>
+    );
+}
+
+function FieldRow({ icon, fieldLabel, value, isLast }) {
+    return (
+        <Box>
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    py: 1.75,
+                    px: 0.5,
+                    cursor: 'default',
+                    transition: 'background 0.18s',
+                    borderRadius: 2,
+                    '&:hover': { background: 'rgba(255,255,255,0.03)' },
+                }}
+            >
+                <Box
+                    sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 1.5,
+                        background: ACCENT.indigoDim,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: ACCENT.indigo,
                         flexShrink: 0,
-                    }}>
-                        {icon}
-                    </Box>
-                    <Box>
-                        <Typography variant="subtitle2" fontWeight={800} sx={{ letterSpacing: '-0.2px', lineHeight: 1.2 }}>
-                            {title}
-                        </Typography>
-                        {subtitle && (
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
-                                {subtitle}
-                            </Typography>
-                        )}
-                    </Box>
-                    {badge}
-                </Stack>
-                {headerRight}
-            </Stack>
-
-            <Box sx={{ p: 3 }}>
-                {children}
+                    }}
+                >
+                    {icon}
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                        sx={{
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase',
+                            color: 'rgba(255,255,255,0.3)',
+                            mb: 0.3,
+                        }}
+                    >
+                        {fieldLabel}
+                    </Typography>
+                    <Typography
+                        sx={{
+                            fontSize: '0.925rem',
+                            fontWeight: 500,
+                            color: value ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.28)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {value || 'Not set'}
+                    </Typography>
+                </Box>
+                <Box sx={{ color: 'rgba(255,255,255,0.18)', fontSize: '1rem', flexShrink: 0 }}>›</Box>
             </Box>
-        </Paper>
+            {!isLast && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', ml: 6.5 }} />}
+        </Box>
     );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+function HabitRow({ habit, index }) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.07, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        >
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    py: 1.1,
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box
+                        sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: habit.color,
+                            flexShrink: 0,
+                            boxShadow: `0 0 8px ${habit.color}80`,
+                        }}
+                    />
+                    <Typography sx={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>
+                        {habit.label}
+                    </Typography>
+                </Box>
+                <Chip
+                    label={habit.value}
+                    size="small"
+                    sx={{
+                        height: 22,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.02em',
+                        background: `${habit.color}1a`,
+                        color: habit.color,
+                        border: `1px solid ${habit.color}40`,
+                        '& .MuiChip-label': { px: 1.2 },
+                    }}
+                />
+            </Box>
+        </motion.div>
+    );
+}
+
+function TipCard({ tip, index }) {
+    const accentColors = [ACCENT.indigo, ACCENT.purple, ACCENT.pink, ACCENT.indigo, ACCENT.purple, ACCENT.pink];
+    const accent = accentColors[index % accentColors.length];
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.07, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -2, transition: { duration: 0.18 } }}
+        >
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1.5,
+                    p: 1.75,
+                    borderRadius: 2,
+                    background: 'rgba(255,255,255,0.025)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderLeft: `3px solid ${accent}`,
+                    transition: 'box-shadow 0.2s, background 0.2s',
+                    cursor: 'default',
+                    '&:hover': {
+                        background: 'rgba(255,255,255,0.04)',
+                        boxShadow: `0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px ${accent}22`,
+                    },
+                }}
+            >
+                <Typography sx={{ fontSize: '1.15rem', lineHeight: 1.4, flexShrink: 0, mt: 0.1 }}>
+                    {tip.icon}
+                </Typography>
+                <Typography sx={{ fontSize: '0.835rem', color: 'rgba(255,255,255,0.68)', lineHeight: 1.65, fontWeight: 400 }}>
+                    {tip.text}
+                </Typography>
+            </Box>
+        </motion.div>
+    );
+}
+
+// ─── Shared MUI sx overrides for dark inputs ──────────────────────────────────
+const darkInput = {
+    '& .MuiOutlinedInput-root': {
+        background: 'rgba(255,255,255,0.04)',
+        borderRadius: 1.5,
+        fontSize: '0.9rem',
+        '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.22)' },
+        '&.Mui-focused fieldset': { borderColor: ACCENT.indigo },
+        '& input': { color: 'rgba(255,255,255,0.88)' },
+        '& .MuiSelect-select': { color: 'rgba(255,255,255,0.88)' },
+    },
+    '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.38)', fontSize: '0.85rem' },
+    '& .MuiInputLabel-root.Mui-focused': { color: ACCENT.indigo },
+    '& .MuiAutocomplete-input': { color: 'rgba(255,255,255,0.88)' },
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function ProfilePage() {
     const { userProfile, updateOnboardingProfile, logout, deleteAccount } = useAuth();
     const { studyPlan, analyticsData, todayData, getStudyPlan, fetchAnalytics, fetchToday } = useStudyContext();
@@ -200,14 +395,7 @@ export default function ProfilePage() {
             college: userProfile.college || '',
             country: userProfile.country || 'India',
         });
-    }, [
-        isEditing,
-        userProfile?.uid,
-        userProfile?.displayName,
-        userProfile?.mbbs_year,
-        userProfile?.college,
-        userProfile?.country,
-    ]);
+    }, [isEditing, userProfile?.uid, userProfile?.displayName, userProfile?.mbbs_year, userProfile?.college, userProfile?.country]);
 
     useEffect(() => {
         if (!studyPlan) getStudyPlan();
@@ -240,13 +428,15 @@ export default function ProfilePage() {
         finally { setDeleting(false); }
     };
 
+    // Loading state
     if (!userProfile) return (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 2 }}>
-            <CircularProgress size={28} /><Typography color="text.secondary">Loading…</Typography>
+            <CircularProgress size={28} sx={{ color: ACCENT.indigo }} />
+            <Typography color="text.secondary">Loading…</Typography>
         </Box>
     );
 
-    // ── Metrics ──────────────────────────────────────────────────────────────
+    // Computed metrics
     const streak = analyticsData?.streak?.current || 0;
     const progressTotal = studyPlan?.analytics?.total_tasks || 0;
     const progressDone = studyPlan?.analytics?.completed || 0;
@@ -257,513 +447,859 @@ export default function ProfilePage() {
         () => generateInsights({ streak, progressPct, daysLeft, mbbs_year: userProfile.mbbs_year, planMode }),
         [streak, progressPct, daysLeft, userProfile.mbbs_year, planMode]
     );
-
+    const yearLabel = YEARS.find(y => y.value === userProfile.mbbs_year)?.label || `Year ${userProfile.mbbs_year || '?'}`;
     const STAT_ITEMS = [
-        { icon: <FireIcon sx={{ fontSize: 20 }} />, value: `${streak}d`, label: 'Streak', color: '#f97316' },
-        { icon: <TrendIcon sx={{ fontSize: 20 }} />, value: progressPct !== null ? `${progressPct}%` : '—', label: 'Progress', color: '#6366f1' },
-        { icon: <SparkleIcon sx={{ fontSize: 20 }} />, value: progressDone > 0 ? `${progressDone}` : '—', label: 'Tasks Done', color: '#a855f7' },
-        { icon: <TimerIcon sx={{ fontSize: 20 }} />, value: daysLeft !== null && daysLeft > 0 ? `${daysLeft}d` : '—', label: 'To Exam', color: daysLeft !== null && daysLeft < 14 ? '#ef4444' : daysLeft !== null && daysLeft < 30 ? '#f59e0b' : '#22c55e' },
+        { icon: <FireIcon sx={{ fontSize: 22 }} />, value: `${streak}d`, label: 'Streak', color: '#f97316' },
+        { icon: <TrendIcon sx={{ fontSize: 22 }} />, value: progressPct !== null ? `${progressPct}%` : '—', label: 'Progress', color: '#6366f1' },
+        { icon: <SparkleIcon sx={{ fontSize: 22 }} />, value: progressDone > 0 ? `${progressDone}` : '—', label: 'Tasks Done', color: '#a855f7' },
+        { icon: <TimerIcon sx={{ fontSize: 22 }} />, value: daysLeft !== null && daysLeft > 0 ? `${daysLeft}d` : '—', label: 'To Exam', color: daysLeft !== null && daysLeft < 14 ? '#ef4444' : daysLeft !== null && daysLeft < 30 ? '#f59e0b' : '#22c55e' },
     ];
 
-    const yearLabel = YEARS.find(y => y.value === userProfile.mbbs_year)?.label || `Year ${userProfile.mbbs_year || '?'}`;
+    const collegeOptions = Array.isArray(collegesData) ? collegesData : [];
+    const avatarLetter = (userProfile.displayName || userProfile.email || 'M')[0].toUpperCase();
 
     return (
-        <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 1.5, sm: 2.5, md: 3 }, pb: { xs: 12, md: 8 } }}>
-
-            {/* ══ PAGE HEADER ══════════════════════════════════════════════════ */}
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <Stack direction="row" alignItems="flex-end" justifyContent="space-between" sx={{ mb: { xs: 3, md: 4 } }}>
-                    <Box>
-                        <Typography variant="caption" sx={{
-                            fontWeight: 800, fontSize: 10.5, letterSpacing: '0.16em',
-                            textTransform: 'uppercase', color: 'rgba(99,102,241,0.7)',
-                        }}>
-                            Your Profile
-                        </Typography>
-                        <Typography variant="h3" fontWeight={900} sx={{
-                            fontSize: { xs: '1.6rem', sm: '2rem', md: '2.4rem' },
-                            letterSpacing: '-2px', lineHeight: 1, mt: 0.25,
-                        }}>
-                            Command{' '}
-                            <Box component="span" sx={{
-                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 60%, #ec4899 100%)',
-                                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                            }}>
-                                Center
-                            </Box>
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: 13, letterSpacing: '-0.1px' }}>
-                            Your profile, study fingerprint &amp; AI insights.
-                        </Typography>
-                    </Box>
-                    <Button
-                        variant="text" size="small"
-                        startIcon={<LogoutIcon sx={{ fontSize: '14px !important' }} />}
-                        onClick={handleLogout}
+        <Box
+            component={motion.div}
+            initial="hidden"
+            animate="visible"
+            sx={{
+                minHeight: '100vh',
+                background: '#080810',
+                px: { xs: 2, sm: 3, md: 4 },
+                py: { xs: 3, md: 4 },
+                maxWidth: 1200,
+                mx: 'auto',
+            }}
+        >
+            {/* ── Page heading ── */}
+            <motion.div variants={fadeUp} custom={0}>
+                <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box
                         sx={{
-                            borderRadius: 2.5, textTransform: 'none', fontWeight: 700, fontSize: 12.5,
-                            color: 'rgba(255,255,255,0.3)', px: 2, py: 0.9,
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            '&:hover': { borderColor: '#ef4444', color: '#ef4444', bgcolor: 'rgba(239,68,68,0.06)' },
-                            transition: 'all 0.2s',
-                            mb: 0.5,
+                            width: 32,
+                            height: 32,
+                            borderRadius: 1.5,
+                            background: `linear-gradient(135deg, ${ACCENT.indigo}, ${ACCENT.purple})`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        Sign out
-                    </Button>
-                </Stack>
+                        <PersonIcon sx={{ fontSize: 17, color: '#fff' }} />
+                    </Box>
+                    <Box>
+                        <Typography
+                            sx={{
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                letterSpacing: '0.14em',
+                                textTransform: 'uppercase',
+                                color: 'rgba(255,255,255,0.28)',
+                            }}
+                        >
+                            Cortex
+                        </Typography>
+                        <Typography
+                            sx={{
+                                fontSize: '1.25rem',
+                                fontWeight: 800,
+                                color: 'rgba(255,255,255,0.9)',
+                                lineHeight: 1,
+                                letterSpacing: '-0.02em',
+                            }}
+                        >
+                            Command Center
+                        </Typography>
+                    </Box>
+                </Box>
             </motion.div>
 
-            {userProfile?._fallback && (
-                <Alert severity="warning" sx={{ mb: 3, borderRadius: 3 }}>
-                    Offline mode — changes may not save until the backend is reachable.
-                </Alert>
-            )}
+            {/* ── Hero Card ── */}
+            <motion.div variants={fadeUp} custom={1}>
+                <Box
+                    sx={{
+                        position: 'relative',
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        mb: 3,
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        background: 'linear-gradient(145deg, rgba(99,102,241,0.18) 0%, rgba(17,14,34,0.95) 40%, rgba(168,85,247,0.12) 100%)',
+                        backdropFilter: 'blur(24px)',
+                    }}
+                >
+                    {/* Glow blobs */}
+                    <GlowBlob color={`${ACCENT.indigo}55`} sx={{ width: 320, height: 320, top: -100, left: -60, opacity: 0.7 }} />
+                    <GlowBlob color={`${ACCENT.purple}40`} sx={{ width: 240, height: 240, top: -40, right: 80, opacity: 0.5 }} />
+                    <GlowBlob color={`${ACCENT.pink}30`} sx={{ width: 180, height: 180, bottom: -60, right: -20, opacity: 0.45 }} />
 
-            {/* ══ HERO IDENTITY CARD ═══════════════════════════════════════════ */}
-            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.05 }}>
-                <Paper elevation={0} sx={{
-                    mb: { xs: 2.5, md: 3 }, borderRadius: 4,
-                    border: '1px solid rgba(99,102,241,0.22)',
-                    background: 'linear-gradient(135deg, rgba(15,12,30,0.97) 0%, rgba(20,15,42,0.97) 100%)',
-                    overflow: 'hidden', position: 'relative',
-                }}>
-                    {/* Ambient glow blobs */}
-                    <Box sx={{ position: 'absolute', top: -80, right: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-                    <Box sx={{ position: 'absolute', bottom: -60, left: '25%', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                    <Box sx={{ position: 'relative', zIndex: 1, px: { xs: 2.5, md: 4 }, pt: { xs: 3, md: 3.5 }, pb: 0 }}>
+                        {/* Avatar + name row */}
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 2, md: 3 }, flexWrap: 'wrap' }}>
+                            {/* Avatar with gradient ring */}
+                            <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                                <Box
+                                    sx={{
+                                        width: 108,
+                                        height: 108,
+                                        borderRadius: '50%',
+                                        background: `linear-gradient(135deg, ${ACCENT.indigo}, ${ACCENT.purple}, ${ACCENT.pink})`,
+                                        p: '3px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <Avatar
+                                        src={userProfile.photoURL || undefined}
+                                        sx={{
+                                            width: 102,
+                                            height: 102,
+                                            fontSize: '2.4rem',
+                                            fontWeight: 900,
+                                            background: 'linear-gradient(135deg, #1e1b4b, #2e1065)',
+                                            color: '#fff',
+                                            border: '3px solid #080810',
+                                        }}
+                                    >
+                                        {avatarLetter}
+                                    </Avatar>
+                                </Box>
+                                {/* Online dot */}
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        bottom: 6,
+                                        right: 6,
+                                        width: 14,
+                                        height: 14,
+                                        borderRadius: '50%',
+                                        background: '#22c55e',
+                                        border: '2.5px solid #080810',
+                                        boxShadow: '0 0 8px #22c55e80',
+                                    }}
+                                />
+                            </Box>
 
-                    <Box sx={{ p: { xs: 2.5, sm: 3, md: 3.5 }, position: 'relative', zIndex: 1 }}>
-                        <Grid container spacing={{ xs: 3, md: 4 }} alignItems="center">
+                            {/* Name + meta */}
+                            <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.6 }}>
+                                    <Typography
+                                        sx={{
+                                            fontSize: { xs: '1.5rem', md: '1.85rem' },
+                                            fontWeight: 900,
+                                            color: '#fff',
+                                            letterSpacing: '-0.03em',
+                                            lineHeight: 1.1,
+                                        }}
+                                    >
+                                        {userProfile.displayName || 'Student'}
+                                    </Typography>
+                                    <Chip
+                                        label={yearLabel}
+                                        size="small"
+                                        sx={{
+                                            height: 22,
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: `linear-gradient(90deg, ${ACCENT.indigo}33, ${ACCENT.purple}33)`,
+                                            color: ACCENT.purple,
+                                            border: `1px solid ${ACCENT.purple}50`,
+                                            letterSpacing: '0.02em',
+                                            '& .MuiChip-label': { px: 1.2 },
+                                        }}
+                                    />
+                                </Box>
 
-                            {/* Identity block */}
-                            <Grid item xs={12} sm={7} md={8}>
-                                <Stack direction="row" alignItems="center" gap={{ xs: 2.5, md: 3 }}>
-                                    {/* Avatar with ring */}
-                                    <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                                        <Box sx={{
-                                            position: 'absolute', inset: -3, borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)',
-                                            zIndex: 0,
-                                        }} />
-                                        <Avatar src={userProfile.photoURL} sx={{
-                                            width: { xs: 68, md: 84 }, height: { xs: 68, md: 84 },
-                                            position: 'relative', zIndex: 1,
-                                            border: '3px solid rgba(10,10,20,1)',
-                                            background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                                            fontSize: { xs: '1.5rem', md: '1.9rem' },
-                                            fontWeight: 800,
-                                        }} />
-                                        {/* Online dot */}
-                                        <Box sx={{
-                                            position: 'absolute', bottom: 2, right: 2,
-                                            width: 13, height: 13, borderRadius: '50%',
-                                            bgcolor: '#22c55e',
-                                            border: '2.5px solid rgba(10,10,20,1)',
-                                            zIndex: 2,
-                                            boxShadow: '0 0 8px rgba(34,197,94,0.7)',
-                                        }} />
-                                    </Box>
-
-                                    {/* Name + metadata */}
-                                    <Box sx={{ minWidth: 0 }}>
-                                        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" sx={{ mb: 0.5 }}>
-                                            <Typography fontWeight={900} sx={{
-                                                fontSize: { xs: '1.2rem', md: '1.45rem' },
-                                                letterSpacing: '-0.5px', lineHeight: 1,
-                                            }}>
-                                                {userProfile.displayName || 'Doctor'}
+                                {/* Email / College / Country row */}
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0,
+                                        flexWrap: 'wrap',
+                                        color: 'rgba(255,255,255,0.4)',
+                                        fontSize: '0.8rem',
+                                        rowGap: 0.4,
+                                    }}
+                                >
+                                    {userProfile.email && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 2 }}>
+                                            <EmailIcon sx={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }} />
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.8rem',
+                                                    color: 'rgba(255,255,255,0.42)',
+                                                    maxWidth: 200,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {userProfile.email}
                                             </Typography>
-                                            <Chip
-                                                label={yearLabel}
+                                        </Box>
+                                    )}
+                                    {userProfile.college && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 2 }}>
+                                            <SchoolIcon sx={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }} />
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '0.8rem',
+                                                    color: 'rgba(255,255,255,0.42)',
+                                                    maxWidth: 180,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {userProfile.college}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    {userProfile.country && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <LocationIcon sx={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }} />
+                                            <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.42)' }}>
+                                                {userProfile.country}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Box>
+                        </Box>
+
+                        {/* Stats row */}
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                mt: 3,
+                                pt: 2.5,
+                                borderTop: '1px solid rgba(255,255,255,0.07)',
+                            }}
+                        >
+                            {STAT_ITEMS.map((stat, i) => (
+                                <StatColumn
+                                    key={stat.label}
+                                    icon={stat.icon}
+                                    value={stat.value}
+                                    label={stat.label}
+                                    color={stat.color}
+                                    isLast={i === STAT_ITEMS.length - 1}
+                                />
+                            ))}
+                        </Box>
+                    </Box>
+
+                    {/* Bottom accent line */}
+                    <Box
+                        sx={{
+                            height: 2,
+                            background: `linear-gradient(90deg, ${ACCENT.indigo}, ${ACCENT.purple}, ${ACCENT.pink}, transparent)`,
+                            opacity: 0.6,
+                        }}
+                    />
+                </Box>
+            </motion.div>
+
+            {/* ── Two column layout ── */}
+            <Grid container spacing={2.5} alignItems="flex-start">
+
+                {/* ─── LEFT COLUMN: Profile Settings ─── */}
+                <Grid item xs={12} md={5}>
+                    <motion.div variants={fadeUp} custom={2}>
+                        <Box
+                            sx={{
+                                borderRadius: 3,
+                                border: GLASS.border,
+                                background: GLASS.background,
+                                backdropFilter: GLASS.backdropFilter,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {/* Section header */}
+                            <Box
+                                sx={{
+                                    px: 2.5,
+                                    pt: 2.5,
+                                    pb: 1.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <PersonIcon sx={{ fontSize: 17, color: ACCENT.indigo }} />
+                                    <Typography
+                                        sx={{
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.06em',
+                                            textTransform: 'uppercase',
+                                            color: 'rgba(255,255,255,0.5)',
+                                        }}
+                                    >
+                                        Profile
+                                    </Typography>
+                                </Box>
+                                {!isEditing && (
+                                    <Button
+                                        size="small"
+                                        startIcon={<EditIcon sx={{ fontSize: '14px !important' }} />}
+                                        onClick={() => setIsEditing(true)}
+                                        sx={{
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600,
+                                            color: ACCENT.indigo,
+                                            background: ACCENT.indigoDim,
+                                            border: `1px solid ${ACCENT.indigo}30`,
+                                            borderRadius: 1.5,
+                                            px: 1.5,
+                                            py: 0.5,
+                                            textTransform: 'none',
+                                            minWidth: 0,
+                                            '&:hover': { background: `${ACCENT.indigo}25` },
+                                        }}
+                                    >
+                                        Edit
+                                    </Button>
+                                )}
+                            </Box>
+
+                            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', mx: 2.5 }} />
+
+                            {/* View mode fields */}
+                            <AnimatePresence mode="wait">
+                                {!isEditing ? (
+                                    <motion.div
+                                        key="view"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.18 }}
+                                    >
+                                        <Box sx={{ px: 2, pt: 1, pb: 1.5 }}>
+                                            <FieldRow
+                                                icon={<PersonIcon sx={{ fontSize: 17 }} />}
+                                                fieldLabel="Full Name"
+                                                value={userProfile.displayName}
+                                            />
+                                            <FieldRow
+                                                icon={<SchoolIcon sx={{ fontSize: 17 }} />}
+                                                fieldLabel="MBBS Year"
+                                                value={yearLabel}
+                                                isLast
+                                            />
+                                        </Box>
+                                        <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', mx: 2.5 }} />
+                                        <Box sx={{ px: 2, pt: 1, pb: 1.5 }}>
+                                            <FieldRow
+                                                icon={<SchoolIcon sx={{ fontSize: 17 }} />}
+                                                fieldLabel="College"
+                                                value={userProfile.college}
+                                            />
+                                            <FieldRow
+                                                icon={<LocationIcon sx={{ fontSize: 17 }} />}
+                                                fieldLabel="Country"
+                                                value={userProfile.country}
+                                                isLast
+                                            />
+                                        </Box>
+                                    </motion.div>
+                                ) : (
+                                    /* Edit mode */
+                                    <motion.div
+                                        key="edit"
+                                        variants={slideDown}
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
+                                    >
+                                        <Box sx={{ px: 2.5, pt: 2, pb: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                            <TextField
+                                                label="Full Name"
+                                                value={form.displayName}
+                                                onChange={handleField('displayName')}
+                                                fullWidth
+                                                size="small"
+                                                sx={darkInput}
+                                                InputProps={{ startAdornment: <PersonIcon sx={{ fontSize: 16, mr: 1, color: 'rgba(255,255,255,0.3)' }} /> }}
+                                            />
+                                            <TextField
+                                                select
+                                                label="MBBS Year"
+                                                value={form.mbbs_year}
+                                                onChange={handleField('mbbs_year')}
+                                                fullWidth
                                                 size="small"
                                                 sx={{
-                                                    height: 20, fontSize: 10, fontWeight: 800,
-                                                    bgcolor: 'rgba(99,102,241,0.15)',
-                                                    color: '#a5b4fc',
-                                                    border: '1px solid rgba(99,102,241,0.28)',
-                                                    borderRadius: 1.5,
+                                                    ...darkInput,
+                                                    '& .MuiSvgIcon-root': { color: 'rgba(255,255,255,0.4)' },
                                                 }}
-                                            />
-                                        </Stack>
-
-                                        <Stack direction="row" gap={2} flexWrap="wrap" sx={{ mt: 1 }}>
-                                            {[
-                                                { icon: <EmailIcon sx={{ fontSize: 11 }} />, text: userProfile.email },
-                                                userProfile.college && { icon: <SchoolIcon sx={{ fontSize: 11 }} />, text: userProfile.college },
-                                                userProfile.country && { icon: <LocationIcon sx={{ fontSize: 11 }} />, text: userProfile.country },
-                                            ].filter(Boolean).map((item, i) => (
-                                                <Typography key={i} color="text.secondary" sx={{
-                                                    display: 'flex', alignItems: 'center', gap: 0.5,
-                                                    fontSize: 11.5, lineHeight: 1.4,
-                                                    maxWidth: { xs: 200, sm: 260, md: 'none' },
-                                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                                }}>
-                                                    {item.icon}{item.text}
-                                                </Typography>
-                                            ))}
-                                        </Stack>
-                                    </Box>
-                                </Stack>
-                            </Grid>
-
-                            {/* Stats row */}
-                            <Grid item xs={12} sm={5} md={4}>
-                                <Grid container spacing={1.5}>
-                                    {STAT_ITEMS.map((s, i) => (
-                                        <Grid item xs={6} key={i}>
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.92 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 0.1 + i * 0.06 }}
                                             >
-                                                <Box sx={{
-                                                    p: { xs: 1.75, md: 2 }, borderRadius: 3,
-                                                    background: `${s.color}10`,
-                                                    border: `1px solid ${s.color}22`,
-                                                    position: 'relative', overflow: 'hidden',
-                                                }}>
-                                                    <Box sx={{ color: s.color, mb: 0.75, display: 'flex' }}>{s.icon}</Box>
-                                                    <Typography fontWeight={900} sx={{
-                                                        color: s.color,
-                                                        fontSize: { xs: '1.15rem', md: '1.35rem' },
-                                                        letterSpacing: '-0.5px', lineHeight: 1,
-                                                    }}>
-                                                        {s.value}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, fontWeight: 700, mt: 0.25, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                        {s.label}
-                                                    </Typography>
-                                                </Box>
-                                            </motion.div>
-                                        </Grid>
-                                    ))}
-                                </Grid>
-                            </Grid>
-                        </Grid>
-                    </Box>
-                </Paper>
-            </motion.div>
-
-            {/* ══ MAIN GRID ════════════════════════════════════════════════════ */}
-            <Grid container spacing={{ xs: 2, md: 2.5 }} alignItems="flex-start">
-
-                {/* ── LEFT COLUMN ──────────────────────────────────────────── */}
-                <Grid item xs={12} md={5}>
-                    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-                        <Stack spacing={2.5}>
-
-                            {/* Account Settings */}
-                            <SectionCard
-                                icon={<PersonIcon sx={{ color: '#fff', fontSize: 15 }} />}
-                                title="Account Settings"
-                                accentColor="#6366f1"
-                                headerRight={
-                                    <AnimatePresence mode="wait">
-                                        {!isEditing ? (
-                                            <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                                <Button
-                                                    size="small"
-                                                    startIcon={<EditIcon sx={{ fontSize: '12px !important' }} />}
-                                                    onClick={() => setIsEditing(true)}
-                                                    sx={{
-                                                        borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 12,
-                                                        color: '#818cf8', px: 1.5, py: 0.7, minWidth: 0,
-                                                        border: '1px solid rgba(99,102,241,0.2)',
-                                                        '&:hover': { bgcolor: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.4)' },
-                                                    }}>
-                                                    Edit
-                                                </Button>
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div key="save" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                                <Stack direction="row" gap={0.75}>
-                                                    <Button size="small" onClick={cancelEdit} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, fontSize: 12, color: 'text.secondary', px: 1.5, py: 0.7, minWidth: 0 }}>
-                                                        Cancel
-                                                    </Button>
-                                                    <Button
-                                                        size="small" variant="contained" onClick={handleSave} disabled={saving}
-                                                        startIcon={saving ? <CircularProgress size={11} color="inherit" /> : <CheckIcon sx={{ fontSize: '12px !important' }} />}
-                                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #a855f7)', boxShadow: 'none', px: 1.75, py: 0.7, minWidth: 0 }}>
-                                                        Save
-                                                    </Button>
-                                                </Stack>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                }
-                            >
-                                <AnimatePresence>
-                                    {(error || success) && (
-                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                            <Alert severity={error ? 'error' : 'success'} sx={{ mb: 2.5, borderRadius: 2, py: 0.5 }} onClose={() => { setError(''); setSuccess(''); }}>
-                                                {error || success}
-                                            </Alert>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                <Stack spacing={2.5}>
-                                    <Box>
-                                        <FieldLabel>Display Name</FieldLabel>
-                                        <TextField fullWidth size="small" value={form.displayName}
-                                            onChange={handleField('displayName')} disabled={!isEditing}
-                                            placeholder="Your name" sx={inputSx(isEditing)} />
-                                    </Box>
-
-                                    <Box>
-                                        <FieldLabel>Academic Stage</FieldLabel>
-                                        <TextField select fullWidth size="small" value={form.mbbs_year}
-                                            onChange={handleField('mbbs_year')} disabled={!isEditing} sx={inputSx(isEditing)}>
-                                            {YEARS.map(y => <MenuItem key={y.value} value={y.value}>{y.label}</MenuItem>)}
-                                        </TextField>
-                                    </Box>
-
-                                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
-
-                                    <Box>
-                                        <FieldLabel>Institution</FieldLabel>
-                                        {isEditing ? (
-                                            <Autocomplete freeSolo options={collegesData.colleges} value={form.college}
-                                                onChange={(_, v) => handleCollege(v)} onInputChange={(_, v) => handleCollege(v)}
-                                                size="small"
+                                                {YEARS.map(y => (
+                                                    <MenuItem key={y.value} value={y.value} sx={{ fontSize: '0.88rem' }}>
+                                                        {y.label}
+                                                    </MenuItem>
+                                                ))}
+                                            </TextField>
+                                            <Autocomplete
+                                                freeSolo
+                                                options={collegeOptions}
+                                                value={form.college}
+                                                onInputChange={(_, v) => handleCollege(v)}
                                                 renderInput={(params) => (
-                                                    <TextField {...params} fullWidth placeholder="e.g. AIIMS Delhi" sx={inputSx(true)} />
-                                                )} />
-                                        ) : (
-                                            <TextField fullWidth size="small" value={form.college || '—'} disabled sx={inputSx(false)} />
-                                        )}
-                                    </Box>
+                                                    <TextField
+                                                        {...params}
+                                                        label="College"
+                                                        size="small"
+                                                        sx={darkInput}
+                                                        InputProps={{
+                                                            ...params.InputProps,
+                                                            startAdornment: <SchoolIcon sx={{ fontSize: 16, mr: 1, color: 'rgba(255,255,255,0.3)' }} />,
+                                                        }}
+                                                    />
+                                                )}
+                                                PaperComponent={({ children, ...p }) => (
+                                                    <Paper
+                                                        {...p}
+                                                        sx={{
+                                                            background: '#13111f',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: 2,
+                                                            mt: 0.5,
+                                                            '& .MuiAutocomplete-option': {
+                                                                fontSize: '0.85rem',
+                                                                color: 'rgba(255,255,255,0.78)',
+                                                                '&:hover': { background: ACCENT.indigoDim },
+                                                            },
+                                                        }}
+                                                    >
+                                                        {children}
+                                                    </Paper>
+                                                )}
+                                            />
+                                            <TextField
+                                                select
+                                                label="Country"
+                                                value={form.country}
+                                                onChange={handleField('country')}
+                                                fullWidth
+                                                size="small"
+                                                sx={{
+                                                    ...darkInput,
+                                                    '& .MuiSvgIcon-root': { color: 'rgba(255,255,255,0.4)' },
+                                                }}
+                                            >
+                                                {COUNTRIES.map(c => (
+                                                    <MenuItem key={c} value={c} sx={{ fontSize: '0.88rem' }}>
+                                                        {c}
+                                                    </MenuItem>
+                                                ))}
+                                            </TextField>
 
-                                    <Box>
-                                        <FieldLabel>
-                                            Country
-                                            {isEditing && (
-                                                <Box component="span" sx={{ ml: 1, color: '#818cf8', fontWeight: 600 }}>
-                                                    · auto-detected from college
-                                                </Box>
-                                            )}
-                                        </FieldLabel>
-                                        <TextField select fullWidth size="small" value={form.country}
-                                            onChange={handleField('country')} disabled={!isEditing} sx={inputSx(isEditing)}>
-                                            {COUNTRIES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                                        </TextField>
-                                    </Box>
-                                </Stack>
-                            </SectionCard>
+                                            <AnimatePresence>
+                                                {error && (
+                                                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                                                        <Alert
+                                                            severity="error"
+                                                            sx={{
+                                                                background: 'rgba(239,68,68,0.1)',
+                                                                border: '1px solid rgba(239,68,68,0.25)',
+                                                                color: '#fca5a5',
+                                                                fontSize: '0.82rem',
+                                                                '& .MuiAlert-icon': { color: '#ef4444' },
+                                                            }}
+                                                        >
+                                                            {error}
+                                                        </Alert>
+                                                    </motion.div>
+                                                )}
+                                                {success && (
+                                                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                                                        <Alert
+                                                            severity="success"
+                                                            sx={{
+                                                                background: 'rgba(34,197,94,0.1)',
+                                                                border: '1px solid rgba(34,197,94,0.25)',
+                                                                color: '#86efac',
+                                                                fontSize: '0.82rem',
+                                                                '& .MuiAlert-icon': { color: '#22c55e' },
+                                                            }}
+                                                        >
+                                                            {success}
+                                                        </Alert>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
 
-                            {/* Danger Zone */}
-                            <Paper elevation={0} sx={{
-                                borderRadius: 4, overflow: 'hidden',
-                                border: '1px solid rgba(239,68,68,0.14)',
-                                background: 'rgba(239,68,68,0.02)',
-                            }}>
-                                <Stack direction="row" alignItems="center" gap={1.5}
-                                    sx={{ px: 3, py: 2, borderBottom: '1px solid rgba(239,68,68,0.08)' }}>
-                                    <Box sx={{
-                                        width: 32, height: 32, borderRadius: 2,
-                                        bgcolor: 'rgba(239,68,68,0.1)',
-                                        border: '1px solid rgba(239,68,68,0.2)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    }}>
-                                        <WarningIcon sx={{ fontSize: 15, color: '#ef4444' }} />
-                                    </Box>
-                                    <Typography variant="subtitle2" fontWeight={800} color="#ef4444" sx={{ letterSpacing: '-0.2px' }}>
-                                        Danger Zone
-                                    </Typography>
-                                </Stack>
-                                <Box sx={{ px: 3, py: 2.5 }}>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, lineHeight: 1.7, fontSize: 13 }}>
-                                        Permanently deletes your account and all associated data. This cannot be undone.
-                                    </Typography>
-                                    <Button
-                                        variant="outlined" color="error" size="small"
-                                        startIcon={<DeleteIcon sx={{ fontSize: '14px !important' }} />}
-                                        onClick={() => setDeleteOpen(true)}
-                                        sx={{ borderRadius: 2.5, fontWeight: 700, textTransform: 'none', fontSize: 13, py: 0.9 }}>
-                                        Delete Account
-                                    </Button>
-                                </Box>
-                            </Paper>
+                                            <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                                <Button
+                                                    variant="contained"
+                                                    onClick={handleSave}
+                                                    disabled={saving}
+                                                    fullWidth
+                                                    startIcon={saving ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <CheckIcon sx={{ fontSize: '16px !important' }} />}
+                                                    sx={{
+                                                        background: `linear-gradient(90deg, ${ACCENT.indigo}, ${ACCENT.purple})`,
+                                                        color: '#fff',
+                                                        fontWeight: 700,
+                                                        fontSize: '0.82rem',
+                                                        textTransform: 'none',
+                                                        borderRadius: 1.5,
+                                                        py: 1,
+                                                        boxShadow: `0 4px 20px ${ACCENT.indigo}50`,
+                                                        '&:hover': {
+                                                            background: `linear-gradient(90deg, #4f46e5, #9333ea)`,
+                                                            boxShadow: `0 6px 28px ${ACCENT.indigo}70`,
+                                                        },
+                                                        '&:disabled': { opacity: 0.6 },
+                                                    }}
+                                                >
+                                                    {saving ? 'Saving…' : 'Save Changes'}
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    onClick={cancelEdit}
+                                                    disabled={saving}
+                                                    sx={{
+                                                        color: 'rgba(255,255,255,0.5)',
+                                                        borderColor: 'rgba(255,255,255,0.12)',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.82rem',
+                                                        textTransform: 'none',
+                                                        borderRadius: 1.5,
+                                                        py: 1,
+                                                        minWidth: 80,
+                                                        '&:hover': {
+                                                            borderColor: 'rgba(255,255,255,0.25)',
+                                                            background: 'rgba(255,255,255,0.04)',
+                                                        },
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </Box>
+                                        </Box>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </Box>
+                    </motion.div>
 
-                        </Stack>
+                    {/* ── Account Actions ── */}
+                    <motion.div variants={fadeUp} custom={3}>
+                        <Box sx={{ mt: 2, display: 'flex', gap: 1.5 }}>
+                            <Button
+                                fullWidth
+                                startIcon={<LogoutIcon sx={{ fontSize: '16px !important' }} />}
+                                onClick={handleLogout}
+                                sx={{
+                                    color: 'rgba(255,255,255,0.5)',
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: 2,
+                                    py: 1.25,
+                                    fontWeight: 600,
+                                    fontSize: '0.82rem',
+                                    textTransform: 'none',
+                                    '&:hover': {
+                                        background: 'rgba(255,255,255,0.07)',
+                                        color: 'rgba(255,255,255,0.75)',
+                                    },
+                                }}
+                            >
+                                Sign Out
+                            </Button>
+                        </Box>
+                    </motion.div>
+
+                    {/* ── Danger Zone ── */}
+                    <motion.div variants={fadeUp} custom={4}>
+                        <Box
+                            sx={{
+                                mt: 2,
+                                p: 2,
+                                borderRadius: 2,
+                                border: '1px solid rgba(239,68,68,0.15)',
+                                background: 'rgba(239,68,68,0.04)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 2,
+                            }}
+                        >
+                            <Box>
+                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#ef4444', mb: 0.2 }}>
+                                    Delete Account
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.28)', lineHeight: 1.4 }}>
+                                    Permanently removes all your data
+                                </Typography>
+                            </Box>
+                            <Button
+                                size="small"
+                                startIcon={<DeleteIcon sx={{ fontSize: '14px !important' }} />}
+                                onClick={() => setDeleteOpen(true)}
+                                sx={{
+                                    color: '#ef4444',
+                                    background: 'rgba(239,68,68,0.08)',
+                                    border: '1px solid rgba(239,68,68,0.2)',
+                                    borderRadius: 1.5,
+                                    px: 1.5,
+                                    py: 0.75,
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    textTransform: 'none',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                    '&:hover': { background: 'rgba(239,68,68,0.15)' },
+                                }}
+                            >
+                                Delete
+                            </Button>
+                        </Box>
                     </motion.div>
                 </Grid>
 
-                {/* ── RIGHT COLUMN ─────────────────────────────────────────── */}
+                {/* ─── RIGHT COLUMN: Study Intelligence ─── */}
                 <Grid item xs={12} md={7}>
-                    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
-                        <Stack spacing={2.5}>
 
-                            {/* Study Fingerprint */}
-                            <SectionCard
-                                icon={<BrainIcon sx={{ color: '#fff', fontSize: 15 }} />}
-                                title="Study Fingerprint"
-                                subtitle="Live analysis of your learning patterns"
-                                accentColor="#6366f1"
-                                badge={
-                                    <Stack direction="row" alignItems="center" gap={0.6} sx={{ ml: 1 }}>
-                                        <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#22c55e', boxShadow: '0 0 7px rgba(34,197,94,0.85)' }} />
-                                        <Typography variant="caption" sx={{ fontSize: 10.5, fontWeight: 700, color: '#22c55e' }}>Live</Typography>
-                                    </Stack>
-                                }
-                            >
+                    {/* ── Study DNA ── */}
+                    <motion.div variants={fadeUp} custom={2}>
+                        <Box
+                            sx={{
+                                borderRadius: 3,
+                                border: GLASS.border,
+                                background: GLASS.background,
+                                backdropFilter: GLASS.backdropFilter,
+                                mb: 2.5,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <BrainIcon sx={{ fontSize: 17, color: ACCENT.purple }} />
+                                    <Typography
+                                        sx={{
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.06em',
+                                            textTransform: 'uppercase',
+                                            color: 'rgba(255,255,255,0.5)',
+                                        }}
+                                    >
+                                        Study DNA
+                                    </Typography>
+                                </Box>
+                                <Chip
+                                    label="Live"
+                                    size="small"
+                                    sx={{
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.06em',
+                                        background: 'rgba(34,197,94,0.12)',
+                                        color: '#22c55e',
+                                        border: '1px solid rgba(34,197,94,0.25)',
+                                        '& .MuiChip-label': { px: 1 },
+                                        '&::before': {
+                                            content: '""',
+                                            display: 'inline-block',
+                                            width: 5,
+                                            height: 5,
+                                            borderRadius: '50%',
+                                            background: '#22c55e',
+                                            mr: 0.5,
+                                        },
+                                    }}
+                                />
+                            </Box>
+
+                            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', mx: 2.5 }} />
+
+                            <Box sx={{ px: 2.5, pt: 1.5, pb: habits.length > 0 && progressPct !== null ? 1.5 : 2.5 }}>
                                 {habits.length === 0 ? (
-                                    <Box sx={{ py: 5, textAlign: 'center' }}>
-                                        <BrainIcon sx={{ fontSize: 38, color: 'rgba(255,255,255,0.07)', mb: 1.5 }} />
-                                        <Typography variant="body2" color="text.disabled" fontStyle="italic" sx={{ fontSize: 13 }}>
-                                            Start studying to generate your fingerprint.
-                                        </Typography>
-                                    </Box>
+                                    <Typography sx={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.3)', py: 1 }}>
+                                        Start studying to generate your DNA profile.
+                                    </Typography>
                                 ) : (
-                                    <Stack spacing={1.5}>
-                                        {habits.map((h, i) => (
-                                            <motion.div
-                                                key={i}
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: 0.1 + i * 0.06 }}
-                                            >
-                                                <Box sx={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    px: 2, py: 1.5, borderRadius: 2.5,
-                                                    background: `${h.color}08`,
-                                                    border: `1px solid ${h.color}18`,
-                                                    transition: 'background 0.2s',
-                                                    '&:hover': { background: `${h.color}12` },
-                                                }}>
-                                                    <Stack direction="row" alignItems="center" gap={1.5}>
-                                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: h.color, flexShrink: 0, boxShadow: `0 0 6px ${h.color}` }} />
-                                                        <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.55)', letterSpacing: '-0.1px' }}>
-                                                            {h.label}
-                                                        </Typography>
-                                                    </Stack>
-                                                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: h.color }}>
-                                                        {h.value}
-                                                    </Typography>
-                                                </Box>
-                                            </motion.div>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                        {habits.map((habit, i) => (
+                                            <HabitRow key={habit.label} habit={habit} index={i} />
                                         ))}
-
-                                        {studyPlan && progressPct !== null && (
-                                            <Box sx={{ mt: 1, pt: 2, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                                                    <Typography sx={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'rgba(255,255,255,0.3)' }}>
-                                                        Study Plan Progress
-                                                    </Typography>
-                                                    <Stack direction="row" alignItems="center" gap={0.75}>
-                                                        <Typography sx={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>{progressPct}%</Typography>
-                                                        <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
-                                                            · {progressDone} of {progressTotal} topics
-                                                        </Typography>
-                                                    </Stack>
-                                                </Stack>
-                                                <LinearProgress
-                                                    variant="determinate" value={progressPct}
-                                                    sx={{
-                                                        height: 6, borderRadius: 6,
-                                                        bgcolor: 'rgba(16,185,129,0.1)',
-                                                        '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 6 },
-                                                    }}
-                                                />
-                                            </Box>
-                                        )}
-                                    </Stack>
+                                    </Box>
                                 )}
-                            </SectionCard>
 
-                            {/* AI Personalised Tips */}
-                            <SectionCard
-                                icon={<InsightsIcon sx={{ color: '#fff', fontSize: 15 }} />}
-                                title="AI Personalised Tips"
-                                subtitle="Based on your platform usage & habits"
-                                accentColor="#a855f7"
-                            >
+                                {progressPct !== null && (
+                                    <Box sx={{ mt: 2, mb: 1 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+                                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                                Plan Progress
+                                            </Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: ACCENT.indigo }}>
+                                                {progressDone} / {progressTotal} tasks
+                                            </Typography>
+                                        </Box>
+                                        <LinearProgress
+                                            variant="determinate"
+                                            value={progressPct}
+                                            sx={{
+                                                height: 5,
+                                                borderRadius: 99,
+                                                background: 'rgba(255,255,255,0.06)',
+                                                '& .MuiLinearProgress-bar': {
+                                                    background: `linear-gradient(90deg, ${ACCENT.indigo}, ${ACCENT.purple})`,
+                                                    borderRadius: 99,
+                                                },
+                                            }}
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+                    </motion.div>
+
+                    {/* ── AI Insights ── */}
+                    <motion.div variants={fadeUp} custom={3}>
+                        <Box
+                            sx={{
+                                borderRadius: 3,
+                                border: GLASS.border,
+                                background: GLASS.background,
+                                backdropFilter: GLASS.backdropFilter,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <InsightsIcon sx={{ fontSize: 17, color: ACCENT.pink }} />
+                                <Typography
+                                    sx={{
+                                        fontSize: '0.82rem',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.06em',
+                                        textTransform: 'uppercase',
+                                        color: 'rgba(255,255,255,0.5)',
+                                    }}
+                                >
+                                    AI Insights
+                                </Typography>
+                            </Box>
+
+                            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', mx: 2.5 }} />
+
+                            <Box sx={{ px: 2.5, pt: 2, pb: 2.5, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
                                 {tips.length === 0 ? (
-                                    <Box sx={{ py: 5, textAlign: 'center' }}>
-                                        <InsightsIcon sx={{ fontSize: 38, color: 'rgba(255,255,255,0.07)', mb: 1.5 }} />
-                                        <Typography variant="body2" color="text.disabled" fontStyle="italic" sx={{ fontSize: 13 }}>
-                                            Complete your profile and start studying for personalised tips.
-                                        </Typography>
-                                    </Box>
+                                    <Typography sx={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.3)' }}>
+                                        Complete your profile and start a study plan to unlock personalized insights.
+                                    </Typography>
                                 ) : (
-                                    <Stack spacing={1.5}>
-                                        {tips.map((tip, i) => (
-                                            <motion.div
-                                                key={i}
-                                                initial={{ opacity: 0, y: 8 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: 0.22 + i * 0.07 }}
-                                            >
-                                                <Box sx={{
-                                                    display: 'flex', gap: 1.5, alignItems: 'flex-start',
-                                                    px: 2, py: 1.75, borderRadius: 2.5,
-                                                    background: 'rgba(255,255,255,0.022)',
-                                                    border: '1px solid rgba(255,255,255,0.05)',
-                                                    borderLeft: '3px solid rgba(168,85,247,0.55)',
-                                                    transition: 'background 0.2s, border-left-color 0.2s',
-                                                    '&:hover': {
-                                                        background: 'rgba(168,85,247,0.05)',
-                                                        borderLeftColor: 'rgba(168,85,247,0.85)',
-                                                    },
-                                                }}>
-                                                    <Typography sx={{ fontSize: 17, lineHeight: 1.5, flexShrink: 0, mt: '1px' }}>
-                                                        {tip.icon}
-                                                    </Typography>
-                                                    <Typography sx={{ fontSize: 12.5, lineHeight: 1.7, color: 'rgba(255,255,255,0.62)' }}>
-                                                        {tip.text}
-                                                    </Typography>
-                                                </Box>
-                                            </motion.div>
-                                        ))}
-                                    </Stack>
+                                    tips.map((tip, i) => (
+                                        <TipCard key={i} tip={tip} index={i} />
+                                    ))
                                 )}
-                            </SectionCard>
-
-                        </Stack>
+                            </Box>
+                        </Box>
                     </motion.div>
                 </Grid>
             </Grid>
 
-            {/* ══ DELETE DIALOG ════════════════════════════════════════════════ */}
+            {/* ── Delete Account Dialog ── */}
             <Dialog
                 open={deleteOpen}
-                onClose={() => !deleting && setDeleteOpen(false)}
+                onClose={() => { setDeleteOpen(false); setDeleteText(''); }}
                 PaperProps={{
                     sx: {
-                        background: '#0c0c1a', border: '1px solid rgba(239,68,68,0.22)',
-                        borderRadius: { xs: '20px 20px 0 0', md: 3 }, p: 1,
-                        width: { xs: '100%', md: 'auto' }, maxWidth: 420,
-                        m: { xs: 0, md: 'auto' },
-                        position: { xs: 'fixed', md: 'relative' },
-                        bottom: { xs: 0, md: 'auto' },
+                        background: '#0e0c1a',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        borderRadius: { xs: '16px 16px 0 0', sm: 3 },
+                        position: { xs: 'fixed', sm: 'relative' },
+                        bottom: { xs: 0, sm: 'auto' },
+                        left: { xs: 0, sm: 'auto' },
+                        right: { xs: 0, sm: 'auto' },
+                        m: { xs: 0, sm: 2 },
+                        width: { xs: '100%', sm: 420 },
+                        maxWidth: '100%',
                     },
-                }}>
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: '#ef4444', fontWeight: 800 }}>
-                    <WarningIcon sx={{ fontSize: 20 }} /> Delete Account
+                }}
+                BackdropProps={{ sx: { background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' } }}
+            >
+                <DialogTitle sx={{ pt: 3, pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                            sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 1.5,
+                                background: 'rgba(239,68,68,0.12)',
+                                border: '1px solid rgba(239,68,68,0.25)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <WarningIcon sx={{ fontSize: 19, color: '#ef4444' }} />
+                        </Box>
+                        <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>
+                            Delete Account
+                        </Typography>
+                    </Box>
                 </DialogTitle>
-                <DialogContent>
-                    <DialogContentText sx={{ color: 'rgba(255,255,255,0.6)', mb: 2.5, lineHeight: 1.75, fontSize: 14 }}>
-                        This permanently deletes your account and all data. Type{' '}
-                        <strong style={{ color: '#fff' }}>DELETE</strong> to confirm.
+                <DialogContent sx={{ pb: 1 }}>
+                    <DialogContentText sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.65, mb: 2.5 }}>
+                        This will permanently delete your account, chat history, study plan, and all progress data. This action cannot be undone.
                     </DialogContentText>
                     <TextField
-                        autoFocus fullWidth variant="outlined" placeholder="DELETE"
-                        value={deleteText} onChange={(e) => setDeleteText(e.target.value)} disabled={deleting}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5, bgcolor: 'rgba(239,68,68,0.05)', color: '#ef4444', fontWeight: 800, '& fieldset': { borderColor: 'rgba(239,68,68,0.3)' } } }}
+                        autoFocus
+                        label={`Type "DELETE" to confirm`}
+                        value={deleteText}
+                        onChange={(e) => setDeleteText(e.target.value)}
+                        fullWidth
+                        size="small"
+                        sx={{
+                            ...darkInput,
+                            '& .MuiOutlinedInput-root.Mui-focused fieldset': {
+                                borderColor: '#ef4444',
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#ef4444',
+                            },
+                        }}
                     />
                 </DialogContent>
-                <DialogActions sx={{ p: 2, gap: 1 }}>
-                    <Button onClick={() => { setDeleteOpen(false); setDeleteText(''); }} disabled={deleting}
-                        sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'none' }}>
+                <DialogActions sx={{ px: 3, pb: 3, pt: 2, gap: 1.5 }}>
+                    <Button
+                        onClick={() => { setDeleteOpen(false); setDeleteText(''); }}
+                        sx={{
+                            color: 'rgba(255,255,255,0.45)',
+                            fontWeight: 600,
+                            fontSize: '0.82rem',
+                            textTransform: 'none',
+                            '&:hover': { color: 'rgba(255,255,255,0.7)' },
+                        }}
+                    >
                         Cancel
                     </Button>
                     <Button
+                        variant="contained"
                         onClick={handleDelete}
                         disabled={deleteText !== 'DELETE' || deleting}
-                        color="error" variant="contained"
-                        sx={{ borderRadius: 2.5, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
-                        startIcon={deleting && <CircularProgress size={14} color="inherit" />}>
-                        Confirm Deletion
+                        startIcon={deleting ? <CircularProgress size={13} sx={{ color: '#fff' }} /> : <DeleteIcon sx={{ fontSize: '15px !important' }} />}
+                        sx={{
+                            background: '#ef4444',
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            textTransform: 'none',
+                            borderRadius: 1.5,
+                            px: 2.5,
+                            py: 1,
+                            '&:hover': { background: '#dc2626', boxShadow: '0 4px 16px rgba(239,68,68,0.4)' },
+                            '&:disabled': { background: 'rgba(239,68,68,0.3)', color: 'rgba(255,255,255,0.4)' },
+                        }}
+                    >
+                        {deleting ? 'Deleting…' : 'Delete My Account'}
                     </Button>
                 </DialogActions>
             </Dialog>
