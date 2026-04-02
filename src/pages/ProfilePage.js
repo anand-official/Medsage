@@ -686,7 +686,7 @@ export default function ProfilePage() {
                                 </Box>
 
                                 {/* Quick launch */}
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mb: 2 }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
                                     <LaunchBtn primary icon={<BrainIcon sx={{ fontSize: 16 }} />} label="Ask Cortex" onClick={() => navigate('/question')} />
                                     <LaunchBtn icon={<SparkleIcon sx={{ fontSize: 16 }} />} label="Today's Plan" onClick={() => navigate('/planner')} />
                                     <LaunchBtn icon={<ReviewIcon sx={{ fontSize: 16 }} />} label="Review" onClick={() => navigate('/review')} />
@@ -697,7 +697,7 @@ export default function ProfilePage() {
 
                         {/* Stats strip */}
                         <Box sx={{
-                            display: 'flex', mt: 4, pt: 0.5, borderTop: `1px solid rgba(255,255,255,0.06)`,
+                            display: 'flex', mt: 3.5, pt: 3.5, borderTop: `1px solid rgba(255,255,255,0.06)`,
                             flexWrap: { xs: 'wrap', sm: 'nowrap' },
                             gap: { xs: 1, lg: 1.5 },
                         }}>

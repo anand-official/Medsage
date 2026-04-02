@@ -728,7 +728,7 @@ const HomePage = () => {
                 </Stack>
               </Box>
 
-              <Box sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 4, background: isDark ? 'rgba(20,20,38,0.5)' : 'rgba(255,255,255,0.78)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.15)'}`, boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.3)' : '0 18px 40px rgba(99,102,241,0.08)', backdropFilter: 'blur(12px)', position: 'relative', overflow: 'hidden' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', p: { xs: 2.5, md: 3 }, borderRadius: 4, background: isDark ? 'rgba(20,20,38,0.5)' : 'rgba(255,255,255,0.78)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.15)'}`, boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.3)' : '0 18px 40px rgba(99,102,241,0.08)', backdropFilter: 'blur(12px)', position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: commandCenter.accent }} />
                 <Box sx={{ width: 48, height: 48, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: commandCenter.accent, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', mb: 2, border: '1px solid rgba(255,255,255,0.2)' }}>
                   <BoltIcon sx={{ fontSize: 24 }} />
