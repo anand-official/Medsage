@@ -666,8 +666,7 @@ export default function ProfilePage() {
 
             {/* ══ TOP BAR ══════════════════════════════════════════════════════ */}
             <motion.div initial="hidden" animate="show" custom={0} variants={rise}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 3, pt: 0.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 3.5, pt: 1, px: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 3.5, pt: 1, px: 0.5 }}>
             <Box>
                 <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(99,102,241,0.8)', textShadow: '0 2px 10px rgba(99,102,241,0.4)', mb: 0.5 }}>
                     Your Space
