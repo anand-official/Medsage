@@ -45,16 +45,6 @@ const YEARS = [
 ];
 const COUNTRIES = ['India', 'Nepal', 'United States', 'United Kingdom', 'Australia', 'Singapore', 'Other'];
 
-// MBBS journey phases — the macro view of a student's career
-const PHASES = [
-    { label: 'Pre-Clinical', years: [1, 2], color: '#6366f1' },
-    { label: 'Clinical',     years: [3, 4], color: '#a855f7' },
-    { label: 'Internship',   years: [5],    color: '#22c55e' },
-];
-
-function getPhase(year) {
-    return PHASES.find(p => p.years.includes(year)) || PHASES[0];
-}
 
 function detectCountryFromCollege(college) {
     if (!college) return null;
@@ -228,101 +218,6 @@ function ArcStat({ icon, value, label, color, pct = 0 }) {
     );
 }
 
-// ─── MBBS journey timeline ────────────────────────────────────────────────────
-function JourneyTimeline({ year }) {
-    const currentPhaseIdx = PHASES.findIndex(p => p.years.includes(year));
-    // Map years 1-5 to 0-100% so the fill precisely reaches each phase node:
-    // Year 1 = 0% (Pre-Clinical node), Year 3 = 50% (Clinical node), Year 5 = 100% (Internship node)
-    const journeyPct = (((year || 1) - 1) / 4) * 100;
-
-    return (
-        <Box sx={{ px: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
-                <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.muted }}>
-                    MBBS Journey
-                </Typography>
-                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: T.sub }}>
-                    Year {year || '?'} of 5
-                </Typography>
-            </Box>
-
-            {/* Phase nodes + connecting track */}
-            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', mb: 1 }}>
-                {/* Track */}
-                <Box sx={{
-                    position: 'absolute', left: 0, right: 0, top: '50%',
-                    height: '2px', transform: 'translateY(-50%)',
-                    background: T.border, borderRadius: 2,
-                }} />
-                {/* Filled track */}
-                <Box sx={{
-                    position: 'absolute', left: 0, top: '50%',
-                    height: '2px', transform: 'translateY(-50%)',
-                    width: `${journeyPct}%`,
-                    background: `linear-gradient(90deg, ${T.indigo}, ${T.purple})`,
-                    borderRadius: 2,
-                    boxShadow: `0 0 8px ${T.purple}80`,
-                    transition: 'width 1s ease',
-                }} />
-
-                {/* Phase nodes */}
-                {PHASES.map((phase, i) => {
-                    const isActive = i <= currentPhaseIdx;
-                    const isCurrent = i === currentPhaseIdx;
-                    return (
-                        <Box key={phase.label} sx={{
-                            flex: i < PHASES.length - 1 ? 1 : 0,
-                            display: 'flex',
-                            justifyContent: i === 0 ? 'flex-start' : i === PHASES.length - 1 ? 'flex-end' : 'center',
-                        }}>
-                            <Box sx={{
-                                width: isCurrent ? 14 : 10,
-                                height: isCurrent ? 14 : 10,
-                                borderRadius: '50%',
-                                background: isActive ? phase.color : 'transparent',
-                                border: `2px solid ${isActive ? phase.color : T.border}`,
-                                boxShadow: isCurrent ? `0 0 10px ${phase.color}90` : 'none',
-                                zIndex: 1,
-                                transition: 'all 0.3s',
-                                position: 'relative',
-                            }}>
-                                {isCurrent && (
-                                    <Box sx={{
-                                        position: 'absolute', inset: -4, borderRadius: '50%',
-                                        background: `${phase.color}20`,
-                                        animation: 'ripple 2s ease-in-out infinite',
-                                        '@keyframes ripple': {
-                                            '0%': { transform: 'scale(0.8)', opacity: 1 },
-                                            '100%': { transform: 'scale(1.8)', opacity: 0 },
-                                        },
-                                    }} />
-                                )}
-                            </Box>
-                        </Box>
-                    );
-                })}
-            </Box>
-
-            {/* Phase labels */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                {PHASES.map((phase, i) => {
-                    const isCurrent = i === currentPhaseIdx;
-                    return (
-                        <Typography key={phase.label} sx={{
-                            fontSize: '0.6rem', fontWeight: isCurrent ? 800 : 500,
-                            color: isCurrent ? phase.color : T.muted,
-                            textAlign: i === 0 ? 'left' : i === PHASES.length - 1 ? 'right' : 'center',
-                            flex: i < PHASES.length - 1 ? 1 : 0,
-                            transition: 'color 0.3s',
-                        }}>
-                            {phase.label}
-                        </Typography>
-                    );
-                })}
-            </Box>
-        </Box>
-    );
-}
 
 // ─── Quick launch button ──────────────────────────────────────────────────────
 function LaunchBtn({ icon, label, onClick, primary }) {
@@ -632,7 +527,6 @@ export default function ProfilePage() {
     );
 
     const yearLabel  = YEARS.find(y => y.value === userProfile.mbbs_year)?.label || `Year ${userProfile.mbbs_year || '?'}`;
-    const phase      = getPhase(userProfile.mbbs_year);
     const initials   = (userProfile.displayName || userProfile.email || 'M')[0].toUpperCase();
 
     // Momentum copy — emotional, not just numeric
@@ -797,11 +691,6 @@ export default function ProfilePage() {
                                     <LaunchBtn icon={<SparkleIcon sx={{ fontSize: 16 }} />} label="Today's Plan" onClick={() => navigate('/planner')} />
                                     <LaunchBtn icon={<ReviewIcon sx={{ fontSize: 16 }} />} label="Review" onClick={() => navigate('/review')} />
                                     <LaunchBtn icon={<BookIcon sx={{ fontSize: 16 }} />} label="Library" onClick={() => navigate('/books')} />
-                                </Box>
-                                
-                                {/* MBBS Journey timeline */}
-                                <Box sx={{ p: 2, borderRadius: 2.5, border: `1px solid rgba(255,255,255,0.06)`, background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)' }}>
-                                    <JourneyTimeline year={userProfile.mbbs_year} />
                                 </Box>
                             </Box>
                         </Box>
