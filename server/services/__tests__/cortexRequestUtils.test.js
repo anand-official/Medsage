@@ -31,6 +31,7 @@ const {
     sanitizeInput,
     sanitizeHistoryContent,
     buildDirectPrompt,
+    detectFollowUpIntent,
     looksLikeFollowUp,
     truncateHistory,
     hasMedicalSignal,
@@ -200,6 +201,11 @@ describe('looksLikeFollowUp', () => {
         expect(looksLikeFollowUp('What about the treatment?', 1)).toBe(true);
         expect(looksLikeFollowUp('Can you elaborate?', 1)).toBe(true);
         expect(looksLikeFollowUp('Give me an example', 1)).toBe(true);
+    });
+
+    test('counter-questions are treated as follow-ups when history exists', () => {
+        expect(looksLikeFollowUp('But are you sure that is correct?', 1)).toBe(true);
+        expect(detectFollowUpIntent('But are you sure that is correct?', 1)).toBe('challenge');
     });
 
     test('standalone medical question is not a follow-up', () => {

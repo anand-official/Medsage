@@ -1,5 +1,9 @@
 const UserProfile = require('../models/UserProfile');
 const { invalidateLearnerContext } = require('../services/learnerContextCache');
+const StudyPlan = require('../models/StudyPlan');
+const ChatSession = require('../models/ChatSession');
+const Flashcard = require('../models/Flashcard');
+const AuditLog = require('../models/AuditLog');
 
 class AuthController {
 
@@ -7,8 +11,12 @@ class AuthController {
     // Called by frontend after Firebase Google Sign-In to sync UserProfile
     async syncUser(req, res, next) {
         try {
-            const { email, displayName, photoURL } = req.body;
-            const uid = req.user.uid;
+            const {
+                uid,
+                email,
+                displayName,
+                photoURL,
+            } = req.user || {};
 
             if (!uid || !email) {
                 return res.status(400).json({ success: false, error: 'uid and email are required' });
@@ -165,19 +173,36 @@ class AuthController {
                 return res.status(401).json({ success: false, error: 'Unauthorized: No UID provided' });
             }
 
-            const StudyPlan = require('../models/StudyPlan');
+            const [
+                deletedStudyPlan,
+                deletedUser,
+                deletedSessions,
+                deletedFlashcards,
+                deletedAuditLogs,
+            ] = await Promise.all([
+                StudyPlan.deleteOne({ uid }),
+                UserProfile.findOneAndDelete({ uid }),
+                ChatSession.deleteMany({ user_id: uid }),
+                Flashcard.deleteMany({ user_id: uid }),
+                AuditLog.deleteMany({ user_id: uid }),
+            ]);
 
-            // Cascade delete
-            await StudyPlan.deleteOne({ uid });
-            const deletedUser = await UserProfile.findOneAndDelete({ uid });
-
-            if (!deletedUser) {
+            if (
+                !deletedUser
+                && deletedStudyPlan.deletedCount === 0
+                && deletedSessions.deletedCount === 0
+                && deletedFlashcards.deletedCount === 0
+                && deletedAuditLogs.deletedCount === 0
+            ) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
             }
 
             invalidateLearnerContext(uid);
 
-            res.json({ success: true, message: 'Account and associated data deleted successfully' });
+            res.json({
+                success: true,
+                message: 'Account and associated data deleted successfully',
+            });
         } catch (error) {
             next(error);
         }

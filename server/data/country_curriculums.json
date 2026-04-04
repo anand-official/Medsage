@@ -1,1 +1,128 @@
-{}
+{
+  "Nepal": {
+    "1": {
+      "Anatomy": [
+        "General Anatomy",
+        "General Histology",
+        "General Embryology",
+        "Lymphoid Organs",
+        "Autonomic Nervous System",
+        "Skin and Appendages",
+        "Upper Limb Gross Anatomy",
+        "Lower Limb Gross Anatomy",
+        "Thorax and Mediastinum",
+        "Heart and Great Vessels",
+        "Respiratory Tract Anatomy"
+      ],
+      "Physiology": [
+        "Cell Physiology",
+        "Growth and Development",
+        "Immunophysiology",
+        "Autonomic Nervous System Physiology",
+        "Skin and Thermoregulation",
+        "Blood as a Body Fluid",
+        "Hemostasis",
+        "Respiratory Mechanics",
+        "Gas Transport",
+        "Cardiac Muscle Properties",
+        "Cardiac Cycle",
+        "Blood Pressure Regulation"
+      ],
+      "Biochemistry": [
+        "Biochemistry in Medicine",
+        "Cell Structure and Function",
+        "Carbohydrates",
+        "Amino Acids and Proteins",
+        "Lipids",
+        "Nucleic Acids and Gene Expression",
+        "Enzymes",
+        "Vitamins",
+        "Neurotransmitters",
+        "Melanin Synthesis",
+        "Hemoglobin Metabolism",
+        "Iron, B12 and Folate Metabolism"
+      ],
+      "Microbiology": [
+        "Introduction to Medical Microbiology",
+        "Bacteria, Viruses, Fungi and Parasites",
+        "Sterilization and Disinfection",
+        "Normal Flora and Infection",
+        "Antimicrobial Agents",
+        "Microbial Genetics",
+        "Immunity and Immune Response",
+        "Skin and Soft Tissue Infections",
+        "Blood-Borne Infections",
+        "Respiratory Tract Infections",
+        "Hospital-Acquired Infection Control",
+        "Biomedical Waste Management"
+      ],
+      "Pathology": [
+        "Cell Injury and Cell Death",
+        "Inflammation and Repair",
+        "Hemodynamic Disorders",
+        "Neoplasia",
+        "Amyloidosis",
+        "Leprosy Pathology",
+        "Anemias",
+        "Hemorrhagic Disorders",
+        "Leukemia and Lymphoma",
+        "Respiratory Tract Pathology",
+        "Tuberculosis Pathology",
+        "Atherosclerosis and Myocardial Infarction"
+      ],
+      "Pharmacology": [
+        "General Pharmacology",
+        "Cholinergic Agonists",
+        "Muscarinic Antagonists",
+        "Adrenergic Agonists",
+        "Adrenergic Antagonists",
+        "Immunosuppressants",
+        "Antileprotic Drugs",
+        "Hemostatics",
+        "Antithrombotic Therapy",
+        "Anti-Anemic Therapy",
+        "Bronchodilators",
+        "Antitubercular Drugs"
+      ],
+      "Community Medicine": [
+        "Health, Disease and Determinants",
+        "Sociology for Medicine",
+        "Family Medicine Basics",
+        "Epidemiology Foundations",
+        "Screening and Prevention",
+        "Health Promotion",
+        "Environmental Sanitation",
+        "Nutrition Basics",
+        "Demography",
+        "Community Diagnosis",
+        "Nepal Health System Introduction",
+        "Field and Community Posting"
+      ],
+      "Introduction to Clinical Medicine": [
+        "Medical Ethics",
+        "Nepal Medical Council and Professional Duties",
+        "Communication Skills",
+        "History Taking",
+        "General Physical Examination",
+        "First Aid and Dressings",
+        "Injection Procedures",
+        "Venesection and Blood Transfusion Observation",
+        "Respiratory System Examination",
+        "Cardiovascular System Examination",
+        "Clinical Problem Solving Basics"
+      ],
+      "Medical Informatics": [
+        "Computer Fundamentals",
+        "Windows Applications",
+        "Word Processing",
+        "Spreadsheets and Data Tables",
+        "PowerPoint and Multimedia",
+        "Epi Info Basics",
+        "Internet and Literature Retrieval",
+        "Statistical Data Handling",
+        "Report Writing",
+        "Presentation Skills"
+      ]
+    }
+  }
+}

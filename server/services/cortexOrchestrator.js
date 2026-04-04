@@ -1,22 +1,21 @@
 const topicScorer = require('./topicConfidenceScorer');
-const ragService = require('./ragService');
-const queryExpander = require('./queryExpander');
 const promptBuilder = require('./promptBuilder');
 const outputSchemaValidator = require('./outputSchemaValidator');
 const citationVerifier = require('./citationVerifier');
 const confidenceEngine = require('./confidenceEngine');
 const queryCache = require('./queryCache');
+const retrievalPolicy = require('./retrievalPolicy');
 const llmClient = require('./cortexLlmClient');
+const conversationStateService = require('./conversationStateService');
+const { resolvePersona } = require('./personaResolver');
 const { applyTrustMetadata } = require('./cortexResponsePolicy');
 const claimValidator = require('./claimValidator');
 const {
     buildDirectPrompt,
     buildHistoryBlock,
-    getProfessorPersona,
+    detectFollowUpIntent,
     hasMedicalSignal,
     looksLikeFollowUp,
-    mergeSyllabusContext,
-    sanitizeInput,
     truncateHistory,
 } = require('./cortexRequestUtils');
 const {
@@ -29,8 +28,6 @@ const {
 
 // Greeting pattern shared by both generateMedicalResponse and streamMedicalResponse
 const GREETING_PATTERNS = /^(hi|hello|hey|hiya|howdy|sup|what's up|whats up|good morning|good afternoon|good evening|good night|how are you|how r u|thanks|thank you|ok|okay|cool|nice|great|awesome|wow|lol|haha|bye|goodbye|see you|cya|yes|no|sure|alright|got it|understood|noted)\s*[!?.]*$/i;
-const QUERY_REWRITE_TIMEOUT_MS = parseInt(process.env.QUERY_REWRITE_TIMEOUT_MS || '700', 10);
-
 class CortexOrchestrator {
     constructor(options = {}) {
         this.llmClient = options.llmClient || llmClient;
@@ -47,26 +44,11 @@ class CortexOrchestrator {
      * CortexOrchestrator instance handles concurrent requests.
      */
     async generateMedicalResponse(rawQuestion, userContext = {}) {
-        const ctx = {
-            mode:               userContext.mode       || 'conceptual',
-            history:            userContext.history     || [],
-            imageBase64:        userContext.imageBase64 || null,
-            hintSubject:        userContext.subject     || null,
-            syllabus:           userContext.syllabus    || 'Indian MBBS',
-            learnerContext:     userContext.learnerContext || null,
-            normalizedQuestion: (rawQuestion || '').trim(),
-            sanitizedQuestion:  sanitizeInput((rawQuestion || '').trim()),
-            startTime:          Date.now(),
-            cacheContext:       this._buildCacheContext(userContext),
-            // Populated by _buildPipelineContext:
-            topicResult:                null,
-            calibratedTopicConfidence:  0,
-            professorSubject:           null,
-            persona:                    null,
-            truncatedHistory:           [],
-            historyBlock:               '',
-            syllabusContext:            {},
-        };
+        const ctx = conversationStateService.createInitialState(
+            rawQuestion,
+            userContext,
+            this._buildCacheContext(userContext)
+        );
 
         // ── Pre-scoring guardrails (run before any async work) ──────────────
         const emptyResult = this._handleEmptyQuery(ctx);
@@ -100,8 +82,12 @@ class CortexOrchestrator {
                 return await this._buildDirectResponse({
                     question:      ctx.sanitizedQuestion,
                     mode:          ctx.mode,
-                    persona:       getProfessorPersona(ctx.hintSubject),
-                    historyBlock:  buildHistoryBlock(truncateHistory(ctx.history)),
+                    persona:       resolvePersona(ctx.hintSubject, {
+                        mode: ctx.mode,
+                        threadMode: ctx.threadMode,
+                        followUpIntent: ctx.followUpIntent,
+                    }),
+                    historyBlock:  ctx.historyBlock || buildHistoryBlock(truncateHistory(ctx.history)),
                     learnerContext: ctx.learnerContext,
                     pipeline:      'emergency_fallback',
                     confidenceScore: 0.2,
@@ -166,8 +152,19 @@ class CortexOrchestrator {
         const historyBlock = buildHistoryBlock(truncatedHistory);
         const topicResult = await this._scoreTopic(normalizedQuestion);
         const calibratedTopicConfidence = this._calibrateTopicConfidence(topicResult);
-        const professorSubject = hintSubject || (topicResult.matched ? topicResult.subject : null);
-        const persona = getProfessorPersona(professorSubject);
+        const threadMode = (looksLikeFollowUp(normalizedQuestion, history.length) && history.length > 0) ? 'follow_up' : 'new_topic';
+        const professorSubject = conversationStateService.resolveSubject({
+            hintSubject,
+            priorSubject: conversationStateService.inferSubjectFromHistory(history),
+            topicResult,
+            threadMode,
+        });
+        const persona = resolvePersona(professorSubject, {
+            mode,
+            threadMode,
+            followUpIntent: detectFollowUpIntent(normalizedQuestion, history.length),
+            learnerContext,
+        });
 
         // ── Guardrail 4: low topic confidence → clarification ────────────────
         if (this._shouldClarifyQuestion(normalizedQuestion, calibratedTopicConfidence, history.length)) {
@@ -197,19 +194,28 @@ class CortexOrchestrator {
      * after the synchronous guardrails pass.
      */
     async _buildPipelineContext(ctx) {
-        ctx.topicResult               = await this._scoreTopic(ctx.normalizedQuestion);
-        ctx.calibratedTopicConfidence = this._calibrateTopicConfidence(ctx.topicResult);
-        ctx.professorSubject          = ctx.hintSubject || (ctx.topicResult.matched ? ctx.topicResult.subject : null);
-        ctx.persona                   = getProfessorPersona(ctx.professorSubject);
-        ctx.truncatedHistory          = truncateHistory(ctx.history);
-        ctx.historyBlock              = buildHistoryBlock(ctx.truncatedHistory);
-        ctx.syllabusContext           = mergeSyllabusContext(
-            {
-                ...topicScorer.getSyllabusContext(ctx.syllabus),
-                subject: ctx.professorSubject || topicScorer.getSyllabusContext(ctx.syllabus).subject,
-            },
-            ctx.learnerContext || {}
-        );
+        const topicResult = await this._scoreTopic(ctx.normalizedQuestion);
+        const calibratedTopicConfidence = this._calibrateTopicConfidence(topicResult);
+        const syllabusContext = topicScorer.getSyllabusContext(ctx.syllabus);
+        const resolvedSubject = conversationStateService.resolveSubject({
+            hintSubject: ctx.hintSubject,
+            priorSubject: ctx.priorSubject,
+            topicResult,
+            threadMode: ctx.threadMode,
+        });
+        const persona = resolvePersona(resolvedSubject, {
+            mode: ctx.mode,
+            threadMode: ctx.threadMode,
+            followUpIntent: ctx.followUpIntent,
+            learnerContext: ctx.learnerContext,
+        });
+
+        Object.assign(ctx, conversationStateService.enrichState(ctx, {
+            topicResult,
+            calibratedTopicConfidence,
+            syllabusContext,
+            persona,
+        }));
     }
 
     // ─── Pre-scoring handlers (synchronous) ────────────────────────────────────
@@ -324,6 +330,10 @@ class CortexOrchestrator {
     async _handleLowConfidence(ctx) {
         if (ctx.topicResult.matched && ctx.calibratedTopicConfidence >= 0.6) return null;
 
+        if (ctx.threadMode === 'follow_up') {
+            return null;
+        }
+
         if (this._shouldClarifyQuestion(ctx.normalizedQuestion, ctx.calibratedTopicConfidence, ctx.history.length)) {
             return this._buildClarificationResponse({
                 answer:      'I can help best if you name the disease, organ system, or core concept you want explained.',
@@ -333,21 +343,20 @@ class CortexOrchestrator {
                 confidenceScore: ctx.calibratedTopicConfidence,
                 flags:       ['LOW_TOPIC_CONFIDENCE'],
                 startTime:   ctx.startTime,
+                threadMode:  ctx.threadMode,
+                followUpIntent: ctx.followUpIntent,
             });
         }
-
-        return this._buildDirectResponse({
-            question:       ctx.sanitizedQuestion,
-            mode:           ctx.mode,
-            persona:        ctx.persona,
-            historyBlock:   ctx.historyBlock,
-            learnerContext: ctx.learnerContext,
-            pipeline:       'direct_gemini',
-            confidenceScore: Math.max(0.45, ctx.calibratedTopicConfidence),
-            topicResult:    ctx.topicResult,
-            subject:        ctx.professorSubject,
-            startTime:      ctx.startTime,
-            flags:          ['LOW_TOPIC_CONFIDENCE'],
+        return this._buildClarificationResponse({
+            answer:      'Name the exact disease, organ system, drug class, or exam topic you want explained so I can ground the answer properly.',
+            pipeline:    'clarification',
+            topicResult: ctx.topicResult,
+            subject:     ctx.professorSubject,
+            confidenceScore: ctx.calibratedTopicConfidence,
+            flags:       ['LOW_TOPIC_CONFIDENCE'],
+            startTime:   ctx.startTime,
+            threadMode:  ctx.threadMode,
+            followUpIntent: ctx.followUpIntent,
         });
     }
 
@@ -358,68 +367,26 @@ class CortexOrchestrator {
      */
     async _handleFullRAG(ctx) {
         // ── Query rewrite for follow-up / history-aware retrieval ────────────
-        let searchPhrase = ctx.normalizedQuestion;
-        if (ctx.truncatedHistory.length > 0 || looksLikeFollowUp(ctx.normalizedQuestion, ctx.truncatedHistory.length)) {
-            try {
-                const rewritePrompt =
-                    `Given the following conversation history and the latest user question, ` +
-                    `rewrite the latest question into a single, standalone descriptive search phrase ` +
-                    `that captures the core medical topic being discussed. Do not answer the question. ` +
-                    `Only output the rewritten search phrase.\n\n` +
-                    `History:\n${ctx.truncatedHistory.map((t) => `[${t.role.toUpperCase()}]: ${t.content}`).join('\n')}\n\n` +
-                    `Latest Question: ${ctx.sanitizedQuestion}\n\nRewritten Search Phrase:`;
-
-                const rewritten = await this._withTimeout(
-                    this.llmClient.callText(rewritePrompt, {
-                        temperature: 0.1,
-                        max_tokens:  50,
-                    }),
-                    QUERY_REWRITE_TIMEOUT_MS,
-                    null
-                );
-                if (!rewritten?.text) {
-                    throw new Error('Query rewrite timed out');
-                }
-                const cleaned = (rewritten.text || '').trim().replace(/^"|"$/g, '');
-                if (cleaned.length >= 10 && cleaned.length >= ctx.normalizedQuestion.length * 0.3) {
-                    searchPhrase = cleaned;
-                }
-            } catch (error) {
-                if (error.message !== 'Query rewrite timed out') {
-                    console.warn('[PIPELINE] Query rewrite failed, using original question:', error.message);
-                }
-            }
-        }
+        const searchPhrase = await retrievalPolicy.rewriteSearchPhrase({
+            normalizedQuestion: ctx.normalizedQuestion,
+            sanitizedQuestion: ctx.sanitizedQuestion,
+            truncatedHistory: ctx.truncatedHistory,
+            llmClient: this.llmClient,
+        });
 
         // ── Query expansion → parallel retrieval ─────────────────────────────
         // expandQuery returns [searchPhrase, ...alternatives] (or [searchPhrase] on
         // timeout/error/disabled).  retrieveWithExpansion runs all variants in
         // parallel and merges unique chunks from alt queries into the primary result.
-        let retrieval;
-        if (typeof ragService.retrieveWithExpansion === 'function') {
-            const shouldExpandQuery =
-                ctx.truncatedHistory.length > 0 ||
-                ctx.calibratedTopicConfidence < 0.85 ||
-                searchPhrase.length < 48;
-            const expandedQueries = shouldExpandQuery
-                ? await queryExpander.expandQuery(searchPhrase)
-                : [searchPhrase];
-            retrieval = await ragService.retrieveWithExpansion(
-                ctx.topicResult.topic_id,
-                { subject: ctx.topicResult.subject, country: ctx.syllabusContext.country },
-                expandedQueries,
-                ctx.calibratedTopicConfidence,
-                ctx.mode
-            );
-        } else {
-            retrieval = await ragService.retrieveContext(
-                ctx.topicResult.topic_id,
-                { subject: ctx.topicResult.subject, country: ctx.syllabusContext.country },
-                searchPhrase,
-                ctx.calibratedTopicConfidence,
-                ctx.mode
-            );
-        }
+        const retrieval = await retrievalPolicy.retrieveGroundedContext({
+            topicId: ctx.topicResult.topic_id,
+            subject: ctx.professorSubject || ctx.topicResult.subject || null,
+            country: ctx.syllabusContext.country,
+            searchPhrase,
+            confidence: ctx.calibratedTopicConfidence,
+            mode: ctx.mode,
+            truncatedHistory: ctx.truncatedHistory,
+        });
         recordRAGLatency(retrieval.telemetry?.latency_ms || 0);
 
         // Record expansion telemetry (only fires when alternatives were actually generated)
@@ -429,30 +396,20 @@ class CortexOrchestrator {
         }
 
         if (!retrieval.is_valid || retrieval.chunks.length === 0) {
-            if (this._shouldClarifyAfterRetrieval(ctx.normalizedQuestion, ctx.calibratedTopicConfidence)) {
-                return this._buildClarificationResponse({
-                    answer:      'I need one more anchor point to ground this properly. Mention the disease, organ system, or clinical scenario you mean.',
-                    pipeline:    'clarification',
-                    topicResult: ctx.topicResult,
-                    subject:     ctx.professorSubject,
-                    confidenceScore: ctx.calibratedTopicConfidence,
-                    flags:       ['NO_GROUNDED_CONTEXT'],
-                    startTime:   ctx.startTime,
-                });
-            }
+            const clarificationText = ctx.threadMode === 'follow_up'
+                ? 'I could not ground that follow-up in the textbook context. Ask the same point with the exact disease, mechanism, drug, or chapter so I can continue the thread accurately.'
+                : 'I need one more anchor point to ground this properly. Mention the disease, organ system, drug class, or clinical scenario you mean.';
 
-            return this._buildDirectResponse({
-                question:       ctx.sanitizedQuestion,
-                mode:           ctx.mode,
-                persona:        ctx.persona,
-                historyBlock:   ctx.historyBlock,
-                learnerContext: ctx.learnerContext,
-                pipeline:       'direct_no_chunks',
-                confidenceScore: Math.min(0.62, Math.max(0.45, ctx.calibratedTopicConfidence)),
-                topicResult:    ctx.topicResult,
-                subject:        ctx.professorSubject,
-                startTime:      ctx.startTime,
-                flags:          ['NO_GROUNDED_CONTEXT'],
+            return this._buildClarificationResponse({
+                answer:      clarificationText,
+                pipeline:    'clarification',
+                topicResult: ctx.topicResult,
+                subject:     ctx.professorSubject,
+                confidenceScore: ctx.calibratedTopicConfidence,
+                flags:       ['NO_GROUNDED_CONTEXT'],
+                startTime:   ctx.startTime,
+                threadMode:  ctx.threadMode,
+                followUpIntent: ctx.followUpIntent,
             });
         }
 
@@ -465,6 +422,8 @@ class CortexOrchestrator {
             historyBlock:   ctx.historyBlock,
             persona:        ctx.persona,
             learnerContext: ctx.learnerContext,
+            threadMode:     ctx.threadMode,
+            followUpIntent: ctx.followUpIntent,
         });
 
         // ── Structured LLM call ──────────────────────────────────────────────
@@ -652,6 +611,9 @@ class CortexOrchestrator {
             is_clarification_required: isClarificationRequired,
             meta: {
                 pipeline:       'full_rag',
+                answer_mode:    'grounded',
+                thread_mode:    ctx.threadMode,
+                follow_up_intent: ctx.followUpIntent,
                 topic_id:       ctx.topicResult.topic_id,
                 subject:        ctx.professorSubject,
                 topic_confidence: ctx.topicResult.confidence,
@@ -744,7 +706,7 @@ class CortexOrchestrator {
     async _buildDirectResponse({
         question, mode, persona, historyBlock, learnerContext,
         pipeline, confidenceScore, topicResult, subject, startTime,
-        flags = [], explicitAnswer = null, provider = null,
+        flags = [], explicitAnswer = null, provider = null, threadMode = 'new_topic', followUpIntent = 'none',
     }) {
         let answerText    = explicitAnswer;
         let activeProvider = provider || 'gemini';
@@ -774,6 +736,9 @@ class CortexOrchestrator {
             is_clarification_required: false,
             meta: {
                 pipeline,
+                answer_mode:   'degraded',
+                thread_mode:   threadMode,
+                follow_up_intent: followUpIntent,
                 topic_id:   topicResult?.topic_id || null,
                 subject:    subject || topicResult?.subject || null,
                 latency_ms: Date.now() - startTime,
@@ -787,7 +752,7 @@ class CortexOrchestrator {
 
     _buildClarificationResponse({
         answer, pipeline, topicResult, subject,
-        confidenceScore = 0.35, flags = [], startTime,
+        confidenceScore = 0.35, flags = [], startTime, threadMode = 'new_topic', followUpIntent = 'none',
     }) {
         const confidence = this._buildConfidenceReport(confidenceScore, flags);
         recordConfidenceTier(confidence.tier);
@@ -805,6 +770,9 @@ class CortexOrchestrator {
             is_clarification_required: true,
             meta: {
                 pipeline,
+                answer_mode:   'clarification',
+                thread_mode:   threadMode,
+                follow_up_intent: followUpIntent,
                 topic_id:   topicResult?.topic_id || null,
                 subject:    subject || topicResult?.subject || null,
                 latency_ms: Date.now() - startTime,
@@ -843,26 +811,6 @@ class CortexOrchestrator {
         } catch {
             return false;
         }
-    }
-
-    _withTimeout(promise, ms, fallbackValue = null) {
-        return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => resolve(fallbackValue), ms);
-            if (typeof timer.unref === 'function') {
-                timer.unref();
-            }
-
-            Promise.resolve(promise).then(
-                (value) => {
-                    clearTimeout(timer);
-                    resolve(value);
-                },
-                (error) => {
-                    clearTimeout(timer);
-                    reject(error);
-                }
-            );
-        });
     }
 
     _assembleAnswer(parsedJson, citationResult) {

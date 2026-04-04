@@ -1,7 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const authController = require('../controllers/authController');
 const { verifyToken } = require('../middleware/auth');
+
+function validate(req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+  return next();
+}
 
 /**
  * @swagger
@@ -69,8 +78,19 @@ router.post('/user', verifyToken, authController.syncUser);
 
 // Protected routes - require valid Firebase token
 router.get('/profile', verifyToken, authController.getProfile);
-router.put('/profile', verifyToken, authController.updateProfile);
+router.put('/profile', [
+  body('displayName').optional().isString().isLength({ min: 1, max: 80 }),
+  body('mbbs_year').optional().isInt({ min: 1, max: 5 }),
+  body('college').optional().isString().isLength({ max: 120 }),
+  body('country').optional().isString().isLength({ max: 80 }),
+  body('onboarded').optional().isBoolean(),
+], verifyToken, validate, authController.updateProfile);
 router.delete('/profile', verifyToken, authController.deleteAccount);
-router.put('/preferences', verifyToken, authController.updatePreferences);
+router.put('/preferences', [
+  body('subjects_weak').optional().isArray({ max: 20 }),
+  body('subjects_strong').optional().isArray({ max: 20 }),
+  body('topics_weak').optional().isArray({ max: 30 }),
+  body('topics_strong').optional().isArray({ max: 30 }),
+], verifyToken, validate, authController.updatePreferences);
 
 module.exports = router;

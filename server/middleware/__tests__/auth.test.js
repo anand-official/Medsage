@@ -44,12 +44,14 @@ describe('auth middleware', () => {
   test('verifyToken attaches decoded user when token is valid', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: async () => ({
+        json: async () => ({
         sub: 'user-1',
         email: 'student@example.com',
         name: 'Student One',
         picture: 'https://example.com/u.png',
         aud: 'client-123',
+        iss: 'https://accounts.google.com',
+        email_verified: 'true',
         exp: `${Math.floor(Date.now() / 1000) + 3600}`,
       }),
     });
@@ -90,6 +92,25 @@ describe('auth middleware', () => {
       error: 'Authentication failed',
       code: 'AUTH_INVALID_TOKEN',
       requestId: 'rid-3',
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('verifyToken fails closed when GOOGLE_CLIENT_ID is missing', async () => {
+    delete process.env.GOOGLE_CLIENT_ID;
+    const { verifyToken } = require('../auth');
+    const req = { headers: { authorization: 'Bearer any-token' }, id: 'rid-4', path: '/api/v1/study/plan' };
+    const res = createRes();
+    const next = jest.fn();
+
+    await verifyToken(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: 'Authentication is temporarily unavailable',
+      code: 'AUTH_MISCONFIGURED',
+      requestId: 'rid-4',
     });
     expect(next).not.toHaveBeenCalled();
   });

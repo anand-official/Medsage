@@ -127,6 +127,26 @@ function detectSubjectFromText(text) {
   return null;
 }
 
+function looksLikeThreadFollowUp(text = '') {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+
+  return (
+    /\b(this|that|it|they|these|those|above|same|previous|last|earlier)\b/.test(normalized)
+    || /^(and|also|but|however|then|why|how|what about|how about|continue|elaborate|expand|simplify|counter|contradict)/.test(normalized)
+    || /\b(are you sure|isn't that|is that correct|that seems wrong|that sounds wrong|can you justify|show the source|prove it)\b/.test(normalized)
+  );
+}
+
+function getLatestThreadSubject(messages = []) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.subject) return message.subject;
+    if (message?.response?.subject) return message.response.subject;
+  }
+  return null;
+}
+
 // ─── Quick start prompts ──────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
   { q: 'Cardiac cycle phases and heart sounds explained',     subject: 'Physiology' },
@@ -262,11 +282,12 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
   const speechSynthesis = getSpeechSynthesis();
   const SpeechSynthesisUtteranceCtor = getSpeechSynthesisUtteranceConstructor();
   const canSpeak = Boolean(speechSynthesis && SpeechSynthesisUtteranceCtor);
+  const feedbackId = response.feedback_id || response.log_id || null;
 
   const handleFeedback = (rating) => {
-    if (feedbackGiven || !response.log_id) return;
+    if (feedbackGiven || !feedbackId) return;
     setFeedbackGiven(rating);
-    onFeedback?.(response.log_id, rating);
+    onFeedback?.(feedbackId, rating);
   };
 
   useEffect(() => {
@@ -619,7 +640,7 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
                   <CopyIcon sx={{ fontSize: 14 }} />
                 </IconButton>
               </Tooltip>
-              {response.log_id && !streaming && (
+              {feedbackId && !streaming && (
                 <>
                   <Tooltip title={feedbackGiven === 'up' ? 'Marked helpful' : 'Helpful'}>
                     <IconButton size="small" onClick={() => handleFeedback('up')} disabled={Boolean(feedbackGiven)} sx={{
@@ -1061,6 +1082,8 @@ const QuestionPage = () => {
     const history = buildHistory();
     const imageDataUrl = overrideImageDataUrl || attachedImage?.dataUrl || null;
     const detectedSubject = imageDataUrl ? null : detectSubjectFromText(q);
+    const threadSubject = looksLikeThreadFollowUp(q) ? getLatestThreadSubject(messages) : null;
+    const effectiveSubject = imageDataUrl ? null : (detectedSubject || threadSubject);
     const syllabusLabel = userProfile?.country ? `${userProfile.country} MBBS` : 'Indian MBBS';
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -1080,7 +1103,7 @@ const QuestionPage = () => {
     // ── Full pipeline ──────────────────────────────────────────────────────
     try {
       const result = await fetchMedicalQuery(
-        q || 'Describe this image', mode, syllabusLabel, history, imageDataUrl, controller.signal, detectedSubject
+        q || 'Describe this image', mode, syllabusLabel, history, imageDataUrl, controller.signal, effectiveSubject
       );
       const raw = result?.data || {};
       const responseData = {
@@ -1096,7 +1119,10 @@ const QuestionPage = () => {
         verified: raw?.verified || false,
         verificationLevel: raw?.verificationLevel || null,
         pipeline: raw?.pipeline || raw?.trust?.pipeline || raw?.meta?.pipeline || null,
-        log_id: raw?.log_id || null,
+        feedback_id: raw?.feedback_id || raw?.log_id || null,
+        public_log_id: raw?.public_log_id || raw?.log_id || null,
+        answerMode: raw?.answerMode || null,
+        threadMode: raw?.threadMode || null,
         claims: raw?.claims || null,
         allClaimsSourced: raw?.allClaimsSourced ?? null,
         partial_answer: raw?.partial_answer || null,
@@ -1105,7 +1131,7 @@ const QuestionPage = () => {
         role: 'ai', response: responseData,
         modeUsed: mode,
         topicId: raw?.topicId || raw?.meta?.topic_id || null,
-        subject: raw?.subject || raw?.meta?.subject || detectedSubject || null,
+        subject: raw?.subject || raw?.meta?.subject || effectiveSubject || null,
         ...createChatTimestamp(),
       }]);
     } catch (err) {
@@ -1123,7 +1149,7 @@ const QuestionPage = () => {
       setIsListening(false);
       inputRef.current?.focus();
     }
-  }, [question, mode, attachedImage, buildHistory, userProfile]);
+  }, [question, mode, attachedImage, buildHistory, messages, userProfile]);
 
   useEffect(() => {
     if (location.state?.initialQuery) {
@@ -1148,9 +1174,9 @@ const QuestionPage = () => {
       .catch(() => setSnackbar({ open: true, message: 'Failed to copy answer.' }));
   };
 
-  const handleFeedback = async (logId, rating) => {
+  const handleFeedback = async (feedbackId, rating) => {
     try {
-      await submitFeedback(logId, rating);
+      await submitFeedback(feedbackId, rating);
       setSnackbar({ open: true, message: rating === 'up' ? 'Thanks for the feedback!' : 'Got it — we\'ll review this response.' });
     } catch {
       // silent — don't distract the student with feedback errors

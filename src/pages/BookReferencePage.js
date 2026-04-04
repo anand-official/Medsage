@@ -1034,7 +1034,16 @@ const BookReferencePage = () => {
                                   const fallback = document.createElement('div');
                                   fallback.className = 'cover-fallback';
                                   fallback.style.cssText = `position:absolute;inset:0;background:${getCoverGradient(book.category)};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;text-align:center;`;
-                                  fallback.innerHTML = `<span style="font-size:2.8rem;font-weight:900;color:rgba(255,255,255,0.25);line-height:1">${book.title.charAt(0)}</span><span style="color:rgba(255,255,255,0.92);font-weight:800;font-size:0.65rem;line-height:1.3;margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${book.title}</span>`;
+                                  const initial = document.createElement('span');
+                                  initial.textContent = book.title.charAt(0);
+                                  initial.style.cssText = 'font-size:2.8rem;font-weight:900;color:rgba(255,255,255,0.25);line-height:1';
+
+                                  const title = document.createElement('span');
+                                  title.textContent = book.title;
+                                  title.style.cssText = 'color:rgba(255,255,255,0.92);font-weight:800;font-size:0.65rem;line-height:1.3;margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical';
+
+                                  fallback.appendChild(initial);
+                                  fallback.appendChild(title);
                                   parent.appendChild(fallback);
                                 }
                               }}

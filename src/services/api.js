@@ -1,8 +1,6 @@
 import axios from 'axios';
 import { getApiBaseUrl } from '../config/apiBase';
-
-// Read the Google ID token stored on login
-const getStoredToken = () => localStorage.getItem('google_id_token');
+import { clearAuthToken, getAuthToken } from '../utils/authStorage';
 
 const API_URL = getApiBaseUrl();
 
@@ -129,7 +127,7 @@ function normalizeApiErrorMessage(payload, fallbackStatusText, statusCode) {
 // The UID is NOT sent as a header, the backend decodes it from the token.
 api.interceptors.request.use(
   (config) => {
-    const token = getStoredToken();
+    const token = getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -155,7 +153,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       error.requestId = getResponseRequestId(error.response);
-      localStorage.removeItem('google_id_token');
+      clearAuthToken();
       window.location.href = '/signin';
     }
 
@@ -166,7 +164,7 @@ api.interceptors.response.use(
 // Helper function to make API calls, attaches Google ID token when available
 export const apiCall = async (endpoint, options = {}) => {
   try {
-    const token = getStoredToken();
+    const token = getAuthToken();
     const response = await api({
       url: endpoint,
       ...options,
@@ -332,7 +330,10 @@ export const fetchMedicalQuery = async (query, mode = 'conceptual', syllabus = '
       topicId: payload?.topicId || payload?.meta?.topic_id || null,
       subject: payload?.subject || payload?.meta?.subject || null,
       timestamp: payload?.timestamp || new Date().toISOString(),
-      log_id: payload?.log_id || null,
+      feedback_id: payload?.feedback_id || payload?.log_id || null,
+      public_log_id: payload?.public_log_id || payload?.log_id || null,
+      answerMode: payload?.answerMode || payload?.answer_mode || null,
+      threadMode: payload?.threadMode || payload?.thread_mode || null,
       claims: payload?.claims || null,
       allClaimsSourced: payload?.allClaimsSourced ?? null,
       partial_answer: payload?.partial_answer || null,
@@ -352,10 +353,10 @@ export const fetchSessionMessages = async (sessionId, page = 1, limit = 50) => {
   return response.data;
 };
 
-export const submitFeedback = async (logId, rating) => {
+export const submitFeedback = async (feedbackId, rating) => {
   return apiCall('/api/v1/audit/feedback', {
     method: 'POST',
-    data: { log_id: logId, rating },
+    data: { feedback_id: feedbackId, rating },
   });
 };
 
@@ -372,7 +373,7 @@ export const submitFeedback = async (logId, rating) => {
 export const streamMedicalQuery = async (query, options = {}, onToken, onDone, onError, signal = null) => {
   const { mode = 'conceptual', history = [], subject = null, onStart = null } = options;
 
-  const storedToken = getStoredToken();
+  const storedToken = getAuthToken();
   const authHeader = storedToken ? `Bearer ${storedToken}` : '';
 
   const response = await fetchWithLegacyFallback('/api/v1/medical/query/stream', {
@@ -392,7 +393,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem('google_id_token');
+      clearAuthToken();
       window.location.href = '/signin';
       return;
     }

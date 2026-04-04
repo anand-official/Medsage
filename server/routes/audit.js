@@ -108,7 +108,8 @@ const AuditLog = require('../models/AuditLog');
 // ── POST /api/audit/feedback ─────────────────────────────────────────────────
 
 router.post('/feedback', [
-    body('log_id').isMongoId().withMessage('Valid log_id required'),
+    body('feedback_id').optional().isMongoId().withMessage('Valid feedback_id required'),
+    body('log_id').optional().isString().isLength({ min: 8, max: 64 }).withMessage('Valid log_id required'),
     body('rating').isIn(['up', 'down']).withMessage('rating must be "up" or "down"'),
     body('comment').optional().isString().isLength({ max: 500 }),
 ], verifyToken, async (req, res) => {
@@ -117,13 +118,24 @@ router.post('/feedback', [
         return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { log_id, rating, comment = '' } = req.body;
+    const { feedback_id, log_id, rating, comment = '' } = req.body;
     const uid = req.user?.uid;
 
+    if (!feedback_id && !log_id) {
+        return res.status(400).json({
+            success: false,
+            errors: [{ msg: 'feedback_id or log_id is required', path: 'feedback_id' }],
+        });
+    }
+
     try {
+        const selector = feedback_id
+            ? { _id: feedback_id, user_id: uid }
+            : { log_id, user_id: uid };
+
         // Only allow the owner to rate their own query
         const log = await AuditLog.findOneAndUpdate(
-            { _id: log_id, user_id: uid },
+            selector,
             {
                 $set: {
                     'feedback.rating': rating,

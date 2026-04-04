@@ -1,22 +1,9 @@
 const qdrantClient = require('./qdrantClient');
 const embeddingService = require('./embeddingService');
-
-const DEFAULT_COLLECTION_NAME = process.env.QDRANT_DEFAULT_COLLECTION || 'mbbs_pathology_v2';
-const SUBJECT_COLLECTION_MAP = {
-    Anatomy: ['mbbs_anatomy_v2', 'mbbs_anatomy_v1'],
-    Physiology: ['mbbs_physiology_v2', 'mbbs_physiology_v1'],
-    Biochemistry: ['mbbs_biochemistry_v2', 'mbbs_biochemistry_v1'],
-    Pharmacology: ['mbbs_pharmacology_v2', 'mbbs_pharmacology_v1'],
-    Microbiology: ['mbbs_microbiology_v2', 'mbbs_microbiology_v1'],
-    Pathology: ['mbbs_pathology_v2', 'mbbs_pathology_v1'],
-    Surgery: ['mbbs_surgery_v2', 'mbbs_surgery_v1'],
-    Medicine: ['mbbs_medicine_v2', 'mbbs_medicine_v1'],
-    Psychiatry: ['mbbs_psychiatry_v2', 'mbbs_psychiatry_v1'],
-    'Community Medicine': ['mbbs_community_medicine_v2', 'mbbs_psm_v2', 'mbbs_psm_v1'],
-    Radiology: ['mbbs_radiology_v2', 'mbbs_radiology_v1'],
-    'Forensic Medicine': ['mbbs_forensic_medicine_v2', 'mbbs_forensic_medicine_v1'],
-    default: [DEFAULT_COLLECTION_NAME]
-};
+const {
+    DEFAULT_COLLECTION_NAME,
+    getCollectionCandidates,
+} = require('./ragCollections');
 
 // Mode-aware reranking weights — Stage 4 optimal config (BGE bge-large-en-v1.5)
 // Winning sweep: threshold=0.50, weights=0.8/0.2 → Validation 100%, Composite 88%
@@ -65,9 +52,12 @@ class RAGService {
 
             // 2. Build Qdrant Metadata Filters
             const mustFilters = [
-                { key: 'subject', match: { value: filters.subject || 'Pathology' } },
                 { key: 'country', match: { value: filters.country || 'India' } }
             ];
+
+            if (filters.subject) {
+                mustFilters.unshift({ key: 'subject', match: { value: filters.subject } });
+            }
 
             // Apply topic_id filter only if confidence is high (> 0.75)
             if (topicId && topicId !== 'GENERAL' && confidence >= 0.75) {
@@ -77,6 +67,17 @@ class RAGService {
 
             // 3. Initial Vector Search (retrieve more candidates for re-ranking)
             const initialCandidates = this._getCollectionCandidates(filters.subject);
+            if (initialCandidates.length === 0) {
+                telemetry.error = `No vector collections configured for subject: ${filters.subject}`;
+                telemetry.latency_ms = Date.now() - startTime;
+                return {
+                    chunks: [],
+                    chunk_payloads: [],
+                    metadata: { source: 'Error', page: 'N/A' },
+                    telemetry,
+                    is_valid: false
+                };
+            }
             let searchPack = await this._searchAcrossCollections(queryVector, mustFilters, 15, initialCandidates);
             let searchResults = searchPack.results;
             telemetry.collection = searchPack.collection;
@@ -98,7 +99,7 @@ class RAGService {
                 telemetry.collection = telemetry.collection || broadSearchPack.collection;
 
                 // If still weak, broaden across subjects in default collection(s)
-                if (!broadResults.length) {
+                if (!broadResults.length && !filters.subject) {
                     const widestFilters = broadFilters.filter(f => f.key !== 'subject');
                     const globalCandidates = this._getCollectionCandidates('default');
                     const globalSearchPack = await this._searchAcrossCollections(queryVector, widestFilters, 15, globalCandidates);
@@ -252,9 +253,7 @@ class RAGService {
     }
 
     _getCollectionCandidates(subject) {
-        const requested = SUBJECT_COLLECTION_MAP[subject] || [];
-        const defaults = SUBJECT_COLLECTION_MAP.default || [];
-        return [...new Set([...requested, ...defaults])];
+        return getCollectionCandidates(subject);
     }
 
     async _searchAcrossCollections(vector, mustFilters, limit, candidates) {

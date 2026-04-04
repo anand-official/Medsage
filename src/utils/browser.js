@@ -4,14 +4,22 @@ export function canUseDOM() {
   return typeof window !== 'undefined';
 }
 
-function getLocalStorage() {
-  if (!canUseDOM() || !window.localStorage) return null;
+function getStorage(type) {
+  if (!canUseDOM() || !window?.[type]) return null;
 
   try {
-    return window.localStorage;
+    return window[type];
   } catch {
     return null;
   }
+}
+
+function getLocalStorage() {
+  return getStorage('localStorage');
+}
+
+function getSessionStorage() {
+  return getStorage('sessionStorage');
 }
 
 export function getStoredValue(key, fallback = null) {
@@ -40,6 +48,42 @@ export function setStoredValue(key, value) {
 
 export function removeStoredValue(key) {
   const storage = getLocalStorage();
+  if (!storage) return false;
+
+  try {
+    storage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getSessionStoredValue(key, fallback = null) {
+  const storage = getSessionStorage();
+  if (!storage) return fallback;
+
+  try {
+    const value = storage.getItem(key);
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function setSessionStoredValue(key, value) {
+  const storage = getSessionStorage();
+  if (!storage) return false;
+
+  try {
+    storage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeSessionStoredValue(key) {
+  const storage = getSessionStorage();
   if (!storage) return false;
 
   try {

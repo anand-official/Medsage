@@ -3,11 +3,19 @@
 const logger = require('../utils/logger');
 const { UnauthorizedError, ForbiddenError } = require('../utils/errors');
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+function getClientId() {
+  return process.env.GOOGLE_CLIENT_ID;
+}
 
 // Verify a Google ID token using Google's tokeninfo endpoint.
-// No library needed — one HTTPS call, response cached by Google's CDN.
+// This keeps dependencies light, but audience / issuer / email checks are mandatory.
 async function verifyGoogleToken(token) {
+  const clientId = getClientId();
+  if (!clientId) {
+    logger.error('[Auth] GOOGLE_CLIENT_ID is not configured');
+    throw new Error('Authentication service misconfigured');
+  }
+
   const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
   const payload = await res.json();
 
@@ -16,9 +24,15 @@ async function verifyGoogleToken(token) {
     throw new UnauthorizedError('Invalid authentication token');
   }
 
-  if (CLIENT_ID && payload.aud !== CLIENT_ID) {
-    logger.warn('[Auth] Token audience mismatch', { expected: CLIENT_ID, got: payload.aud });
+  if (payload.aud !== clientId) {
+    logger.warn('[Auth] Token audience mismatch', { expected: clientId, got: payload.aud });
     throw new UnauthorizedError('Authentication token audience mismatch');
+  }
+  if (!['accounts.google.com', 'https://accounts.google.com'].includes(payload.iss)) {
+    throw new UnauthorizedError('Authentication token issuer mismatch');
+  }
+  if (`${payload.email_verified}` !== 'true') {
+    throw new UnauthorizedError('Authentication token email not verified');
   }
   if (parseInt(payload.exp, 10) * 1000 < Date.now()) {
     throw new UnauthorizedError('Authentication token expired');
@@ -36,6 +50,16 @@ function sendAuthError(res, reqId, statusCode, code, message) {
   });
 }
 
+function attachUser(req, payload) {
+  req.user = {
+    uid: payload.sub,
+    email: payload.email,
+    displayName: payload.name || payload.email,
+    photoURL: payload.picture || null,
+    admin: false,
+  };
+}
+
 const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -45,22 +69,23 @@ const verifyToken = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     const payload = await verifyGoogleToken(token);
-
-    req.user = {
-      uid: payload.sub,
-      email: payload.email,
-      displayName: payload.name || payload.email,
-      photoURL: payload.picture || null,
-      admin: false,
-    };
+    attachUser(req, payload);
     next();
   } catch (error) {
     logger.warn('[Auth] Token verification failed', { err: error.message, path: req.path });
+    if (error.message === 'Authentication service misconfigured') {
+      return sendAuthError(res, req.id, 500, 'AUTH_MISCONFIGURED', 'Authentication is temporarily unavailable');
+    }
+
     const code = error.message === 'Authentication token expired'
       ? 'AUTH_TOKEN_EXPIRED'
       : error.message === 'Authentication token audience mismatch'
         ? 'AUTH_AUDIENCE_MISMATCH'
-        : 'AUTH_INVALID_TOKEN';
+        : error.message === 'Authentication token issuer mismatch'
+          ? 'AUTH_ISSUER_MISMATCH'
+          : error.message === 'Authentication token email not verified'
+            ? 'AUTH_EMAIL_NOT_VERIFIED'
+            : 'AUTH_INVALID_TOKEN';
     return sendAuthError(res, req.id, 401, code, 'Authentication failed');
   }
 };
@@ -71,14 +96,10 @@ const optionalAuth = async (req, res, next) => {
   try {
     const token = authHeader.split(' ')[1];
     const payload = await verifyGoogleToken(token);
-    req.user = {
-      uid: payload.sub,
-      email: payload.email,
-      displayName: payload.name || payload.email,
-      photoURL: payload.picture || null,
-      admin: false,
-    };
-  } catch { /* continue without user */ }
+    attachUser(req, payload);
+  } catch {
+    // Continue anonymously for optional-auth routes.
+  }
   next();
 };
 
@@ -98,4 +119,9 @@ const isAdmin = (req, res, next) => {
   });
 };
 
-module.exports = { verifyToken, optionalAuth, isAdmin, firebaseEnabled: !!CLIENT_ID };
+module.exports = {
+  verifyToken,
+  optionalAuth,
+  isAdmin,
+  firebaseEnabled: Boolean(getClientId()),
+};

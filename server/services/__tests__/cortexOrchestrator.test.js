@@ -200,6 +200,47 @@ describe('CortexOrchestrator.generateMedicalResponse', () => {
         expect(ragService.retrieveContext).toHaveBeenCalled();
     });
 
+    test('keeps the prior subject for short follow-up retrievals', async () => {
+        topicScorer.scoreQueryAdvanced.mockResolvedValue({
+            topic_id: 'MED_01',
+            subject: 'Medicine',
+            confidence: 0.82,
+            method: 'embedding_v1',
+            matched: true,
+        });
+        ragService.retrieveContext.mockResolvedValue(validRetrieval);
+        llmClient.callText.mockResolvedValue({
+            text: 'acute inflammation mechanism pathology',
+            provider: 'gemini',
+        });
+        llmClient.callStructured.mockResolvedValue({
+            text: JSON.stringify(validParsedResponse),
+            provider: 'gemini',
+        });
+        outputSchemaValidator.validate.mockReturnValue({
+            is_valid: true,
+            parsed: validParsedResponse,
+            error: null,
+        });
+        citationVerifier.verifyStructuredClaims.mockReturnValue(validCitationResult);
+        confidenceEngine.compute.mockReturnValue(highConfidenceReport);
+
+        await orchestrator.generateMedicalResponse('But are you sure?', {
+            history: [
+                { role: 'user', content: 'Explain acute inflammation' },
+                { role: 'ai', content: 'Acute inflammation is the immediate vascular response.', subject: 'Pathology' },
+            ],
+        });
+
+        expect(ragService.retrieveContext).toHaveBeenCalledWith(
+            'MED_01',
+            expect.objectContaining({ subject: 'Pathology', country: 'India' }),
+            expect.any(String),
+            0.82,
+            'conceptual'
+        );
+    });
+
     test('refuses off-topic query that has no medical signal', async () => {
         // scoreQuery is called by _handleOffTopic when hasMedicalSignal is false
         topicScorer.scoreQuery.mockReturnValue({ matched: false, confidence: 0.05, topic_id: null, subject: null });
@@ -269,7 +310,7 @@ describe('CortexOrchestrator.generateMedicalResponse', () => {
         expect(ragService.retrieveContext).not.toHaveBeenCalled();
     });
 
-    test('returns direct_gemini when topic confidence is low but question is descriptive', async () => {
+    test('returns clarification when topic confidence is low but question is descriptive', async () => {
         topicScorer.scoreQueryAdvanced.mockResolvedValue({
             topic_id: null,
             subject: 'Medical Science',
@@ -277,19 +318,16 @@ describe('CortexOrchestrator.generateMedicalResponse', () => {
             method: 'keyword_v1',
             matched: false,
         });
-        llmClient.callText.mockResolvedValue({
-            text: 'Direct answer without grounding.',
-            provider: 'gemini',
-        });
 
         // 9-word question: _shouldClarifyQuestion → words.length > 6 → false → goes to direct
         const response = await orchestrator.generateMedicalResponse(
             'Explain the medical framework for syndromic differential diagnosis'
         );
 
-        expect(response.meta.pipeline).toBe('direct_gemini');
-        expect(response.trust.verified).toBe(false);
+        expect(response.meta.pipeline).toBe('clarification');
+        expect(response.is_clarification_required).toBe(true);
         expect(response.trust.flags).toContain('LOW_TOPIC_CONFIDENCE');
+        expect(llmClient.callText).not.toHaveBeenCalled();
     });
 
     // ── Post-retrieval paths ───────────────────────────────────────────────────
@@ -325,7 +363,7 @@ describe('CortexOrchestrator.generateMedicalResponse', () => {
         expect(llmClient.callText).not.toHaveBeenCalled();
     });
 
-    test('returns direct_no_chunks when retrieval fails and question is long', async () => {
+    test('returns clarification when retrieval fails and question is long', async () => {
         topicScorer.scoreQueryAdvanced.mockResolvedValue(highTopicResult);
         ragService.retrieveContext.mockResolvedValue({
             chunks: [],
@@ -342,16 +380,12 @@ describe('CortexOrchestrator.generateMedicalResponse', () => {
             },
             is_valid: false,
         });
-        llmClient.callText.mockResolvedValue({
-            text: 'Best-effort direct answer.',
-            provider: 'gemini',
-        });
-
         const response = await orchestrator.generateMedicalResponse('Explain acute inflammation in full detail');
 
-        expect(response.meta.pipeline).toBe('direct_no_chunks');
-        expect(response.trust.verification_level).toBe('degraded');
+        expect(response.meta.pipeline).toBe('clarification');
+        expect(response.is_clarification_required).toBe(true);
         expect(response.trust.flags).toContain('NO_GROUNDED_CONTEXT');
+        expect(llmClient.callText).not.toHaveBeenCalled();
     });
 
     // ── Full RAG success path ──────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const sm2Service = require('../services/sm2Service');
 const geminiService = require('../services/geminiService');
 const { verifyToken } = require('../middleware/auth');
@@ -21,15 +22,25 @@ function getUserId(req) {
     return userId;
 }
 
+function validationError(req, res) {
+    const errors = validationResult(req);
+    if (errors.isEmpty()) return null;
+    return res.status(400).json({ success: false, errors: errors.array() });
+}
+
 // ── POST /api/sm2/flashcard ──────────────────────────────────────────────────
 // Runs the full pipeline on a question and conditionally creates a flashcard.
 // Body: { question, answer_summary?, user_id, mode? }
-router.post('/flashcard', verifyToken, uidQueryLimiter, async (req, res) => {
+router.post('/flashcard', [
+    body('question').trim().notEmpty().isLength({ max: 2000 }),
+    body('answer_summary').optional().isString().isLength({ max: 1000 }),
+    body('mode').optional().isIn(['exam', 'conceptual']),
+], verifyToken, uidQueryLimiter, async (req, res) => {
     try {
+        const badRequest = validationError(req, res);
+        if (badRequest) return;
         const userId = getUserId(req);
         const { question, answer_summary, mode } = req.body;
-
-        if (!question) return res.status(400).json({ error: 'question is required' });
 
         // Run pipeline to get a grounded, confidence-scored answer
         const pipelineResponse = await geminiService.generateMedicalResponse(question, { mode: mode || 'exam' });

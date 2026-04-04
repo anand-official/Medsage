@@ -37,6 +37,7 @@ function normalizeHistoryItems(history = []) {
     .map((item) => ({
       role: item.role,
       content: String(item.content ?? item.text ?? '').trim().slice(0, 2000),
+      ...(item.subject ? { subject: String(item.subject).trim().slice(0, 100) } : {}),
     }))
     .filter((item) => item.content);
 }
@@ -137,6 +138,7 @@ router.post('/query', [
   body('history.*.role').optional().isIn(['user', 'ai']).withMessage('History item role must be "user" or "ai"'),
   body('history.*.content').optional().isString().isLength({ max: 2000 }).withMessage('Each history item content must be under 2000 characters'),
   body('history.*.text').optional().isString().isLength({ max: 2000 }).withMessage('Each history item content must be under 2000 characters'),
+  body('history.*.subject').optional().isString().isLength({ max: 100 }).withMessage('Each history item subject must be under 100 characters'),
   // imageBase64 string-length guard (actual byte size validated below after decode)
   body('imageBase64').optional().isString().isLength({ max: 8 * 1024 * 1024 }).withMessage('Image payload too large'),
   body('subject').optional().isString().isLength({ max: 100 }),
@@ -232,12 +234,15 @@ router.post('/query', [
       meta: aiResponse.meta || {},
       topicId: aiResponse.meta?.topic_id || null,
       subject: aiResponse.meta?.subject || null,
+      answerMode: aiResponse.meta?.answer_mode || null,
+      threadMode: aiResponse.meta?.thread_mode || null,
       disclaimer: 'Cortex responses are for educational purposes only and do not constitute medical advice. Always verify with authoritative textbooks and clinical guidelines.',
       timestamp: new Date().toISOString()
     };
 
     // ── Audit log ─────────────────────────────────────────────────────────
     let logId = null;
+    let feedbackId = null;
     try {
       const auditEntry = new AuditLog({
         user_id:        uid || 'anonymous',
@@ -255,6 +260,7 @@ router.post('/query', [
       });
       await auditEntry.save();
       logId = auditEntry.log_id;
+      feedbackId = auditEntry._id.toString();
     } catch (err) {
       console.error('[Audit] write failed:', err.message);
       // logId stays null — feedback submission will not be available for this response
@@ -269,7 +275,8 @@ router.post('/query', [
         type: 'CLARIFICATION',
         data: {
           ...basePayload,
-          log_id: logId,
+          feedback_id: feedbackId,
+          public_log_id: logId,
           type: 'CLARIFICATION',
           pipeline: clarificationPipeline,
           text: aiResponse.answer || 'I need one more detail to give a precise answer.',
@@ -290,7 +297,8 @@ router.post('/query', [
       success: true,
       data: {
         ...basePayload,
-        log_id: logId,
+        feedback_id: feedbackId,
+        public_log_id: logId,
         type: 'ANSWER',
         textWithReferences: aiResponse.answer || aiResponse.short_note
       }

@@ -62,6 +62,9 @@ export function buildHistoryForRequest(messages, tokenBudget = 2000) {
       return {
         role: m.role,
         content,
+        ...(m.role === 'ai' && (m.subject || m.response?.subject)
+          ? { subject: m.subject || m.response?.subject }
+          : {}),
         salience: scoreSalience(content),
         tokens: estimateTokenCount(content),
         index: 0,
@@ -105,5 +108,9 @@ export function buildHistoryForRequest(messages, tokenBudget = 2000) {
 
   return selected
     .sort((a, b) => a.index - b.index)
-    .map(({ role, content }) => ({ role, content }));
+    .map(({ role, content, subject }) => ({
+      role,
+      content,
+      ...(subject ? { subject } : {}),
+    }));
 }

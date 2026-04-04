@@ -1,6 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { googleLogout } from '@react-oauth/google';
 import { authAPI, formatRequestIdLabel } from '../services/api';
+import {
+  clearAuthToken,
+  getAuthToken,
+  migrateLegacyAuthToken,
+  setAuthToken,
+} from '../utils/authStorage';
 
 const AuthContext = createContext();
 
@@ -51,7 +57,7 @@ export function AuthProvider({ children }) {
   }, [clearRefreshTimer]);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem('google_id_token');
+    clearAuthToken();
     clearRefreshTimer();
     setCurrentUser(null);
     setUserProfile(null);
@@ -117,7 +123,7 @@ export function AuthProvider({ children }) {
   }, [clearSession, formatAuthError, scheduleTokenRefresh]);
 
   useEffect(() => {
-    const token = localStorage.getItem('google_id_token');
+    const token = migrateLegacyAuthToken();
     if (!token) {
       setAuthStatus('signed_out');
       return;
@@ -126,7 +132,7 @@ export function AuthProvider({ children }) {
   }, [bootstrapFromToken]);
 
   const retryBootstrap = useCallback(async () => {
-    const token = localStorage.getItem('google_id_token');
+    const token = getAuthToken();
     return bootstrapFromToken(token);
   }, [bootstrapFromToken]);
 
@@ -135,7 +141,7 @@ export function AuthProvider({ children }) {
     if (!credential) {
       throw new Error('Google sign-in did not return a credential');
     }
-    localStorage.setItem('google_id_token', credential);
+    setAuthToken(credential);
     return bootstrapFromToken(credential);
   }, [bootstrapFromToken]);
 
