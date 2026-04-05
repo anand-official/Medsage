@@ -269,7 +269,7 @@ function Navbar({ onSignIn }) {
 
                 {/* Center nav links — hidden on mobile */}
                 <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 40 }}>
-                    {[['Features', '#features'], ['How It Works', '#how-it-works']].map(([label, href]) => (
+                    {[['Features', '#features'], ['How It Works', '#how-it-works'], ['About', '#vision']].map(([label, href]) => (
                         <a key={label} href={href} style={{
                             color: 'rgba(255,255,255,0.5)', textDecoration: 'none',
                             fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 14,
@@ -331,19 +331,22 @@ function HeroSection({ onSignIn }) {
             {/* Background handled globally by LivingBackground */}
 
             <div style={{ maxWidth: 900, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                {/* Badge */}
-                <motion.p
+                {/* Eyebrow */}
+                <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
-                    style={{
-                        fontFamily: 'Inter, sans-serif', fontSize: 'clamp(14px, 1.8vw, 17px)',
-                        fontWeight: 500, color: 'rgba(165,180,252,0.75)',
-                        letterSpacing: '0.3px', margin: '0 0 28px',
-                    }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 32 }}
                 >
-                    Your smartest ally to master medical mystery
-                </motion.p>
+                    <div style={{ height: 1, width: 40, background: 'linear-gradient(90deg, transparent, rgba(165,180,252,0.4))' }} />
+                    <span style={{
+                        fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500,
+                        color: 'rgba(165,180,252,0.6)', letterSpacing: '2px', textTransform: 'uppercase',
+                    }}>
+                        Your smartest ally to master medicine
+                    </span>
+                    <div style={{ height: 1, width: 40, background: 'linear-gradient(90deg, rgba(165,180,252,0.4), transparent)' }} />
+                </motion.div>
 
                 {/* Headline */}
                 <motion.div
