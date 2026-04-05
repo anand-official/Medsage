@@ -1,181 +1,223 @@
-// Load server/.env first (has all keys), then root .env as fallback
+'use strict';
+
+// ── Bootstrap: load env vars FIRST, before any module reads process.env ───────
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
-require('dotenv').config(); // root .env fallback (won't overwrite already-set vars)
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const helmet = require('helmet');
+require('dotenv').config(); // root .env fallback — won't overwrite already-set vars
+
+// ── Core config + validation ───────────────────────────────────────────────────
+const config = require('./config');
+config.validateConfig(); // fast-fail on missing critical vars before anything else
+
+// ── Imports ────────────────────────────────────────────────────────────────────
+const express    = require('express');
+const cors       = require('cors');
+const morgan     = require('morgan');
+const helmet     = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
+const rateLimit  = require('express-rate-limit');
+const mongoose   = require('mongoose');
+const swaggerUi  = require('swagger-ui-express');
+
+const logger      = require('./utils/logger');
+const requestId   = require('./middleware/requestId');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { requestTrackerMiddleware, registerMonitoringRoutes } = require('./middleware/monitoring');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./config/swagger');
 const { verifyToken, isAdmin } = require('./middleware/auth');
-
-const mongoose = require('mongoose');
-
-// Import routes
-const authRoutes = require('./routes/auth');
-const studyRoutes = require('./routes/study');
-const medicalRoutes = require('./routes/medical');
-const sm2Routes = require('./routes/sm2');
-const libraryRoutes = require('./routes/library');
-const chatRoutes = require('./routes/chat');
-const auditRoutes = require('./routes/audit');
-const adminRoutes = require('./routes/admin');
-
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/cortex';
+const swaggerSpec = require('./config/swagger');
 const { scheduleRetentionJob } = require('./services/auditRetention');
-mongoose.connect(MONGODB_URI, {
-  serverSelectionTimeoutMS: 15000,
-  socketTimeoutMS: 45000,
-  maxPoolSize: 10,
-  retryWrites: true,
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+const authRoutes    = require('./routes/auth');
+const studyRoutes   = require('./routes/study');
+const medicalRoutes = require('./routes/medical');
+const sm2Routes     = require('./routes/sm2');
+const libraryRoutes = require('./routes/library');
+const chatRoutes    = require('./routes/chat');
+const auditRoutes   = require('./routes/audit');
+const adminRoutes   = require('./routes/admin');
+
+// ── MongoDB ────────────────────────────────────────────────────────────────────
+mongoose.connect(config.MONGODB_URI, {
+  serverSelectionTimeoutMS: config.MONGODB_SERVER_SELECTION_TIMEOUT,
+  socketTimeoutMS:          config.MONGODB_SOCKET_TIMEOUT,
+  maxPoolSize:              config.MONGODB_MAX_POOL_SIZE,
+  retryWrites:              true,
 })
   .then(() => {
-    console.log('[MongoDB] Connected successfully');
-    scheduleRetentionJob(); // Start audit log retention cron after DB is ready
+    logger.info('[MongoDB] Connected successfully');
+    scheduleRetentionJob();
   })
-  .catch(err => console.error('[MongoDB] Connection error:', err.message));
-mongoose.connection.on('disconnected', () => console.warn('[MongoDB] Disconnected — will reconnect automatically'));
-mongoose.connection.on('reconnected', () => console.log('[MongoDB] Reconnected'));
+  .catch(err => logger.error('[MongoDB] Initial connection failed', { err: err.message }));
 
+mongoose.connection.on('disconnected', () => logger.warn('[MongoDB] Disconnected — will reconnect automatically'));
+mongoose.connection.on('reconnected',  () => logger.info('[MongoDB] Reconnected'));
+mongoose.connection.on('error',        (err) => logger.error('[MongoDB] Connection error', { err: err.message }));
+
+// ── App ────────────────────────────────────────────────────────────────────────
 const app = express();
 
-// Trust first proxy hop so req.ip reflects real client IP behind nginx/Cloudflare
+// Trust first proxy hop so req.ip reflects the real client IP behind nginx / Cloudflare
 app.set('trust proxy', 1);
 
-// CORS configuration — explicit allowlist only, no wildcard subdomains
-const PRODUCTION_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : [
-      'https://medsage.pro',
-      'https://www.medsage.pro',
-      'https://medsage-ai.vercel.app', // Vercel preview URL
-    ];
+// ── CORS — explicit allowlist, never wildcard subdomains ──────────────────────
+const allowedOrigins = config.IS_PROD
+  ? config.ALLOWED_ORIGINS
+  : [...config.DEVELOPMENT_ORIGINS, ...config.ALLOWED_ORIGINS];
 
-const DEVELOPMENT_ORIGINS = ['http://localhost:3000', 'http://localhost:3002'];
-
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? PRODUCTION_ORIGINS
-  : [...DEVELOPMENT_ORIGINS, ...PRODUCTION_ORIGINS];
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. mobile apps, Render health checks)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    console.warn(`[CORS] Blocked origin: ${origin}`);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // no-origin: Render health checks, mobile apps
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    logger.warn('[CORS] Blocked origin', { origin });
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-app.use(cors(corsOptions));
+  credentials:     true,
+  methods:         ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders:  ['Content-Type', 'Authorization', 'x-request-id'],
+  exposedHeaders:  ['x-request-id'],
+}));
+
+// ── Core middleware ────────────────────────────────────────────────────────────
+app.use(requestId);    // assign x-request-id to every request before any logging
 app.use(helmet());
 app.use(compression());
-// Use combined format in production, dev format in development
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '10mb' })); // Limit body size
-app.use(requestTrackerMiddleware); // Auto-track all request latencies
 
-// Rate limiting - Global
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+// Morgan: log method, path (no query string — avoids leaking any sensitive params),
+// status, and response time. Use JSON in production for log-drain compatibility.
+const morganFormat = config.IS_PROD
+  ? (tokens, req, res) => JSON.stringify({
+      ts:     tokens.date(req, res, 'iso'),
+      method: tokens.method(req, res),
+      path:   req.path,          // path only — intentionally omit query string
+      status: parseInt(tokens.status(req, res), 10),
+      ms:     parseFloat(tokens['response-time'](req, res)),
+      rid:    req.id,
+    })
+  : ':method :url :status :response-time ms';
+
+app.use(morgan(morganFormat));
+app.use(express.json({ limit: '10mb' }));
+app.use(requestTrackerMiddleware);
+
+// ── Rate limiting ──────────────────────────────────────────────────────────────
+// Layer 1 — global IP-based limiter
+app.use(rateLimit({
+  windowMs:       config.GLOBAL_RATE_LIMIT_WINDOW_MS,
+  max:            config.GLOBAL_RATE_LIMIT_MAX,
   standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Too many requests, please try again later' }
-});
-app.use(limiter);
+  legacyHeaders:   false,
+  message:         { success: false, error: 'Too many requests. Please try again later.' },
+}));
 
-// Stricter rate limiting for AI queries — per-user (uid preferred, falls back to IP for unauthenticated)
-// Note: req.user is populated by verifyToken which runs inside the route, so the uid is available
-// because express-rate-limit runs BEFORE the route handler but AFTER body parsing and our verifyToken
-// interceptor. For the uid to be available here, verifyToken must be run first on the same path.
-// Since verifyToken is inside the router, we use a two-layer approach: IP-based here, uid enforced inside routes.
+// Layer 2 — stricter IP-based limiter for AI endpoints.
+// Per-user (UID) limiting is enforced inside the route handlers after verifyToken runs.
 const aiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // 10 AI queries per minute per IP
+  windowMs:       config.AI_RATE_LIMIT_WINDOW_MS,
+  max:            config.AI_RATE_LIMIT_MAX,
   standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Too many AI queries, please slow down' }
+  legacyHeaders:   false,
+  message:         { success: false, error: 'Too many AI queries. Please slow down.' },
 });
 
-// Routes
-app.use('/auth', authRoutes);
-app.use('/api/study', studyRoutes);
-app.use('/api/medical/query', aiLimiter); // IP-based AI limiter; per-user + vision limiters run inside the route after auth
-app.use('/api/medical', medicalRoutes);
-app.use('/api/sm2', sm2Routes);
-app.use('/api/library', libraryRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/audit', auditRoutes);
-app.use('/api/admin', adminRoutes);
+// ── Routes (/api/v1/*) ────────────────────────────────────────────────────────
+app.use('/api/v1/auth',         authRoutes);
+app.use('/api/v1/study',        studyRoutes);
+app.use('/api/v1/medical/query', aiLimiter); // IP limiter; UID limiter runs inside the route
+app.use('/api/v1/medical',      medicalRoutes);
+app.use('/api/v1/sm2',          sm2Routes);
+app.use('/api/v1/library',      libraryRoutes);
+app.use('/api/v1/chat',         chatRoutes);
+app.use('/api/v1/audit',        auditRoutes);
+app.use('/api/v1/admin',        adminRoutes);
 
-// Basic route for API verification (could move to /api)
-app.get('/api', (req, res) => {
-  res.send('Welcome to the Cortex API. All systems operational.');
-});
+// ── Meta routes ────────────────────────────────────────────────────────────────
+app.get('/', (req, res) => res.json({
+  name:    'Cortex API',
+  status:  'ok',
+  version: '3.0.0',
+  api:     '/api/v1',
+}));
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({ name: 'Cortex API', status: 'ok', version: '2.0.0' });
-});
+app.get('/api', (req, res) => res.json({
+  status:  'ok',
+  version: 'v1',
+  message: 'Cortex API — all systems operational.',
+  prefix:  '/api/v1',
+}));
 
-// Public liveness probe — no auth. Use this for Render/load balancer health checks.
-// The detailed /health route stays admin-gated so internal metrics are not exposed.
+// Public readiness probe — no auth required.
+// Returns 200 when all critical dependencies are reachable; 503 when degraded.
+// Use this for Render / load-balancer health checks and Docker HEALTHCHECK.
 app.get('/healthz', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    service: 'cortex-api',
-    uptime_s: Math.floor(process.uptime()),
+  const mongoState = mongoose.connection.readyState; // 1 = connected
+  const mongoOk    = mongoState === 1;
+  const geminiOk   = Boolean(config.GEMINI_API_KEY);
+
+  const status   = mongoOk && geminiOk ? 'ok' : 'degraded';
+  const httpCode = status === 'ok' ? 200 : 503;
+
+  res.status(httpCode).json({
+    status,
+    service:    'cortex-api',
+    uptime_s:   Math.floor(process.uptime()),
+    checks: {
+      mongodb: mongoOk   ? 'ok' : `degraded (readyState=${mongoState})`,
+      gemini:  geminiOk  ? 'ok' : 'missing GEMINI_API_KEY',
+    },
   });
 });
 
-// Health check + Prometheus metrics
+// ── Monitoring (/health, /metrics) — admin-gated in production ────────────────
 registerMonitoringRoutes(app);
 
-// ── Swagger / OpenAPI docs ────────────────────────────────────────────────────
-// In production: require admin token. In development: open to localhost.
-const swaggerGuard = process.env.NODE_ENV === 'production'
-  ? [verifyToken, isAdmin]
-  : [];
-app.get('/api-docs/swagger.json', ...swaggerGuard, (req, res) => {
-  res.json(swaggerSpec);
-});
+// ── API docs — admin-gated in production ──────────────────────────────────────
+const swaggerGuard = config.IS_PROD ? [verifyToken, isAdmin] : [];
+app.get('/api-docs/swagger.json', ...swaggerGuard, (req, res) => res.json(swaggerSpec));
 app.use('/api-docs', ...swaggerGuard, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Cortex API Docs',
-  swaggerOptions: { persistAuthorization: true },
+  customSiteTitle:  'Cortex API Docs',
+  swaggerOptions:   { persistAuthorization: true },
 }));
 
-// Error handling
+// ── Error handling (must be last) ─────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server
-const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Liveness (public): http://localhost:${PORT}/healthz`);
-  console.log(`Detailed health (admin): http://localhost:${PORT}/health`);
+// ── Server start ───────────────────────────────────────────────────────────────
+const server = app.listen(config.PORT, () => {
+  logger.info(`[Server] Listening on port ${config.PORT}`, {
+    env:      config.NODE_ENV,
+    liveness: `http://localhost:${config.PORT}/healthz`,
+    health:   `http://localhost:${config.PORT}/health (admin)`,
+    docs:     `http://localhost:${config.PORT}/api-docs`,
+  });
 });
 
+// ── Graceful shutdown ──────────────────────────────────────────────────────────
 process.on('SIGTERM', () => {
-  console.log('[Server] SIGTERM received — closing gracefully');
+  logger.info('[Server] SIGTERM received — shutting down gracefully');
+
   const killTimer = setTimeout(() => {
-    console.error('[Server] Force exit after graceful timeout');
+    logger.error('[Server] Graceful shutdown timed out — forcing exit');
     process.exit(1);
   }, 25000);
   killTimer.unref?.();
+
   server.close(() => {
     clearTimeout(killTimer);
-    mongoose.connection.close().catch(() => {});
+    mongoose.connection.close(false).catch(() => {});
+    logger.info('[Server] Shutdown complete');
     process.exit(0);
   });
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('[Server] Uncaught exception — shutting down', { err: err.message, stack: err.stack });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('[Server] Unhandled promise rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+  });
+  // Don't exit — log and continue; uncaught promise rejections are often in fire-and-forget paths
 });

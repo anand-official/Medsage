@@ -1,46 +1,79 @@
+'use strict';
+
+const { AppError } = require('../utils/errors');
+const logger = require('../utils/logger');
+
+/**
+ * Global error handler — last middleware in the Express chain.
+ *
+ * All responses follow the same envelope:
+ *   { success: false, error: <string>, code?: <string>, requestId?: <string> }
+ *
+ * Rules:
+ * - AppError (4xx): operational / expected — message is safe to show the client.
+ * - AppError (5xx) or generic Error: unexpected — show a generic message and log
+ *   the real error server-side only. Stack traces never reach the client.
+ * - Mongoose/validation errors are mapped to 400.
+ */
 const errorHandler = (err, req, res, next) => {
-  console.error(err.stack);
-
-  // Default error
+  // ----- Classify -----
   let statusCode = err.statusCode || 500;
-  let message = err.message || 'Internal Server Error';
+  let message    = err.message    || 'Internal server error';
+  let code       = err.code       || null;
 
-  // Handle specific error types
-  if (err.name === 'ValidationError') {
+  // Mongoose document validation
+  if (err.name === 'ValidationError' && !err.statusCode) {
     statusCode = 400;
-    message = err.message;
-  } else if (err.name === 'UnauthorizedError') {
-    statusCode = 401;
-    message = 'Unauthorized access';
-  } else if (err.name === 'ForbiddenError') {
-    statusCode = 403;
-    message = 'Forbidden access';
-  } else if (err.name === 'NotFoundError') {
-    statusCode = 404;
-    message = 'Resource not found';
+    code       = 'VALIDATION_ERROR';
   }
 
-  // Send error response - NEVER expose stack traces to client
+  // Mongoose bad ObjectId cast
+  if (err.name === 'CastError' && !err.statusCode) {
+    statusCode = 400;
+    message    = 'Invalid ID format';
+    code       = 'INVALID_ID';
+  }
+
+  // Mongoose duplicate key
+  if (err.code === 11000) {
+    statusCode = 409;
+    message    = 'Duplicate entry';
+    code       = 'CONFLICT';
+  }
+
+  // ----- Log -----
+  const logCtx = {
+    requestId: req.id,
+    method:    req.method,
+    path:      req.path,
+    status:    statusCode,
+  };
+
+  if (statusCode >= 500) {
+    logger.error(message, { ...logCtx, stack: err.stack });
+  } else {
+    logger.warn(message, logCtx);
+  }
+
+  // ----- Respond -----
+  // For 5xx: always show a generic message; the real error is in the logs.
+  const clientMessage = statusCode < 500
+    ? message
+    : 'Something went wrong on our end. Please try again.';
+
   res.status(statusCode).json({
     success: false,
-    error: {
-      message,
-      status: statusCode,
-      // Stack traces are logged server-side only, never sent to client
-      ...(process.env.NODE_ENV === 'development' && { 
-        debug: 'Check server logs for details'
-      })
-    }
+    error:   clientMessage,
+    ...(code   && { code }),
+    ...(req.id && { requestId: req.id }),
   });
 };
 
+/**
+ * 404 handler — placed AFTER all routes so it only fires when nothing matched.
+ */
 const notFoundHandler = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  error.statusCode = 404;
-  next(error);
+  next(new AppError(`Route not found: ${req.method} ${req.originalUrl}`, 404, 'NOT_FOUND'));
 };
 
-module.exports = {
-  errorHandler,
-  notFoundHandler,
-}; 
+module.exports = { errorHandler, notFoundHandler };

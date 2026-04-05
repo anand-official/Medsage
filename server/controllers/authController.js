@@ -89,26 +89,44 @@ class AuthController {
             }
 
             const { displayName, mbbs_year, college, country, onboarded } = req.body;
+            const updates = {};
+
+            if (displayName !== undefined) {
+                updates.displayName = typeof displayName === 'string' ? displayName.trim() : '';
+            }
 
             if (mbbs_year !== undefined) {
-                const parsed = parseInt(mbbs_year, 10);
-                if (isNaN(parsed) || parsed < 1 || parsed > 5) {
-                    return res.status(400).json({ success: false, error: 'mbbs_year must be between 1 and 5' });
+                const rawYear = String(mbbs_year ?? '').trim();
+                if (!rawYear) {
+                    updates.mbbs_year = null;
+                } else {
+                    const parsed = parseInt(rawYear, 10);
+                    if (isNaN(parsed) || parsed < 1 || parsed > 5) {
+                        return res.status(400).json({ success: false, error: 'mbbs_year must be between 1 and 5' });
+                    }
+                    updates.mbbs_year = parsed;
                 }
+            }
+
+            if (college !== undefined) {
+                updates.college = typeof college === 'string' ? college.trim() : '';
+            }
+
+            if (country !== undefined) {
+                const normalizedCountry = typeof country === 'string' ? country.trim() : '';
+                updates.country = normalizedCountry || 'India';
+            }
+
+            if (onboarded !== undefined) {
+                updates.onboarded = Boolean(onboarded);
             }
 
             const user = await UserProfile.findOneAndUpdate(
                 { uid },
                 {
-                    $set: {
-                        ...(displayName && { displayName }),
-                        ...(mbbs_year && { mbbs_year: parseInt(mbbs_year, 10) }),
-                        ...(college && { college }),
-                        ...(country && { country }),
-                        ...(onboarded !== undefined && { onboarded })
-                    }
+                    $set: updates
                 },
-                { new: true }
+                { new: true, runValidators: true }
             );
 
             if (!user) {

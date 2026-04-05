@@ -1,7 +1,10 @@
+'use strict';
+
 const express = require('express');
 const router = express.Router();
 const { verifyToken, isAdmin } = require('../middleware/auth');
 const promptBuilder = require('../services/promptBuilder');
+const logger = require('../utils/logger');
 
 /**
  * @swagger
@@ -41,14 +44,14 @@ const promptBuilder = require('../services/promptBuilder');
 router.post('/reload-prompts', verifyToken, isAdmin, (req, res) => {
     try {
         const summary = promptBuilder.reload();
-        console.log(`[ADMIN] Prompts reloaded by uid=${req.user.uid}: ${summary.loaded} prompt(s)`);
+        logger.info('[Admin] Prompts reloaded', { uid: req.user.uid, loaded: summary.loaded });
         res.json({
             success: true,
             message: `Reloaded ${summary.loaded} prompt(s) from disk.`,
             prompts: summary.versions,
         });
     } catch (err) {
-        console.error('[ADMIN] reload-prompts failed:', err.message);
+        logger.error('[Admin] reload-prompts failed', { err: err.message, uid: req.user?.uid });
         res.status(500).json({
             success: false,
             error: 'Failed to reload prompts. Check server logs for details.',

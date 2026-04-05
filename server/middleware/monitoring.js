@@ -19,6 +19,7 @@
 const os = require('os');
 const { GEMINI_MODEL } = require('../config');
 const { verifyToken, isAdmin } = require('./auth');
+const logger = require('../utils/logger');
 
 // ─── In-memory metrics store ─────────────────────────────────────────────────
 
@@ -159,7 +160,7 @@ async function sendWebhookAlert(message) {
             req.end();
         });
     } catch (err) {
-        console.error('[ALERT] Webhook delivery failed:', err.message);
+        logger.error('[ALERT] Webhook delivery failed', { err: err.message });
     }
 }
 
@@ -179,7 +180,7 @@ function runAlertCheck() {
         `(${errors}/${total} requests in the last 5 minutes). ` +
         `Threshold: ${ALERT_ERROR_THRESHOLD * 100}%.`;
 
-    console.error(`[ALERT] ${message}`);
+    logger.error('[ALERT] Error rate threshold exceeded', { message, pct: (rate * 100).toFixed(1), errors, total });
     sendWebhookAlert(message); // fire-and-forget; errors are swallowed internally
 }
 

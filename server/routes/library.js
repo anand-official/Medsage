@@ -1,8 +1,13 @@
+'use strict';
+
 const express = require('express');
+const { query } = require('express-validator');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { verifyToken, isAdmin } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const logger = require('../utils/logger');
 
 const LIBRARY_PATH = path.join(__dirname, '../data/academy_library.json');
 
@@ -36,7 +41,15 @@ function invalidateCache() {
  * - groupByYear: true/false - Group results by year
  * - linksOnly: true/false - Return only links for each book (simplified format)
  */
-router.get('/', (req, res) => {
+router.get('/',
+    query('year').optional().isInt({ min: 1, max: 6 }).toInt(),
+    query('course').optional().isString().trim().toUpperCase().isIn(['ALL', 'MBBS', 'BDS']),
+    query('category').optional().isString().trim().isLength({ max: 100 }),
+    query('search').optional().isString().trim().isLength({ max: 200 }),
+    query('groupByYear').optional().isIn(['true', 'false']),
+    query('linksOnly').optional().isIn(['true', 'false']),
+    validate,
+    (req, res) => {
     try {
         if (!fs.existsSync(LIBRARY_PATH)) {
             return res.json({
@@ -137,10 +150,10 @@ router.get('/', (req, res) => {
 
         res.json(response);
     } catch (error) {
-        console.error('[Library API] Error:', error.message);
+        logger.error('[Library] GET / error', { err: error.message });
         res.status(500).json({
             success: false,
-            error: 'Failed to load library data'
+            error: 'Failed to load library data',
         });
     }
 });
@@ -166,9 +179,9 @@ router.post('/refresh', verifyToken, isAdmin, (req, res) => {
 
             const { runCrawler } = require('../scripts/academyCrawler');
             const result = await runCrawler();
-            console.log(`[Library API] Background refresh complete: ${result.totalBooks} books (MBBS: ${result.courseBreakdown.MBBS}, BDS: ${result.courseBreakdown.BDS})`);
+            logger.info('[Library] Background refresh complete', { totalBooks: result.totalBooks, breakdown: result.courseBreakdown });
         } catch (error) {
-            console.error('[Library API] Background refresh error:', error.message);
+            logger.error('[Library] Background refresh error', { err: error.message });
         }
     });
 });
