@@ -25,6 +25,31 @@ const FOUNDERS = [
         email: 'anandujjawal993@gmail.com',
     },
     {
+        name: 'Shagun Vyas',
+        role: 'Co-Founder & Product Lead',
+        tag: 'UX & Growth',
+        photo: '/Shagun_vyas.png',
+        color: '#ec4899',
+        colorRgb: '236,72,153',
+        bio: 'A versatile problem-solver who rarely stays in one lane. Curiosity drives Shagun to explore far beyond routine responsibilities — continuously expanding her skills and stepping confidently beyond familiar boundaries to shape a product students actually love.',
+        linkedin: 'https://www.linkedin.com/in/shagun-vyas',
+        github: 'https://github.com/shagunvyas',
+        email: 'shagun.vyas217@gmail.com',
+    },
+    {
+        name: 'Ashwini Kumar',
+        role: 'Co-Founder & AI Lead',
+        tag: 'ML & Analytics',
+        photo: '/ashwii_kumar.jpeg',
+        color: '#10b981',
+        colorRgb: '16,185,129',
+        bio: 'Second-year Information Science Engineering student at CMR Institute of Technology, Bengaluru. With a sharp focus on Data Science and Machine Learning, Ashwini brings data-driven problem solving and analytical precision to everything Medsage builds.',
+        linkedin: 'https://www.linkedin.com/in/ashwinikumar2006/',
+        github: 'https://github.com/theashwinikumar',
+        email: 'kumarshahashwini012@gmail.com',
+    },
+    {
+        hidden: true,
         name: 'Koyna Dutta',
         role: 'Product & Design',
         tag: 'Product & Design',
@@ -37,6 +62,7 @@ const FOUNDERS = [
         email: '',
     },
     {
+        hidden: true,
         name: 'Bikash Yadav',
         role: 'Lead AI Integrations Engineer',
         tag: 'Fullstack & AI',
@@ -49,6 +75,7 @@ const FOUNDERS = [
         email: 'ybikash919@gmail.com',
     },
     {
+        hidden: true,
         name: 'Kapish Tuwani',
         role: 'Data & Platform Engineer',
         tag: 'Data & Platform',
@@ -369,7 +396,7 @@ export default function TeamSection() {
                     gap: 20,
                     marginBottom: 48,
                 }}>
-                    {FOUNDERS.map((m, i) => (
+                    {FOUNDERS.filter(m => !m.hidden).map((m, i) => (
                         <FounderCard key={m.name} member={m} index={i} onClick={setSelected} />
                     ))}
                 </div>

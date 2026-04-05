@@ -269,7 +269,7 @@ function Navbar({ onSignIn }) {
 
                 {/* Center nav links — hidden on mobile */}
                 <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 40 }}>
-                    {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Testimonials', '#testimonials']].map(([label, href]) => (
+                    {[['Features', '#features'], ['How It Works', '#how-it-works']].map(([label, href]) => (
                         <a key={label} href={href} style={{
                             color: 'rgba(255,255,255,0.5)', textDecoration: 'none',
                             fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 14,
@@ -762,103 +762,6 @@ function HowItWorksSection() {
     );
 }
 
-// ─── TESTIMONIALS ─────────────────────────────────────────────────────────
-const testimonials = [
-    {
-        name: 'Priya Sharma', role: '3rd Year MBBS, AIIMS Delhi', emoji: '👩‍⚕️',
-        color: '#6366f1',
-        quote: 'Medsage changed how I study completely. The AI study plan cut my prep time in half and I actually remember what I study now. This is the tool every med student needs.',
-        rating: 5,
-    },
-    {
-        name: 'Arjun Mehta', role: 'NEET-PG Aspirant, Bangalore', emoji: '👨‍⚕️',
-        color: '#a855f7',
-        quote: 'The SM-2 flashcard system is insane. I went from failing revision sessions to having nearly perfect recall on topics I reviewed 3 weeks ago. Absolutely unreal.',
-        rating: 5,
-    },
-    {
-        name: 'Divya Nair', role: '4th Year MBBS, KMC Manipal', emoji: '👩‍⚕️',
-        color: '#10b981',
-        quote: 'The high-yield Q&A engine with citations from actual textbooks is a game-changer. I trust the answers because I can verify them. First time I actually enjoy revising.',
-        rating: 5,
-    },
-];
-
-function TestimonialsSection() {
-    const isMobile = useIsMobile();
-    return (
-        <section id="testimonials" style={{ padding: isMobile ? '60px 16px' : '100px 32px' }}>
-            <div style={{ maxWidth: 1140, margin: '0 auto' }}>
-                <FadeUp>
-                    <div style={{ textAlign: 'center', marginBottom: 72 }}>
-                        <span style={{
-                            display: 'inline-block', marginBottom: 16, padding: '6px 18px', borderRadius: 100,
-                            background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
-                            fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: '#6ee7b7', letterSpacing: '1.5px',
-                        }}>STUDENT STORIES</span>
-                        <h2 style={{
-                            fontFamily: 'Inter, sans-serif', fontWeight: 900, margin: '0 0 20px',
-                            fontSize: 'clamp(32px, 5vw, 50px)', letterSpacing: '-1.5px', color: '#f8fafc',
-                        }}>
-                            What our students are{' '}
-                            <span style={{
-                                background: 'linear-gradient(135deg, #10b981, #6366f1)',
-                                WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                            }}>saying</span>
-                        </h2>
-                    </div>
-                </FadeUp>
-
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? 16 : 24 }}>
-                    {testimonials.map((t, i) => (
-                        <FadeUp key={i} delay={i * 0.1}>
-                            <motion.div
-                                whileHover={isMobile ? {} : { y: -6 }}
-                                transition={{ duration: 0.25 }}
-                                style={{
-                                    padding: isMobile ? '24px' : '36px', borderRadius: isMobile ? 16 : 24,
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.07)',
-                                    backdropFilter: 'blur(20px)',
-                                    display: 'flex', flexDirection: 'column', height: '100%',
-                                }}
-                            >
-                                {/* Stars */}
-                                <div style={{ display: 'flex', gap: 3, color: '#fbbf24', marginBottom: 24 }}>
-                                    {[...Array(t.rating)].map((_, j) => <IconStar key={j} />)}
-                                </div>
-
-                                {/* Quote */}
-                                <p style={{
-                                    fontFamily: 'Inter, sans-serif', fontSize: 16, color: 'rgba(255,255,255,0.75)',
-                                    lineHeight: 1.75, margin: '0 0 28px', flex: 1,
-                                    fontStyle: 'italic',
-                                }}>
-                                    "{t.quote}"
-                                </p>
-
-                                {/* Author */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 24 }}>
-                                    <div style={{
-                                        width: 48, height: 48, borderRadius: '50%',
-                                        background: `${t.color}20`, border: `2px solid ${t.color}40`,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 22,
-                                    }}>{t.emoji}</div>
-                                    <div>
-                                        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: '#f8fafc' }}>{t.name}</div>
-                                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{t.role}</div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </FadeUp>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
-}
-
 // ─── EXAMS STRIP ─────────────────────────────────────────────────────────
 function ExamsStrip() {
     const exams = ['NEET-PG', 'FMGE / MCI', 'USMLE Step 1', 'PLAB UK', 'AMC Australia', 'INICET', 'State PG', 'AIIMS PG'];
@@ -1072,7 +975,6 @@ export default function LandingPage() {
                 <ExamsStrip />
                 <FeaturesSection />
                 <HowItWorksSection />
-                <TestimonialsSection />
                 <FinalCTA onSignIn={handleSignIn} />
                 <TeamSection />
                 <Footer />
