@@ -332,27 +332,18 @@ function HeroSection({ onSignIn }) {
 
             <div style={{ maxWidth: 900, textAlign: 'center', position: 'relative', zIndex: 1 }}>
                 {/* Badge */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                <motion.p
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
                     style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 36,
-                        padding: '8px 20px', borderRadius: 100,
-                        background: 'rgba(99,102,241,0.1)',
-                        border: '1px solid rgba(99,102,241,0.3)',
-                        backdropFilter: 'blur(12px)',
+                        fontFamily: 'Inter, sans-serif', fontSize: 'clamp(14px, 1.8vw, 17px)',
+                        fontWeight: 500, color: 'rgba(165,180,252,0.75)',
+                        letterSpacing: '0.3px', margin: '0 0 28px',
                     }}
                 >
-                    <span style={{ fontSize: 16 }}>✨</span>
-                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>
-                        Your smartest ally to master medical mystery
-                    </span>
-                    <span style={{
-                        padding: '2px 10px', borderRadius: 100, background: 'rgba(99,102,241,0.2)',
-                        fontSize: 11, fontWeight: 700, color: '#818cf8', letterSpacing: '0.5px'
-                    }}>LIVE</span>
-                </motion.div>
+                    Your smartest ally to master medical mystery
+                </motion.p>
 
                 {/* Headline */}
                 <motion.div
