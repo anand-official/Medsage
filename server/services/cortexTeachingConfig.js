@@ -161,6 +161,13 @@ const MEDICAL_SENTINEL_TERMS = [
     'arrhythmia', 'tachycardia', 'bradycardia', 'fibrillation', 'flutter',
     'murmur', 'pericarditis', 'myocarditis', 'endocarditis', 'cardiomyopathy',
     'electrocardiogram', 'echocardiogram',
+    // Cardiology — anatomy and physiology vocabulary commonly used without full phrase
+    'cardiac', 'ventricular', 'atrial', 'aortic', 'mitral', 'tricuspid',
+    'systolic', 'diastolic', 'heart sounds', 'ejection fraction',
+    'preload', 'afterload', 'stroke volume',
+    // Physiology — additional common exam terms
+    'renal', 'tubular reabsorption', 'filtration fraction', 'oncotic pressure',
+    'osmolality', 'tonicity', 'spirometry',
     // Pulmonology
     'pneumonia', 'tuberculosis', 'asthma', 'copd', 'bronchitis', 'pleuritis',
     'pneumothorax', 'pulmonary embolism', 'respiratory distress',

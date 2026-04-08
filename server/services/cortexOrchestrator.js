@@ -406,6 +406,36 @@ class CortexOrchestrator {
         }
 
         if (!retrieval.is_valid || retrieval.chunks.length === 0) {
+            // Only clarify when the question is genuinely ambiguous (no medical signal,
+            // near-zero topic confidence, very short). For well-formed medical questions
+            // where Qdrant simply has no textbook data loaded, fall through to a direct
+            // LLM response using training knowledge — never reject the student.
+            const isAnchoredMedicalQuery =
+                ctx.topicResult.matched ||
+                ctx.calibratedTopicConfidence >= 0.35 ||
+                hasMedicalSignal(ctx.normalizedQuestion);
+
+            if (isAnchoredMedicalQuery) {
+                recordError('RAG_NO_CHUNKS_FALLBACK');
+                console.warn(`[PIPELINE] No chunks for anchored medical query "${ctx.normalizedQuestion.slice(0, 60)}" — falling back to direct_no_chunks`);
+                return this._buildDirectResponse({
+                    question:       ctx.sanitizedQuestion,
+                    mode:           ctx.mode,
+                    persona:        ctx.persona,
+                    historyBlock:   ctx.historyBlock,
+                    learnerContext: ctx.learnerContext,
+                    pipeline:       'direct_no_chunks',
+                    confidenceScore: Math.min(ctx.calibratedTopicConfidence, 0.65),
+                    topicResult:    ctx.topicResult,
+                    subject:        ctx.professorSubject,
+                    startTime:      ctx.startTime,
+                    threadMode:     ctx.threadMode,
+                    followUpIntent: ctx.followUpIntent,
+                    flags:          ['NO_GROUNDED_CONTEXT'],
+                });
+            }
+
+            // Genuinely ambiguous query with no data — ask for clarification
             const clarificationText = ctx.threadMode === 'follow_up'
                 ? 'I could not ground that follow-up in the textbook context. Ask the same point with the exact disease, mechanism, drug, or chapter so I can continue the thread accurately.'
                 : 'I need one more anchor point to ground this properly. Mention the disease, organ system, drug class, or clinical scenario you mean.';

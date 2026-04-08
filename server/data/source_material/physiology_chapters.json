@@ -1,0 +1,110 @@
+[
+  {
+    "topic_id": "PHYS_CARD_01",
+    "subject": "Physiology",
+    "chapter": "Cardiac Cycle and Heart Sounds",
+    "book": "Guyton and Hall Textbook of Medical Physiology",
+    "edition": "14th",
+    "country": "India",
+    "degree": "MBBS",
+    "year": 2,
+    "sections": [
+      {
+        "title": "Phases of the Cardiac Cycle",
+        "section_heading": "Cardiac Cycle",
+        "subsection_heading": "Phases",
+        "page_start": 101,
+        "page_end": 106,
+        "high_yield_score": 0.95,
+        "content": "The cardiac cycle refers to all the events that occur from the beginning of one heartbeat to the beginning of the next. It consists of two main phases: systole (contraction) and diastole (relaxation). The cycle begins with atrial systole, during which the atria contract and force the remaining blood into the ventricles (atrial kick). This is followed by isovolumetric contraction, where the ventricles contract with all valves closed and ventricular pressure rises rapidly without any change in volume. When ventricular pressure exceeds aortic pressure (left side) or pulmonary artery pressure (right side), the semilunar valves (aortic and pulmonary) open, initiating the ejection phase. During the rapid ejection phase, about 70% of stroke volume is expelled. Slow ejection follows, completing the remaining 30%. After ejection, isovolumetric relaxation occurs — semilunar valves close, atrioventricular (AV) valves remain closed, and ventricular pressure falls rapidly. Finally, ventricular filling resumes once ventricular pressure falls below atrial pressure, opening the mitral and tricuspid valves. Approximately 70-75% of ventricular filling occurs passively before atrial systole adds the remaining 25-30%."
+      },
+      {
+        "title": "Heart Sounds and Their Mechanism",
+        "section_heading": "Heart Sounds",
+        "subsection_heading": "Mechanism of Heart Sounds",
+        "page_start": 107,
+        "page_end": 110,
+        "high_yield_score": 0.95,
+        "content": "Heart sounds are produced primarily by the abrupt closure of cardiac valves and the resulting vibrations in the heart walls and blood. S1 (First Heart Sound — 'lub'): Caused by the closure of the mitral (bicuspid) and tricuspid valves at the start of ventricular systole. It is best heard at the apex (mitral area — 5th intercostal space, mid-clavicular line). S1 is louder, longer, and lower-pitched than S2. S2 (Second Heart Sound — 'dub'): Caused by the closure of the aortic and pulmonary semilunar valves at the end of ventricular systole/start of diastole. Best heard at the 2nd intercostal space — aortic component at right sternal border, pulmonary component at left sternal border. S2 is softer, shorter, and higher-pitched than S1. Physiological splitting of S2 occurs during inspiration: increased venous return to the right heart delays pulmonary valve closure while decreased pulmonary venous return to the left heart causes earlier aortic closure, widening the gap between A2 and P2. S3 (Third Heart Sound): Occurs during rapid ventricular filling in early diastole. Pathological after age 40; suggests ventricular dysfunction (heart failure, dilated cardiomyopathy). Normal in children and young adults. S4 (Fourth Heart Sound / Atrial Gallop): Occurs during atrial systole (late diastole). Always pathological; indicates decreased ventricular compliance (hypertensive heart disease, aortic stenosis, hypertrophic cardiomyopathy)."
+      },
+      {
+        "title": "Pressure-Volume Loop and Cardiac Work",
+        "section_heading": "Pressure-Volume Relationship",
+        "subsection_heading": "Pressure-Volume Loop",
+        "page_start": 111,
+        "page_end": 114,
+        "high_yield_score": 0.85,
+        "content": "The pressure-volume (P-V) loop is a graphical representation of the relationship between left ventricular pressure and volume during one cardiac cycle. It is essential for understanding cardiac performance and the effects of preload, afterload, and contractility. The four phases correspond to the four sides of the loop: (1) Diastolic filling: ventricular volume increases from ESV to EDV at low pressure; (2) Isovolumetric contraction: pressure rises steeply, volume constant; (3) Ejection: volume decreases as pressure remains high — stroke volume = EDV minus ESV; (4) Isovolumetric relaxation: pressure falls steeply, volume constant. Preload is the end-diastolic volume (EDV) or end-diastolic pressure. Increased preload shifts the loop rightward — Frank-Starling mechanism increases stroke volume. Afterload is the aortic end-systolic pressure resisting ejection. Increased afterload shifts the end-systolic pressure-volume point upward-left, reducing stroke volume. Contractility (inotropy) is the intrinsic ability of the myocardium to contract independent of preload and afterload. Increased contractility (e.g., sympathetic stimulation, digitalis) shifts the end-systolic pressure-volume relationship (ESPVR) leftward, increasing stroke volume and ejection fraction."
+      },
+      {
+        "title": "Jugular Venous Pulse Waveform",
+        "section_heading": "Venous Pulse",
+        "subsection_heading": "JVP Waveform",
+        "page_start": 115,
+        "page_end": 117,
+        "high_yield_score": 0.80,
+        "content": "The jugular venous pulse (JVP) reflects right atrial pressure changes and has a characteristic waveform with three positive deflections (a, c, v waves) and two negative deflections (x, y descents). The 'a' wave represents atrial contraction (atrial systole) — absent in atrial fibrillation; giant in tricuspid stenosis and complete heart block (cannon a waves). The 'c' wave is caused by tricuspid valve bulging into the atrium during isovolumetric contraction — often merged with the a wave clinically. The 'x' descent reflects atrial relaxation and downward displacement of the tricuspid valve during ventricular systole. The 'v' wave represents venous filling of the atrium while the tricuspid valve is closed during ventricular systole — giant v waves are seen in tricuspid regurgitation. The 'y' descent reflects tricuspid valve opening and rapid ventricular filling. Absent y descent is seen in cardiac tamponade (Kussmaul's sign involves elevated JVP with inspiration). Key exam association: Cannon a waves in complete heart block and ventricular tachycardia occur when the atria contract against a closed tricuspid valve."
+      },
+      {
+        "title": "Cardiac Output, Heart Rate, and Stroke Volume",
+        "section_heading": "Cardiac Output",
+        "subsection_heading": "Determinants",
+        "page_start": 118,
+        "page_end": 122,
+        "high_yield_score": 0.90,
+        "content": "Cardiac output (CO) = Heart Rate (HR) × Stroke Volume (SV). Normal resting CO is 5 L/min; cardiac index = CO/BSA = 3.2 L/min/m². Stroke volume is the volume ejected per beat; normal = 70 mL. Ejection fraction (EF) = SV/EDV × 100; normal = 55-70%. EF < 40% indicates heart failure with reduced ejection fraction (HFrEF). Three determinants of stroke volume: (1) Preload (EDV) — governed by venous return, blood volume, atrial contraction, and ventricular compliance. Frank-Starling law: within physiological limits, increased EDV → increased force of contraction → increased SV. (2) Afterload — arterial resistance opposing ventricular ejection; increased afterload (e.g., aortic stenosis, hypertension) decreases SV. (3) Contractility (inotropy) — positive inotropes (catecholamines, digoxin, Ca²⁺) increase SV at same preload. Regulation of heart rate: SA node (dominant pacemaker) intrinsic rate 60-100 bpm. Sympathetic stimulation (β1 receptors) increases HR (chronotropy) and contractility (inotropy). Parasympathetic (vagal/ACh) stimulation decreases HR. Bainbridge reflex: increased right atrial stretch → reflex tachycardia via atrial stretch receptors."
+      }
+    ]
+  },
+  {
+    "topic_id": "PHYS_NERVE_01",
+    "subject": "Physiology",
+    "chapter": "Action Potential and Nerve Conduction",
+    "book": "Guyton and Hall Textbook of Medical Physiology",
+    "edition": "14th",
+    "country": "India",
+    "degree": "MBBS",
+    "year": 1,
+    "sections": [
+      {
+        "title": "Resting Membrane Potential",
+        "section_heading": "Resting Membrane Potential",
+        "subsection_heading": "Generation",
+        "page_start": 55,
+        "page_end": 58,
+        "high_yield_score": 0.90,
+        "content": "The resting membrane potential (RMP) is the electrical potential difference across the cell membrane when the cell is at rest, not generating an action potential. In neurons and skeletal muscle, RMP is approximately -70 mV (inside negative). It is maintained primarily by: (1) K⁺ leak channels — K⁺ is the dominant ion determining RMP because the membrane is most permeable to K⁺ at rest; (2) Na⁺/K⁺-ATPase pump — actively transports 3 Na⁺ out and 2 K⁺ in per cycle, making a small direct electrogenic contribution; (3) Large intracellular anions (proteins) — cannot cross the membrane, contributing to intracellular negativity. Nernst equation calculates equilibrium potential for a single ion. Goldman equation calculates RMP considering permeabilities of all ions simultaneously. Cardiac pacemaker cells (SA node) have an unstable RMP due to the funny current (If) — slow Na⁺ influx during diastole causing spontaneous depolarization (automaticity). Threshold potential for neurons ≈ -55 mV. All-or-none principle: once threshold is reached, a full action potential fires regardless of stimulus strength."
+      },
+      {
+        "title": "Action Potential Phases",
+        "section_heading": "Action Potential",
+        "subsection_heading": "Phases and Ion Channels",
+        "page_start": 59,
+        "page_end": 64,
+        "high_yield_score": 0.92,
+        "content": "The action potential (AP) is a rapid, transient change in membrane potential that propagates along excitable cells. Phases of the neuronal action potential: (1) Rising phase (depolarization, 0 to +35 mV): Voltage-gated Na⁺ channels open rapidly; massive Na⁺ influx; membrane potential moves toward Na⁺ equilibrium (+60 mV) but never reaches it. (2) Falling phase (repolarization): Voltage-gated Na⁺ channels inactivate (cannot reopen until fully repolarized — basis of refractory period); voltage-gated K⁺ channels open (slower than Na⁺), K⁺ efflux repolarizes membrane. (3) After-hyperpolarization (undershoot): K⁺ channels remain open briefly, membrane transiently more negative than RMP (~-80 mV). (4) Return to RMP: K⁺ channels close; Na⁺/K⁺ pump restores ion gradients. Refractory periods: Absolute refractory period (ARP) — no stimulus, however strong, can elicit another AP; Na⁺ channels are inactivated. Relative refractory period (RRP) — a stronger-than-normal stimulus can fire an AP; K⁺ channels still partially open. Cardiac AP (ventricular muscle) has 5 phases (0-4) with a plateau (phase 2) due to slow Ca²⁺ influx via L-type Ca²⁺ channels, which is absent in neurons."
+      }
+    ]
+  },
+  {
+    "topic_id": "PHYS_RESP_01",
+    "subject": "Physiology",
+    "chapter": "Respiratory Physiology",
+    "book": "Guyton and Hall Textbook of Medical Physiology",
+    "edition": "14th",
+    "country": "India",
+    "degree": "MBBS",
+    "year": 2,
+    "sections": [
+      {
+        "title": "Lung Volumes and Capacities",
+        "section_heading": "Pulmonary Function Tests",
+        "subsection_heading": "Lung Volumes",
+        "page_start": 490,
+        "page_end": 495,
+        "high_yield_score": 0.92,
+        "content": "Lung volumes are the building blocks of pulmonary function. Four primary volumes (cannot overlap): Tidal Volume (TV) = 500 mL — air inspired/expired per normal breath. Inspiratory Reserve Volume (IRV) = 3000 mL — maximum additional air after normal inspiration. Expiratory Reserve Volume (ERV) = 1100 mL — maximum additional air expired after normal expiration. Residual Volume (RV) = 1200 mL — air remaining after maximum expiration; CANNOT be measured by spirometry (requires helium dilution or body plethysmography). Four capacities (sum of two or more volumes): Inspiratory Capacity (IC) = TV + IRV = 3500 mL. Functional Residual Capacity (FRC) = ERV + RV = 2300 mL — lung volume at end of passive expiration; measured by helium dilution. Vital Capacity (VC) = IRV + TV + ERV = 4600 mL — maximum air that can be exhaled after maximum inspiration. Total Lung Capacity (TLC) = VC + RV = 5800 mL. FEV1/FVC ratio: >80% normal; <70% obstructive (asthma, COPD); normal or increased in restrictive. Key exam: RV cannot be measured by spirometry — this is a very common MCQ point. Dead space: Anatomical dead space (150 mL) = conducting airways; Physiological = anatomical + alveolar dead space."
+      }
+    ]
+  }
+]
