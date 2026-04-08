@@ -773,8 +773,11 @@ class CortexOrchestrator {
         return applyTrustMetadata({
             answer:               answerText,
             short_note:           answerText,
-            high_yield_summary:   this._extractKeyBullets(answerText),
-            key_bullets:          this._extractKeyBullets(answerText),
+            // Direct (non-RAG) responses are already complete prose — no separate
+            // takeaways panel needed, and extracting bullets from markdown causes
+            // visible duplication in the UI.
+            high_yield_summary:   [],
+            key_bullets:          [],
             citations:            [],
             clinical_correlation: '',
             exam_tips:            '',
