@@ -193,8 +193,11 @@ function inlineFormat(text) {
   const fmt = text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code style="background:rgba(99,102,241,0.14);padding:2px 6px;border-radius:4px;font-size:0.86em;font-family:monospace">$1</code>');
-  return DOMPurify.sanitize(fmt, { ALLOWED_TAGS: ['strong', 'em', 'code'], ALLOWED_ATTR: ['style'] });
+    // Use a CSS class instead of an inline style attr so DOMPurify can drop all
+    // style attrs without losing the visual. Allowing arbitrary 'style' attrs is
+    // an XSS vector (CSS url() / data-exfiltration) on LLM-generated content.
+    .replace(/`(.+?)`/g, '<code class="cx-code">$1</code>');
+  return DOMPurify.sanitize(fmt, { ALLOWED_TAGS: ['strong', 'em', 'code'], ALLOWED_ATTR: ['class'] });
 }
 
 function renderMarkdown(text, isDark) {
@@ -953,7 +956,7 @@ const QuestionPage = () => {
   // Data below this index exists in state (for buildHistory / save) but is not mounted in the DOM.
   const [renderFromIdx, setRenderFromIdx] = useState(0);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [attachedImage, setAttachedImage] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
@@ -970,17 +973,25 @@ const QuestionPage = () => {
   // Load sessions: try server first, fall back to localStorage
   useEffect(() => {
     const load = async () => {
+      const localSessions = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
+      const fallbackSessions = Array.isArray(localSessions) ? localSessions : [];
+
       try {
         const res = await api.get('/api/v1/chat/sessions');
         const serverSessions = (res.data?.sessions || []).map(s => ({
           id: s.session_id, title: s.title, timestamp: new Date(s.updated_at).getTime()
         }));
         if (serverSessions.length > 0) {
-          const localSessions = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
-          const fallbackSessions = Array.isArray(localSessions) ? localSessions : [];
           const seenIds = new Set(serverSessions.map((session) => session.id));
           const mergedSessions = [
-            ...serverSessions,
+            // For sessions on the server, re-attach locally cached messages so
+            // clicking them works offline and doesn't always require a round-trip.
+            // Previously this line wrote messageless server sessions to localStorage,
+            // silently wiping the message cache for every existing session.
+            ...serverSessions.map(serverSession => {
+              const cached = fallbackSessions.find(ls => ls.id === serverSession.id);
+              return cached?.messages?.length ? { ...serverSession, messages: cached.messages } : serverSession;
+            }),
             ...fallbackSessions.filter((session) => session?.id && !seenIds.has(session.id)),
           ].slice(0, 20);
           setSavedSessions(mergedSessions);
@@ -988,17 +999,19 @@ const QuestionPage = () => {
           return;
         }
       } catch { /* offline or unauthenticated — fall through to localStorage */ }
-      const localSessions = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
-      if (Array.isArray(localSessions)) {
-        setSavedSessions(localSessions);
+
+      if (fallbackSessions.length > 0) {
+        setSavedSessions(fallbackSessions);
       }
     };
     load();
   }, []);
 
-  // Save sessions: write to server (async, non-blocking) and localStorage
+  // Save sessions: write to server (async, non-blocking) and localStorage.
+  // Skip while any message is still streaming to avoid persisting partial responses.
   useEffect(() => {
     if (messages.length === 0) return;
+    if (messages.some(m => m.streaming)) return;
     const firstUserMsg = messages.find(m => m.role === 'user');
     if (!firstUserMsg) return;
     const title = firstUserMsg.text.length > 60 ? firstUserMsg.text.substring(0, 60) + '…' : firstUserMsg.text;
@@ -1042,7 +1055,7 @@ const QuestionPage = () => {
     recognition.onerror = (e) => {
       setIsListening(false);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        setSnackbar({ open: true, message: 'Microphone access denied.' });
+        setSnackbar({ open: true, severity: 'error', message: 'Microphone access denied.' });
       }
     };
     recognitionRef.current = recognition;
@@ -1055,19 +1068,24 @@ const QuestionPage = () => {
       return;
     }
     if (!recognitionRef.current) {
-      setSnackbar({ open: true, message: 'Voice input is not supported in this browser.' });
+      setSnackbar({ open: true, severity: 'error', message: 'Voice input is not supported in this browser.' });
       return;
     }
     try {
       recognitionRef.current.start();
       setIsListening(true);
     } catch (e) {
-      setSnackbar({ open: true, message: 'Microphone is not available right now.' });
+      setSnackbar({ open: true, severity: 'error', message: 'Microphone is not available right now.' });
     }
   };
 
+  // Debounce the scroll so that when a query completes (messages grows AND loading
+  // flips to false in close succession) we only fire one scrollIntoView, not two.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 30);
+    return () => clearTimeout(timer);
   }, [messages, loading]);
 
   const buildHistory = useCallback(() => buildHistoryForRequest(messages), [messages]);
@@ -1151,8 +1169,13 @@ const QuestionPage = () => {
     }
   }, [question, mode, attachedImage, buildHistory, messages, userProfile]);
 
+  // Guard against re-firing: handleSubmit's identity changes whenever messages
+  // grows (buildHistory depends on messages), which would re-trigger this effect
+  // and fire the same initial query multiple times.
+  const initialQueryFiredRef = useRef(false);
   useEffect(() => {
-    if (location.state?.initialQuery) {
+    if (location.state?.initialQuery && !initialQueryFiredRef.current) {
+      initialQueryFiredRef.current = true;
       const query = location.state.initialQuery;
       navigate(location.pathname, { replace: true, state: {} });
       handleSubmit(query);
@@ -1165,19 +1188,19 @@ const QuestionPage = () => {
 
   const handleCopy = (text) => {
     if (!navigator?.clipboard?.writeText) {
-      setSnackbar({ open: true, message: 'Copy is not supported in this browser.' });
+      setSnackbar({ open: true, severity: 'error', message: 'Copy is not supported in this browser.' });
       return;
     }
     navigator.clipboard
       .writeText(text || '')
-      .then(() => setSnackbar({ open: true, message: 'Copied to clipboard' }))
-      .catch(() => setSnackbar({ open: true, message: 'Failed to copy answer.' }));
+      .then(() => setSnackbar({ open: true, severity: 'success', message: 'Copied to clipboard' }))
+      .catch(() => setSnackbar({ open: true, severity: 'error', message: 'Failed to copy answer.' }));
   };
 
   const handleFeedback = async (feedbackId, rating) => {
     try {
       await submitFeedback(feedbackId, rating);
-      setSnackbar({ open: true, message: rating === 'up' ? 'Thanks for the feedback!' : 'Got it — we\'ll review this response.' });
+      setSnackbar({ open: true, severity: 'success', message: rating === 'up' ? 'Thanks for the feedback!' : 'Got it — we\'ll review this response.' });
     } catch {
       // silent — don't distract the student with feedback errors
     }
@@ -1204,22 +1227,29 @@ const QuestionPage = () => {
 
     let msgs = session.messages || [];
 
-    // Server-loaded sessions (loaded from the list endpoint) have no messages field.
-    // Fetch the full session from the server in that case.
     if (msgs.length === 0) {
+      // Session came from the server list (no messages field) — fetch the full payload.
       try {
         const data = await fetchSessionMessages(session.id, 1, 200);
         const raw = data?.session?.messages || [];
         msgs = hydrateSessionMessages(raw);
       } catch {
-        msgs = [];
+        // Server unreachable or session expired — try the localStorage cache before
+        // giving up. Previously this fell through to msgs = [] with no feedback.
+        const localSessions = safeJsonParse(getStoredValue(CHAT_SESSIONS_STORAGE_KEY), []);
+        const cached = Array.isArray(localSessions) ? localSessions.find(s => s.id === session.id) : null;
+        if (cached?.messages?.length) {
+          msgs = hydrateSessionMessages(cached.messages);
+        } else {
+          setSnackbar({ open: true, severity: 'error', message: 'Could not load this conversation. Please check your connection.' });
+          msgs = [];
+        }
       }
     } else {
       msgs = hydrateSessionMessages(msgs);
     }
 
     setMessages(msgs);
-    // Only paginate the render window if the session is large enough to matter
     setRenderFromIdx(Math.max(0, msgs.length - RENDER_PAGE_SIZE));
   }, []);
 
@@ -1246,19 +1276,26 @@ const QuestionPage = () => {
     });
   }, [renderFromIdx, isLoadingOlder]);
 
-  // Auto-load when the top sentinel enters the viewport
+  // Keep a stable ref so the observer callback always calls the latest handler
+  // without being listed as a dependency (which would recreate the observer on
+  // every isLoadingOlder/renderFromIdx state change → thrashing).
+  const handleLoadOlderRef = useRef(handleLoadOlderMessages);
+  useEffect(() => { handleLoadOlderRef.current = handleLoadOlderMessages; }, [handleLoadOlderMessages]);
+
+  // Auto-load when the top sentinel enters the viewport.
+  // Only re-create the observer when renderFromIdx changes (sentinel visiblity
+  // semantics change); isLoadingOlder changes no longer cause unnecessary teardowns.
   useEffect(() => {
     const sentinel = topSentinelRef.current;
     if (!sentinel || renderFromIdx === 0) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) handleLoadOlderMessages(); },
-      // Trigger 120px before the sentinel is fully visible so loading feels seamless
+      ([entry]) => { if (entry.isIntersecting) handleLoadOlderRef.current(); },
       { rootMargin: '120px 0px 0px 0px', threshold: 0 }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [renderFromIdx, handleLoadOlderMessages]);
+  }, [renderFromIdx]);
 
   const handleDeleteSession = (e, sessionId) => {
     e.stopPropagation();
@@ -1273,24 +1310,49 @@ const QuestionPage = () => {
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // reset input immediately so same file can be re-attached
     if (!file) return;
+
+    // Reject files over 5 MB before even reading them — large images would
+    // freeze the canvas op and likely exceed the API request size limit.
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      setSnackbar({ open: true, severity: 'error', message: 'Image too large — please use a file under 5 MB.' });
+      return;
+    }
+
     const reader = new FileReader();
+
+    reader.onerror = () => {
+      setSnackbar({ open: true, severity: 'error', message: 'Could not read the file. Please try another image.' });
+    };
+
     reader.onload = (ev) => {
       const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height;
-        const max = 800;
-        if (w > h && w > max) { h = Math.floor(h * (max / w)); w = max; }
-        else if (h > max) { w = Math.floor(w * (max / h)); h = max; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        setAttachedImage({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), name: file.name });
+
+      img.onerror = () => {
+        setSnackbar({ open: true, severity: 'error', message: 'Unsupported image format. Please try a JPEG or PNG.' });
       };
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+          const max = 800;
+          if (w > h && w > max) { h = Math.floor(h * (max / w)); w = max; }
+          else if (h > max) { w = Math.floor(w * (max / h)); h = max; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          setAttachedImage({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), name: file.name });
+        } catch {
+          setSnackbar({ open: true, severity: 'error', message: 'Failed to process the image. Please try another file.' });
+        }
+      };
+
       img.src = ev.target.result;
     };
+
     reader.readAsDataURL(file);
-    e.target.value = '';
   };
 
   const hasMessages = messages.length > 0;
@@ -1649,11 +1711,11 @@ const QuestionPage = () => {
       {/* ── Toast ────────────────────────────────────────────────── */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={2000}
-        onClose={() => setSnackbar({ open: false, message: '' })}
+        autoHideDuration={snackbar.severity === 'error' ? 4000 : 2000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" variant="filled" sx={{ borderRadius: 2, fontWeight: 600, fontSize: '0.82rem' }}>
+        <Alert severity={snackbar.severity || 'success'} variant="filled" sx={{ borderRadius: 2, fontWeight: 600, fontSize: '0.82rem' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

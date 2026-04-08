@@ -154,7 +154,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       error.requestId = getResponseRequestId(error.response);
       clearAuthToken();
-      window.location.href = '/signin';
+      // Use replace() so the protected page doesn't land in the browser history,
+      // preventing the back-button from cycling back to an unauthenticated state.
+      window.location.replace('/signin');
     }
 
     return Promise.reject(error);
@@ -394,7 +396,7 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
   if (!response.ok) {
     if (response.status === 401) {
       clearAuthToken();
-      window.location.href = '/signin';
+      window.location.replace('/signin');
       return;
     }
     if (onError) onError(new Error(`HTTP ${response.status}`));

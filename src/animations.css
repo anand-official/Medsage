@@ -129,3 +129,13 @@
 .stagger-5 {
   animation-delay: 0.5s;
 }
+
+/* Inline code spans rendered inside chat messages via inlineFormat().
+   Class-based so DOMPurify can strip all style attributes without losing visual. */
+.cx-code {
+  background: rgba(99, 102, 241, 0.14);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.86em;
+  font-family: monospace;
+}

@@ -15,7 +15,12 @@ export function getAuthToken() {
 export function setAuthToken(token) {
   if (!token) return false;
   const stored = setSessionStoredValue(AUTH_TOKEN_STORAGE_KEY, token);
-  removeStoredValue(AUTH_TOKEN_STORAGE_KEY);
+  // Only remove from localStorage after confirmed sessionStorage write.
+  // Previously this always ran, silently wiping the token if sessionStorage
+  // was full/unavailable (e.g. quota exceeded in incognito mode).
+  if (stored) {
+    removeStoredValue(AUTH_TOKEN_STORAGE_KEY);
+  }
   return stored;
 }
 
@@ -31,7 +36,9 @@ export function migrateLegacyAuthToken() {
   const legacyToken = getStoredValue(AUTH_TOKEN_STORAGE_KEY);
   if (!legacyToken) return null;
 
-  setSessionStoredValue(AUTH_TOKEN_STORAGE_KEY, legacyToken);
-  removeStoredValue(AUTH_TOKEN_STORAGE_KEY);
+  const migrated = setSessionStoredValue(AUTH_TOKEN_STORAGE_KEY, legacyToken);
+  if (migrated) {
+    removeStoredValue(AUTH_TOKEN_STORAGE_KEY);
+  }
   return legacyToken;
 }

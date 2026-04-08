@@ -93,7 +93,7 @@ export const StudyProvider = ({ children }) => {
     } catch (err) {
       setPlanError(withRequestId(err.message || 'Failed to fetch study plan.', err));
       setPlanState('error');
-      return undefined;
+      return null;
     }
   }, [canLoadStudyData]);
 
@@ -187,7 +187,7 @@ export const StudyProvider = ({ children }) => {
     try {
       await plannerAPI.tickGoal(goalType, goalId);
     } catch (err) {
-      console.error('Error ticking goal:', err);
+      // Revert optimistic update so the UI doesn't show a false state
       setStudyPlan((prev) => {
         if (!prev) return prev;
         return {
@@ -200,7 +200,10 @@ export const StudyProvider = ({ children }) => {
           }
         };
       });
-      throw err;
+      // Surface the error so the UI can show a toast instead of a silent snap-back
+      const message = withRequestId(err.message || 'Failed to update goal. Please try again.', err);
+      setPlanError(message);
+      throw new Error(message);
     }
   }, []);
 
