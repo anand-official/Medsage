@@ -590,7 +590,7 @@ class CortexOrchestrator {
         recordCitationCompliance(finalCitationResult.compliance_rate === 1);
 
         // ── Response assembly ────────────────────────────────────────────────
-        const answer    = this._assembleAnswer(finalParsedResponse, finalCitationResult);
+        const answer    = this._assembleAnswer(finalParsedResponse, finalCitationResult, ctx.mode);
         const keyBullets = (finalParsedResponse.claims || []).map((c) => c.statement);
 
         const allClaimsSourced = finalCitationResult.claims.length > 0
@@ -829,29 +829,38 @@ class CortexOrchestrator {
         }
     }
 
-    _assembleAnswer(parsedJson, citationResult) {
+    _assembleAnswer(parsedJson, citationResult, mode = 'conceptual') {
         const claims = citationResult.claims || [];
         if (claims.length === 0) {
             return parsedJson.clinical_correlation || parsedJson.exam_tips || 'No structured claims were generated.';
         }
 
+        const isExam = mode === 'exam';
         let answer = parsedJson.greeting ? `${parsedJson.greeting}\n\n` : '';
-        answer += claims.map((claim) => {
-            let line = `- ${claim.statement}`;
+
+        answer += claims.map((claim, idx) => {
+            // Exam: numbered list for easy scanning; conceptual: dash bullets
+            let line = isExam ? `${idx + 1}. ${claim.statement}` : `- ${claim.statement}`;
             if (claim.is_sourced && claim.citations.length > 0) {
                 const refs = claim.citations.map((c) =>
                     `${c.book || 'Source'} p.${c.page_start || '?'}-${c.page_end || '?'}`
                 ).join('; ');
-                line += ` [${refs}]`;
+                line += ` *(${refs})*`;
             }
             return line;
         }).join('\n');
 
-        if (parsedJson.clinical_correlation) {
-            answer += `\n\nClinical Correlation: ${parsedJson.clinical_correlation}`;
-        }
-        if (parsedJson.exam_tips) {
-            answer += `\n\nExam Tips: ${parsedJson.exam_tips}`;
+        if (isExam) {
+            if (parsedJson.exam_tips) {
+                answer += `\n\n⭐ **High-Yield Pearls**\n${parsedJson.exam_tips}`;
+            }
+        } else {
+            if (parsedJson.clinical_correlation) {
+                answer += `\n\n**Clinical Correlation:** ${parsedJson.clinical_correlation}`;
+            }
+            if (parsedJson.exam_tips) {
+                answer += `\n\n**Exam Tips:** ${parsedJson.exam_tips}`;
+            }
         }
 
         return answer;

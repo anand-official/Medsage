@@ -24,6 +24,7 @@ const {
     buildLearnerContextBlock,
     formatYearLabel,
 } = require('./cortexRequestUtils');
+const { MODE_SYSTEM } = require('./cortexTeachingConfig');
 
 const REGISTRY_PATH = path.join(__dirname, '../data/promptRegistry.json');
 
@@ -168,6 +169,11 @@ class PromptBuilder {
         if (variables.thread_contract) {
             prompt = `${variables.thread_contract}\n\n${prompt}`;
         }
+
+        // Prepend the mode system rules so the LLM gets the full exam/conceptual
+        // coaching contract on the full RAG path (same rules used by the streaming path).
+        const modeSystem = MODE_SYSTEM[mode] || MODE_SYSTEM.conceptual;
+        prompt = `${modeSystem}\n\n${prompt}`;
 
         // Prepend professor persona as an explicit teaching directive.
         // Placed first so it is the highest-priority instruction for the LLM.
