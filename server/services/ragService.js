@@ -15,6 +15,12 @@ const RERANK_WEIGHTS = {
 
 const SIMILARITY_THRESHOLD = 0.50; // BGE bge-large-en-v1.5 optimal — sweep winner (100% validation, 0% broadening)
 
+// Candidate pool size for initial vector search — more candidates = better reranker input
+const SEARCH_CANDIDATES = parseInt(process.env.RAG_SEARCH_CANDIDATES || '20', 10);
+
+// Per-chunk character cap — prevents a single long paragraph from dominating the context
+const MAX_CHUNK_CHARS = parseInt(process.env.RAG_CHUNK_MAX_CHARS || '1800', 10);
+
 class RAGService {
     /**
      * Retrieves context using metadata filters and hybrid ranking.
@@ -78,7 +84,7 @@ class RAGService {
                     is_valid: false
                 };
             }
-            let searchPack = await this._searchAcrossCollections(queryVector, mustFilters, 15, initialCandidates);
+            let searchPack = await this._searchAcrossCollections(queryVector, mustFilters, SEARCH_CANDIDATES, initialCandidates);
             let searchResults = searchPack.results;
             telemetry.collection = searchPack.collection;
             telemetry.retrieval_count = searchResults.length;
@@ -87,14 +93,15 @@ class RAGService {
             let rankedResults = this._rerank(searchResults, activeWeights);
 
             // 5. Context Validator — fallback broadening
-            let topChunks = rankedResults.slice(0, 5);
+            const mmrLambda = mode === 'exam' ? 0.8 : 0.65;
+            let topChunks = this._selectMMR(rankedResults, 5, mmrLambda);
             const isValid = this._validateContext(topChunks, activeThreshold, telemetry);
 
             if (!isValid) {
                 // If all top chunks fail threshold: broaden by removing topic_id constraint
                 const broadFilters = mustFilters.filter(f => f.key !== 'topic_id');
                 console.warn(`[RAG] Threshold fail for topic=${topicId}. Broadening retrieval...`);
-                const broadSearchPack = await this._searchAcrossCollections(queryVector, broadFilters, 15, initialCandidates);
+                const broadSearchPack = await this._searchAcrossCollections(queryVector, broadFilters, SEARCH_CANDIDATES, initialCandidates);
                 let broadResults = broadSearchPack.results;
                 telemetry.collection = telemetry.collection || broadSearchPack.collection;
 
@@ -102,15 +109,18 @@ class RAGService {
                 if (!broadResults.length && !filters.subject) {
                     const widestFilters = broadFilters.filter(f => f.key !== 'subject');
                     const globalCandidates = this._getCollectionCandidates('default');
-                    const globalSearchPack = await this._searchAcrossCollections(queryVector, widestFilters, 15, globalCandidates);
+                    const globalSearchPack = await this._searchAcrossCollections(queryVector, widestFilters, SEARCH_CANDIDATES, globalCandidates);
                     broadResults = globalSearchPack.results;
                     telemetry.collection = telemetry.collection || globalSearchPack.collection;
                 }
                 const broadRanked = this._rerank(broadResults, activeWeights);
-                topChunks = broadRanked.slice(0, 5);
+                topChunks = this._selectMMR(broadRanked, 5, mmrLambda);
                 telemetry.broadened = true;
                 telemetry.retrieval_strategy = 'broadened';
             }
+
+            // 6. Sort selected chunks by page order for coherent LLM reading
+            topChunks = this._sortByPageOrder(topChunks);
 
             telemetry.validation_passed = this._validateContext(topChunks, activeThreshold, telemetry);
             telemetry.latency_ms = Date.now() - startTime;
@@ -307,7 +317,7 @@ class RAGService {
                 const hyScore = hit.payload.high_yield_score ?? 0.0; // null/undefined → 0, not 0.5
                 const finalScore = (weights.similarity * vectorSim) + (weights.high_yield * hyScore);
                 return {
-                    content: hit.payload.content,
+                    content: (hit.payload.content || '').slice(0, MAX_CHUNK_CHARS),
                     metadata: {
                         chunk_id: hit.payload.chunk_id,
                         topic_id: hit.payload.topic_id,
@@ -325,6 +335,71 @@ class RAGService {
                 };
             })
             .sort((a, b) => b.finalScore - a.finalScore);
+    }
+
+    /**
+     * Token-overlap Jaccard similarity between two ranked chunks.
+     * Used by _selectMMR to estimate inter-chunk redundancy without extra embeddings.
+     */
+    _tokenJaccard(chunkA, chunkB) {
+        const tok = s => new Set(s.toLowerCase().split(/\W+/).filter(t => t.length > 2));
+        const a = tok(chunkA.content || '');
+        const b = tok(chunkB.content || '');
+        if (a.size === 0 && b.size === 0) return 1;
+        let inter = 0;
+        for (const t of a) if (b.has(t)) inter++;
+        return inter / (a.size + b.size - inter);
+    }
+
+    /**
+     * Maximal Marginal Relevance selection.
+     * Balances relevance (finalScore) with diversity (low inter-chunk token overlap).
+     *
+     * lambda=1.0 → pure relevance (no diversity penalty)
+     * lambda=0.0 → pure diversity (ignores relevance scores)
+     * lambda=0.8 → exam mode  (precision > breadth)
+     * lambda=0.65 → conceptual mode (breadth helps explanatory depth)
+     *
+     * @param {object[]} candidates - Reranked chunks (sorted by finalScore desc)
+     * @param {number}   k          - Number of chunks to select
+     * @param {number}   lambda     - Relevance weight (0–1)
+     */
+    _selectMMR(candidates, k, lambda = 0.7) {
+        if (candidates.length === 0) return [];
+        if (candidates.length <= k) return candidates;
+
+        const selected = [];
+        const remaining = [...candidates];
+
+        // Seed with the highest-scored chunk — it is always the safest anchor
+        selected.push(remaining.splice(0, 1)[0]);
+
+        while (selected.length < k && remaining.length > 0) {
+            let bestMMR = -Infinity;
+            let bestIdx = 0;
+
+            for (let i = 0; i < remaining.length; i++) {
+                const relevance = remaining[i].finalScore;
+                // Penalty = max overlap with any already-selected chunk
+                const maxSim = Math.max(...selected.map(s => this._tokenJaccard(remaining[i], s)));
+                const mmr = lambda * relevance - (1 - lambda) * maxSim;
+                if (mmr > bestMMR) { bestMMR = mmr; bestIdx = i; }
+            }
+            selected.push(remaining.splice(bestIdx, 1)[0]);
+        }
+        return selected;
+    }
+
+    /**
+     * Sort selected chunks by ascending page number within the same book.
+     * Chunks from different books keep their MMR-selected order.
+     * This makes the injected context read like a coherent textbook passage.
+     */
+    _sortByPageOrder(chunks) {
+        return [...chunks].sort((a, b) => {
+            if ((a.metadata.book || '') !== (b.metadata.book || '')) return 0;
+            return (a.metadata.page_start || 0) - (b.metadata.page_start || 0);
+        });
     }
 
     _validateContext(chunks, activeThreshold, telemetry = {}) {

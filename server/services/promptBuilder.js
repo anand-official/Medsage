@@ -85,7 +85,20 @@ class PromptBuilder {
 
         // Assemble variables for template substitution
         const citationContext = citationVerifier.buildCitationContext(retrieval.chunk_payloads || []);
-        const contextText = (retrieval.chunks || []).join('\n\n');
+
+        // Token-budget-aware context assembly (~4 chars per token).
+        // Chunks arrive pre-sorted by page order from ragService; drop from the
+        // tail (lowest MMR priority) if the total budget would be exceeded.
+        const MAX_CONTEXT_CHARS = parseInt(process.env.RAG_CONTEXT_MAX_CHARS || '12000', 10);
+        let contextChars = 0;
+        const contextText = (retrieval.chunks || [])
+            .filter(chunk => {
+                const len = (chunk || '').length + 2; // +2 for '\n\n' separator
+                if (contextChars + len > MAX_CONTEXT_CHARS) return false;
+                contextChars += len;
+                return true;
+            })
+            .join('\n\n');
 
         const realChunkIds = (retrieval.chunk_payloads || [])
             .map(p => p.chunk_id)
