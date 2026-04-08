@@ -20,7 +20,23 @@
       "Bash(powershell -Command \"Stop-Process -Id 24724 -Force\")",
       "Bash(powershell -Command \"Get-Process -Id 33856,18904 | Select-Object Id, ProcessName, MainWindowTitle\")",
       "Bash(powershell -Command \"Get-WmiObject Win32_Process -Filter 'ProcessId=33856' | Select-Object CommandLine\")",
-      "Bash(tasklist /fi 'pid eq 24408')"
+      "Bash(tasklist /fi 'pid eq 24408')",
+      "Bash(npm start:*)",
+      "Bash(kill %1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__claude_ai_Vercel__get_project",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "Bash(vercel env:*)",
+      "Bash(npx vercel:*)",
+      "Bash(git -C \"C:/Users/anand/Desktop/medsage.ai/Medsage\" log --all --oneline -- src/components/landing/TeamSection.js)",
+      "Bash(git -C \"C:/Users/anand/Desktop/medsage.ai/Medsage\" show 10d91e6:src/components/landing/TeamSection.js)",
+      "Bash(uvx code-review-graph:*)",
+      "Bash(rm:*)",
+      "Bash(rm -f output.json implementation_plan.md apiserver.out apiserver.err out.txt babel_err.log eslint_out.txt logo.png test_gemini.js test_gemini_json.js test_scraper.js test-pipeline.js extract_colleges_json.py extracted_colleges.txt parse_colleges.py read_pdf_head.py read_pdf_size.py)",
+      "Bash(rm -rf render-mcp/)"
     ]
   }
 }
