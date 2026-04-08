@@ -308,7 +308,7 @@ class CortexOrchestrator {
             citations:            [],
             clinical_correlation: '',
             exam_tips:            '',
-            confidence:           this._buildConfidenceReport(0.65, ['VISION_RESPONSE_UNVERIFIED']),
+            confidence:           this._buildConfidenceReport(this._computeVisionConfidence(visionAnswer.text), ['VISION_RESPONSE_UNVERIFIED']),
             is_clarification_required: false,
             meta: {
                 pipeline:   'vision',
@@ -685,6 +685,25 @@ class CortexOrchestrator {
     _shouldClarifyAfterRetrieval(question, topicConfidence) {
         const words = (question || '').trim().split(/\s+/).filter(Boolean);
         return topicConfidence < 0.72 && words.length <= 8;
+    }
+
+    /**
+     * Derives a confidence score for vision responses from response quality signals.
+     * Vision responses can never be citation-verified, so the ceiling is capped at
+     * VISION_CONFIDENCE_MAX (env, default 0.75). Score is penalised for very short
+     * or empty responses that suggest the model couldn't interpret the image.
+     */
+    _computeVisionConfidence(responseText) {
+        const base = Math.min(
+            0.75,
+            Math.max(0.30, Number(process.env.VISION_CONFIDENCE_MAX) || 0.75)
+        );
+        const len = (responseText || '').trim().length;
+        if (len === 0)    return 0.30;
+        if (len < 120)    return Math.min(base, 0.45);
+        if (len < 350)    return Math.min(base, 0.58);
+        if (len < 800)    return Math.min(base, 0.67);
+        return base;
     }
 
     _buildConfidenceReport(score, flags = []) {
