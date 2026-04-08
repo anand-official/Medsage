@@ -166,8 +166,16 @@ class CortexOrchestrator {
             learnerContext,
         });
 
-        // ── Guardrail 4: low topic confidence → clarification ────────────────
-        if (this._shouldClarifyQuestion(normalizedQuestion, calibratedTopicConfidence, history.length)) {
+        // ── Guardrail 4: low topic confidence → clarification (last resort only) ─
+        // Mirror the same logic as _handleLowConfidence: only block if genuinely
+        // ambiguous (no medical signal, very short, near-zero confidence).
+        const streamWordCount = normalizedQuestion.trim().split(/\s+/).filter(Boolean).length;
+        const streamShouldClarify =
+            !hasMedicalSignal(normalizedQuestion) &&
+            threadMode !== 'follow_up' &&
+            calibratedTopicConfidence < 0.35 &&
+            streamWordCount < 5;
+        if (streamShouldClarify) {
             yield 'I can help best if you name the disease, organ system, or core concept you want explained.';
             return;
         }
@@ -324,31 +332,33 @@ class CortexOrchestrator {
     }
 
     /**
-     * Handles low topic confidence: returns a clarification or direct_gemini
-     * response, or null to continue to the full RAG pipeline.
+     * Handles low topic confidence: returns a clarification response, or null
+     * to continue to the full RAG pipeline.
+     *
+     * Clarification is the LAST resort — only fire it when the question is
+     * genuinely ambiguous (no medical terms, very short, near-zero confidence).
+     * Everything else should be sent to RAG and let the pipeline handle uncertainty.
      */
     async _handleLowConfidence(ctx) {
+        // Topic scorer matched with sufficient confidence — proceed to RAG
         if (ctx.topicResult.matched && ctx.calibratedTopicConfidence >= 0.6) return null;
 
-        if (ctx.threadMode === 'follow_up') {
-            return null;
-        }
+        // Follow-up questions have conversation context as their anchor — proceed
+        if (ctx.threadMode === 'follow_up') return null;
 
-        if (this._shouldClarifyQuestion(ctx.normalizedQuestion, ctx.calibratedTopicConfidence, ctx.history.length)) {
-            return this._buildClarificationResponse({
-                answer:      'I can help best if you name the disease, organ system, or core concept you want explained.',
-                pipeline:    'clarification',
-                topicResult: ctx.topicResult,
-                subject:     ctx.professorSubject,
-                confidenceScore: ctx.calibratedTopicConfidence,
-                flags:       ['LOW_TOPIC_CONFIDENCE'],
-                startTime:   ctx.startTime,
-                threadMode:  ctx.threadMode,
-                followUpIntent: ctx.followUpIntent,
-            });
-        }
+        // Explicit medical term present: the student named their topic clearly.
+        // Let RAG attempt an answer even if the topic scorer is uncertain.
+        if (hasMedicalSignal(ctx.normalizedQuestion)) return null;
+
+        // Moderate confidence or a reasonably long question: RAG is worth trying.
+        // A 5+ word query signals the student has given enough context.
+        const wordCount = (ctx.normalizedQuestion || '').trim().split(/\s+/).filter(Boolean).length;
+        if (ctx.calibratedTopicConfidence >= 0.35 || wordCount >= 5) return null;
+
+        // Genuinely ambiguous: very short, no medical signal, near-zero confidence.
+        // Only now ask for clarification.
         return this._buildClarificationResponse({
-            answer:      'Name the exact disease, organ system, drug class, or exam topic you want explained so I can ground the answer properly.',
+            answer:      'I can help best if you name the disease, organ system, or core concept you want explained.',
             pipeline:    'clarification',
             topicResult: ctx.topicResult,
             subject:     ctx.professorSubject,
@@ -672,16 +682,6 @@ class CortexOrchestrator {
             weak_topics:       learnerContext.weak_topics || [],
             subjects_selected: learnerContext.subjects_selected || [],
         };
-    }
-
-    _shouldClarifyQuestion(question, topicConfidence, historyLength = 0) {
-        const words = (question || '').trim().split(/\s+/).filter(Boolean);
-        // Never clarify when the student already used a known medical term — we have
-        // enough context to answer directly (e.g. "Classify types of necrosis").
-        if (hasMedicalSignal(question)) return false;
-        // Never clarify a genuine follow-up — conversation context is sufficient.
-        if (historyLength > 0 && looksLikeFollowUp(question, historyLength)) return false;
-        return topicConfidence < 0.5 && words.length <= 6;
     }
 
     /**
