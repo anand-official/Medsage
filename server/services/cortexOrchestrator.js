@@ -676,15 +676,12 @@ class CortexOrchestrator {
 
     _shouldClarifyQuestion(question, topicConfidence, historyLength = 0) {
         const words = (question || '').trim().split(/\s+/).filter(Boolean);
-        // Never ask for clarification when the question is a genuine follow-up and
-        // history exists — the conversation context is enough to answer it directly.
+        // Never clarify when the student already used a known medical term — we have
+        // enough context to answer directly (e.g. "Classify types of necrosis").
+        if (hasMedicalSignal(question)) return false;
+        // Never clarify a genuine follow-up — conversation context is sufficient.
         if (historyLength > 0 && looksLikeFollowUp(question, historyLength)) return false;
         return topicConfidence < 0.5 && words.length <= 6;
-    }
-
-    _shouldClarifyAfterRetrieval(question, topicConfidence) {
-        const words = (question || '').trim().split(/\s+/).filter(Boolean);
-        return topicConfidence < 0.72 && words.length <= 8;
     }
 
     /**
