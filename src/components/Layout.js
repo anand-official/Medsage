@@ -14,7 +14,6 @@ import {
   Logout as LogoutIcon,
   Person as PersonIcon,
   Dashboard as DashboardIcon,
-  MonitorHeart as MonitorHeartIcon,
 } from '@mui/icons-material';
 import { ThemeContext } from '../App';
 import { useAuth } from '../contexts/AuthContext';
@@ -531,7 +530,6 @@ const Layout = () => {
           {[
             { icon: <DashboardIcon sx={{ fontSize: 14 }} />, label: 'Dashboard', path: '/' },
             { icon: <PersonIcon sx={{ fontSize: 14 }} />, label: 'Profile & Settings', path: '/profile' },
-            { icon: <MonitorHeartIcon sx={{ fontSize: 14 }} />, label: 'System Status', path: '/status' },
           ].map(({ icon, label, path }) => (
             <MenuItem key={label} onClick={() => { handleCloseMenu(); navigate(path); }} sx={{
               borderRadius: '10px', py: '9px', px: '12px', gap: '10px',
