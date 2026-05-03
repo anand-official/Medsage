@@ -15,7 +15,7 @@ const SUBJECT_COLLECTION_MAP = {
     'Forensic Medicine': ['mbbs_forensic_medicine_v2', 'mbbs_forensic_medicine_v1'],
     'Obstetrics & Gynecology': ['mbbs_obg_v2', 'mbbs_obstetrics_gynecology_v2', 'mbbs_obgyn_v2'],
     Pediatrics: ['mbbs_pediatrics_v2', 'mbbs_pediatrics_v1'],
-    ENT: ['mbbs_ent_v2', 'mbbs_ent_v1'],
+    ENT: ['mbbs_ent_v2', 'mbbs_ent_dropbox_v1', 'mbbs_ent_v1'],
     Ophthalmology: ['mbbs_ophthalmology_v2', 'mbbs_ophthalmology_v1'],
     default: [DEFAULT_COLLECTION_NAME],
 };

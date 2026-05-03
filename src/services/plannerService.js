@@ -21,7 +21,11 @@ export const plannerAPI = {
 
     // Fetch curriculum syllabus for setup
     getSyllabus: async (year, country = 'India') => {
-        return apiCall(`/api/v1/study/syllabus?year=${year}&country=${country}`);
+        const params = new URLSearchParams();
+        if (year) params.set('year', String(year));
+        if (country) params.set('country', country);
+        const query = params.toString();
+        return apiCall(`/api/v1/study/syllabus${query ? `?${query}` : ''}`);
     },
 
     // Tick a task as completed or incomplete
@@ -51,6 +55,41 @@ export const plannerAPI = {
     // Get full analytics (heatmap, performance)
     getAnalytics: async () => {
         return apiCall('/api/v1/study/analytics');
+    },
+
+    rebalancePlan: async (payload = {}) => {
+        return apiCall('/api/v1/study/plan/rebalance', {
+            method: 'POST',
+            data: payload
+        });
+    },
+
+    chatWithPlannerAssistant: async (message) => {
+        return apiCall('/api/v1/study/assistant/chat', {
+            method: 'POST',
+            data: { message }
+        });
+    },
+
+    applyAssistantProposal: async (proposalId) => {
+        return apiCall('/api/v1/study/assistant/apply', {
+            method: 'POST',
+            data: { proposalId }
+        });
+    },
+
+    getResources: async ({ subject, topic, country, year } = {}) => {
+        const params = new URLSearchParams();
+        if (subject) params.set('subject', subject);
+        if (topic) params.set('topic', topic);
+        if (country) params.set('country', country);
+        if (year) params.set('year', year);
+        const query = params.toString();
+        return apiCall(`/api/v1/study/resources${query ? `?${query}` : ''}`);
+    },
+
+    getDailyAdvisory: async () => {
+        return apiCall('/api/v1/study/advisory');
     },
 
     // Toggle a goal's done status

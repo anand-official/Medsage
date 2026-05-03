@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getApiBaseUrl } from '../config/apiBase';
 import { clearAuthToken, getAuthToken } from '../utils/authStorage';
+import { setPostAuthRedirect } from '../utils/authRedirect';
 
 const API_URL = getApiBaseUrl();
 
@@ -10,6 +11,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 12000;
+let authInvalidationHandler = null;
 
 function getResponseRequestId(response) {
   return response?.headers?.['x-request-id'] || response?.data?.requestId || null;
@@ -25,12 +29,14 @@ function createApiError({
   requestId = null,
   retryable = false,
   endpoint = '',
+  code = undefined,
 }) {
   const err = new Error(message);
   err.statusCode = statusCode;
   err.requestId = requestId;
   err.retryable = retryable;
   err.endpoint = endpoint;
+  err.code = code;
   return err;
 }
 
@@ -51,12 +57,8 @@ function getLegacyEndpoint(endpoint) {
 
   const { path, suffix } = splitEndpointAndQuery(endpoint);
 
-  if (path === '/api/v1/auth') {
-    return `/auth${suffix}`;
-  }
-
-  if (path.startsWith('/api/v1/auth/')) {
-    return `${path.replace('/api/v1/auth/', '/auth/')}${suffix}`;
+  if (path === '/api/v1/auth' || path.startsWith('/api/v1/auth/')) {
+    return null;
   }
 
   if (path.startsWith('/api/v1/')) {
@@ -123,12 +125,35 @@ function normalizeApiErrorMessage(payload, fallbackStatusText, statusCode) {
   return pickMessage(payload) || fallbackStatusText || `HTTP ${statusCode}`;
 }
 
+function persistAuthRedirect() {
+  if (typeof window === 'undefined') return;
+  const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  setPostAuthRedirect(nextPath);
+}
+
+function invalidateAuthSession(details = {}) {
+  clearAuthToken();
+  persistAuthRedirect();
+  authInvalidationHandler?.(details);
+}
+
+export function registerAuthInvalidationHandler(handler) {
+  authInvalidationHandler = typeof handler === 'function' ? handler : null;
+
+  return () => {
+    if (authInvalidationHandler === handler) {
+      authInvalidationHandler = null;
+    }
+  };
+}
+
 // Add request interceptor to attach Google ID token on every request.
 // The UID is NOT sent as a header, the backend decodes it from the token.
 api.interceptors.request.use(
   (config) => {
     const token = getAuthToken();
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -153,10 +178,11 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       error.requestId = getResponseRequestId(error.response);
-      clearAuthToken();
-      // Use replace() so the protected page doesn't land in the browser history,
-      // preventing the back-button from cycling back to an unauthenticated state.
-      window.location.replace('/signin');
+      invalidateAuthSession({
+        endpoint: error.config?.url || '',
+        requestId: error.requestId,
+        reason: 'unauthorized',
+      });
     }
 
     return Promise.reject(error);
@@ -174,13 +200,14 @@ export const apiCall = async (endpoint, options = {}) => {
         ...options.headers,
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
+      timeout: options.timeout,
       signal: options.signal
     });
     return response.data;
   } catch (error) {
     if (error.response) {
       const status = error.response.status;
-      const requestId = getResponseRequestId(error.response);
+      const requestId = error.requestId || getResponseRequestId(error.response);
       const message = normalizeApiErrorMessage(error.response.data, error.response.statusText, status);
       throw createApiError({
         message,
@@ -191,22 +218,30 @@ export const apiCall = async (endpoint, options = {}) => {
       });
     }
 
+    const isTimeout = error.code === 'ECONNABORTED'
+      || /timeout/i.test(error.message || '');
+
     throw createApiError({
-      message: error.message || 'Network error - check your connection and try again.',
+      message: isTimeout
+        ? 'The Medsage account service took too long to respond. Please try again.'
+        : (error.message || 'Network error - check your connection and try again.'),
       statusCode: error.statusCode,
       requestId: error.requestId || null,
       retryable: true,
       endpoint,
+      code: error.code,
     });
   }
 };
 
 // Auth API calls
 export const authAPI = {
-  createOrUpdateUser: async (userData) => {
+  createOrUpdateUser: async (userData, options = {}) => {
     return apiCall('/api/v1/auth/user', {
       method: 'POST',
-      data: userData
+      data: userData,
+      ...options,
+      timeout: options.timeout ?? AUTH_BOOTSTRAP_TIMEOUT_MS,
     });
   },
 
@@ -234,14 +269,24 @@ export const authAPI = {
 export const systemAPI = {
   getHealthStatus: async () => {
     try {
+      const token = getAuthToken();
       const response = await fetchWithLegacyFallback('/healthz', {
         method: 'GET',
         headers: {
           Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       const payload = await parseFetchPayload(response);
       const requestId = getFetchResponseRequestId(response, payload);
+
+      if (response.status === 401) {
+        invalidateAuthSession({
+          endpoint: '/healthz',
+          requestId,
+          reason: 'unauthorized',
+        });
+      }
 
       if (!response.ok) {
         throw createApiError({
@@ -395,8 +440,20 @@ export const streamMedicalQuery = async (query, options = {}, onToken, onDone, o
 
   if (!response.ok) {
     if (response.status === 401) {
-      clearAuthToken();
-      window.location.replace('/signin');
+      const requestId = getFetchResponseRequestId(response);
+      invalidateAuthSession({
+        endpoint: '/api/v1/medical/query/stream',
+        requestId,
+        reason: 'unauthorized',
+      });
+      if (onError) {
+        onError(createApiError({
+          message: 'Your session expired. Please sign in again.',
+          statusCode: 401,
+          requestId,
+          endpoint: '/api/v1/medical/query/stream',
+        }));
+      }
       return;
     }
     if (onError) onError(new Error(`HTTP ${response.status}`));

@@ -5,13 +5,13 @@ const getTheme = (mode) => {
 
   // ── Palette tokens ─────────────────────────────────────────────────────
   const ink = {
-    bg:        isDark ? '#0c0e1a' : '#f4f6ff',
-    surface:   isDark ? 'rgba(16, 18, 32, 0.82)' : 'rgba(255, 255, 255, 0.92)',
-    card:      isDark ? 'rgba(18, 20, 34, 0.65)' : 'rgba(255, 255, 255, 0.88)',
-    border:    isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(99, 102, 241, 0.09)',
-    textPri:   isDark ? '#dde3f5' : '#1c1f35',
-    textSec:   isDark ? '#7e8ba3' : '#5c6882',
-    divider:   isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(99, 102, 241, 0.08)',
+    bg:        isDark ? '#0c0e1a' : '#f7eadf',
+    surface:   isDark ? 'rgba(16, 18, 32, 0.82)' : 'rgba(255, 247, 238, 0.92)',
+    card:      isDark ? 'rgba(18, 20, 34, 0.65)' : 'rgba(255, 250, 244, 0.9)',
+    border:    isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(181, 126, 83, 0.16)',
+    textPri:   isDark ? '#dde3f5' : '#352419',
+    textSec:   isDark ? '#7e8ba3' : '#7b6655',
+    divider:   isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(181, 126, 83, 0.12)',
   };
 
   // Ambient background gradient — adapts per mode
@@ -23,10 +23,10 @@ const getTheme = (mode) => {
         radial-gradient(ellipse 60% 50% at 4% 88%,  rgba(168, 85, 247, 0.14) 0%, transparent 70%)
       `
     : `
-        radial-gradient(ellipse 60% 50% at 5%  5%,  rgba(99, 102, 241, 0.07) 0%, transparent 70%),
-        radial-gradient(ellipse 50% 40% at 92% 4%,  rgba(168, 85, 247, 0.05) 0%, transparent 70%),
-        radial-gradient(ellipse 55% 45% at 88% 94%, rgba(139, 92, 246, 0.06) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 50% at 2% 92%,  rgba(99, 102, 241, 0.07) 0%, transparent 70%)
+        radial-gradient(ellipse 62% 52% at 6%  6%,  rgba(245, 158, 11, 0.12) 0%, transparent 72%),
+        radial-gradient(ellipse 48% 42% at 94% 6%,  rgba(251, 146, 60, 0.1) 0%, transparent 72%),
+        radial-gradient(ellipse 58% 46% at 88% 94%, rgba(217, 119, 87, 0.08) 0%, transparent 74%),
+        radial-gradient(ellipse 62% 52% at 2% 92%,  rgba(180, 83, 9, 0.08) 0%, transparent 70%)
       `;
 
   let theme = createTheme({
@@ -36,15 +36,15 @@ const getTheme = (mode) => {
     palette: {
       mode,
       primary: {
-        main:         isDark ? '#6366f1' : '#5b5fef',
-        light:        isDark ? '#818cf8' : '#7c7ff5',
-        dark:         isDark ? '#4f46e5' : '#4845d4',
+        main:         isDark ? '#6366f1' : '#b86a3f',
+        light:        isDark ? '#818cf8' : '#d59668',
+        dark:         isDark ? '#4f46e5' : '#8f4f2d',
         contrastText: '#ffffff',
       },
       secondary: {
-        main:  '#a855f7',
-        light: '#c084fc',
-        dark:  '#9333ea',
+        main:  isDark ? '#a855f7' : '#d78663',
+        light: isDark ? '#c084fc' : '#edb08e',
+        dark:  isDark ? '#9333ea' : '#b86746',
       },
       background: {
         default: ink.bg,
@@ -74,17 +74,26 @@ const getTheme = (mode) => {
           body: {
             backgroundColor: ink.bg,
             color: ink.textPri,
+            '--surface-glass': isDark ? 'rgba(16, 18, 32, 0.82)' : 'rgba(255, 247, 238, 0.92)',
+            '--surface-card': isDark ? 'rgba(18, 20, 34, 0.65)' : 'rgba(255, 250, 244, 0.9)',
+            '--surface-strong': isDark ? 'rgba(12, 14, 26, 0.9)' : 'rgba(250, 239, 226, 0.96)',
+            '--surface-soft': isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255, 241, 225, 0.72)',
+            '--border-soft': ink.border,
+            '--accent-primary': isDark ? '#818cf8' : '#b86a3f',
+            '--accent-secondary': isDark ? '#c084fc' : '#d78663',
+            '--accent-muted': isDark ? 'rgba(99,102,241,0.1)' : 'rgba(184, 106, 63, 0.1)',
+            '--accent-border': isDark ? 'rgba(99,102,241,0.22)' : 'rgba(184, 106, 63, 0.18)',
             scrollbarWidth: 'thin',
             overflowX: 'hidden',
             position: 'relative',
             '&::-webkit-scrollbar':       { width: '6px', height: '6px' },
             '&::-webkit-scrollbar-track': { background: 'transparent' },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(99,102,241,0.15)',
+              backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(184,106,63,0.2)',
               borderRadius: '10px',
             },
             '&::-webkit-scrollbar-thumb:hover': {
-              backgroundColor: isDark ? 'rgba(165,180,252,0.35)' : 'rgba(99,102,241,0.35)',
+              backgroundColor: isDark ? 'rgba(165,180,252,0.35)' : 'rgba(184,106,63,0.34)',
             },
             // Ambient mesh — updates with theme mode
             '&::before': {
@@ -124,10 +133,10 @@ const getTheme = (mode) => {
             border: `1px solid ${ink.border}`,
             transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1), box-shadow 0.28s cubic-bezier(0.4,0,0.2,1), border-color 0.28s ease',
             '&:hover': {
-              borderColor: isDark ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.22)',
+              borderColor: isDark ? 'rgba(99,102,241,0.28)' : 'rgba(184,106,63,0.26)',
               boxShadow: isDark
                 ? '0 20px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(99,102,241,0.18)'
-                : '0 16px 40px rgba(99,102,241,0.12), 0 0 0 1px rgba(99,102,241,0.14)',
+                : '0 18px 44px rgba(152,93,51,0.12), 0 0 0 1px rgba(184,106,63,0.12)',
               transform: 'translateY(-3px)',
             },
             '@media (hover: none)': {
@@ -152,7 +161,7 @@ const getTheme = (mode) => {
             '&:hover': {
               boxShadow: isDark
                 ? '0 8px 20px rgba(99,102,241,0.35)'
-                : '0 8px 20px rgba(99,102,241,0.25)',
+                : '0 10px 24px rgba(184,106,63,0.22)',
               transform: 'translateY(-1px)',
             },
             '@media (hover: none)': {
@@ -178,7 +187,7 @@ const getTheme = (mode) => {
           root: {
             backgroundColor: isDark
               ? 'rgba(12, 14, 26, 0.78)'
-              : 'rgba(244, 246, 255, 0.85)',
+              : 'rgba(247, 234, 223, 0.88)',
             backdropFilter: 'blur(20px) saturate(160%)',
             borderBottom: `1px solid ${ink.border}`,
             color: ink.textPri,
@@ -191,7 +200,7 @@ const getTheme = (mode) => {
       MuiDrawer: {
         styleOverrides: {
           paper: {
-            backgroundColor: isDark ? '#0e1020' : '#f8f9ff',
+            backgroundColor: isDark ? '#0e1020' : '#f8ede2',
             borderRight: `1px solid ${ink.border}`,
           },
         },
@@ -205,17 +214,17 @@ const getTheme = (mode) => {
               borderRadius: 14,
               backgroundColor: isDark
                 ? 'rgba(255,255,255,0.03)'
-                : 'rgba(99,102,241,0.04)',
+                : 'rgba(184,106,63,0.05)',
               '& input': { fontSize: '16px' },
               '&:hover': {
                 backgroundColor: isDark
                   ? 'rgba(255,255,255,0.05)'
-                  : 'rgba(99,102,241,0.07)',
+                  : 'rgba(184,106,63,0.08)',
               },
               '&.Mui-focused': {
                 backgroundColor: isDark
                   ? 'rgba(255,255,255,0.05)'
-                  : 'rgba(99,102,241,0.06)',
+                  : 'rgba(184,106,63,0.07)',
               },
             },
           },
@@ -264,6 +273,5 @@ const getTheme = (mode) => {
   return theme;
 };
 
-const theme = getTheme('light');
 export { getTheme };
-export default theme;
+export default getTheme;

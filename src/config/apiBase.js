@@ -7,7 +7,11 @@ function trimTrailingSlash(url) {
 }
 
 export function getApiBaseUrl() {
-  const configuredUrl = process.env.REACT_APP_API_URL?.trim();
+  const configuredUrl = (
+    process.env.NEXT_PUBLIC_API_URL
+    || process.env.REACT_APP_API_URL
+    || ''
+  ).trim();
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';

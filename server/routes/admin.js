@@ -39,7 +39,7 @@ const logger = require('../utils/logger');
  * Re-reads promptRegistry.json from disk and replaces the in-memory registry.
  * Allows prompt template edits to take effect without a full server restart.
  *
- * Auth: Firebase token + admin custom claim (or ADMIN_UIDS env var fallback).
+ * Auth: Google ID token + admin authorization (or ADMIN_UIDS env var fallback).
  */
 router.post('/reload-prompts', verifyToken, isAdmin, (req, res) => {
     try {

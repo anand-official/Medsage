@@ -288,7 +288,7 @@ function requestTrackerMiddleware(req, res, next) {
     const start = Date.now();
 
     res.on('finish', () => {
-        const routeKey = req.route?.path || req.path;
+        const routeKey = req.route?.path || 'unknown';
         const route = `${req.method} ${routeKey}`;
         const duration = Date.now() - start;
         recordRequest(route, res.statusCode, duration);
@@ -356,6 +356,7 @@ function registerMonitoringRoutes(app) {
 }
 
 module.exports = {
+    localhostOnly,
     requestTrackerMiddleware,
     registerMonitoringRoutes,
     recordRequest,

@@ -10,28 +10,45 @@
  * Call validateConfig() once at startup to catch missing required vars early.
  */
 
+function readEnv(name) {
+  const raw = String(process.env[name] || '').trim();
+  if (!raw) return '';
+  const normalized = raw.toLowerCase();
+  if (
+    normalized === 'fill_in'
+    || normalized === 'your_google_oauth_client_id_here'
+    || normalized === 'your_google_client_id_here'
+    || normalized === 'your_google_oauth_client_id'
+  ) {
+    return '';
+  }
+  return raw;
+}
+
 const config = {
   // Runtime
   NODE_ENV:    process.env.NODE_ENV    || 'development',
   PORT:        parseInt(process.env.PORT, 10) || 3001,
   IS_PROD:     process.env.NODE_ENV === 'production',
+  DATABASE_PROVIDER: process.env.DATABASE_PROVIDER || 'supabase',
 
-  // MongoDB
-  MONGODB_URI:                        process.env.MONGODB_URI || 'mongodb://localhost:27017/cortex',
-  MONGODB_SERVER_SELECTION_TIMEOUT:   parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT, 10) || 15000,
-  MONGODB_SOCKET_TIMEOUT:             parseInt(process.env.MONGODB_SOCKET_TIMEOUT, 10) || 45000,
-  MONGODB_MAX_POOL_SIZE:              parseInt(process.env.MONGODB_MAX_POOL_SIZE, 10) || 10,
+  // Supabase
+  SUPABASE_URL: readEnv('SUPABASE_URL'),
+  SUPABASE_PUBLISHABLE_KEY: readEnv('SUPABASE_PUBLISHABLE_KEY'),
+  SUPABASE_SECRET_KEY: readEnv('SUPABASE_SECRET_KEY'),
 
   // AI / LLM
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GEMINI_API_KEY: readEnv('GEMINI_API_KEY'),
   GEMINI_MODEL:   process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
+  PLANNER_GEMINI_API_KEY: readEnv('PLANNER_GEMINI_API_KEY'),
+  PLANNER_GEMINI_MODEL: process.env.PLANNER_GEMINI_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
 
   // Fallback LLM
   FALLBACK_LLM_PROVIDER: process.env.FALLBACK_LLM_PROVIDER || 'claude',
-  FALLBACK_LLM_API_KEY:  process.env.FALLBACK_LLM_API_KEY,
+  FALLBACK_LLM_API_KEY:  readEnv('FALLBACK_LLM_API_KEY'),
 
   // Google OAuth
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_ID: readEnv('GOOGLE_CLIENT_ID'),
 
   // Admin
   ADMIN_UIDS: (process.env.ADMIN_UIDS || '')
@@ -78,18 +95,31 @@ function validateConfig() {
   const warnings = [];
 
   // Critical — service cannot function without these
-  if (!process.env.GEMINI_API_KEY) errors.push('GEMINI_API_KEY');
-  if (config.IS_PROD && !process.env.MONGODB_URI) errors.push('MONGODB_URI');
+  if (!config.GEMINI_API_KEY) errors.push('GEMINI_API_KEY');
+  if (config.IS_PROD || config.DATABASE_PROVIDER === 'supabase') {
+    if (!config.SUPABASE_URL) errors.push('SUPABASE_URL');
+    if (!config.SUPABASE_SECRET_KEY) errors.push('SUPABASE_SECRET_KEY');
+  }
+  if (!config.GOOGLE_CLIENT_ID) errors.push('GOOGLE_CLIENT_ID');
 
   // Important — degraded behaviour without these
-  if (!process.env.GOOGLE_CLIENT_ID) {
-    warnings.push('GOOGLE_CLIENT_ID not set — token audience validation is DISABLED (any Google token will be accepted)');
-  }
   if (config.IS_PROD && !process.env.REDIS_URL) {
     warnings.push('REDIS_URL not set — per-user rate limits are NOT enforced across restarts or instances');
   }
   if (config.IS_PROD && !process.env.ALERT_WEBHOOK_URL) {
     warnings.push('ALERT_WEBHOOK_URL not set — error-rate alerts will only appear in server logs');
+  }
+  if (config.DATABASE_PROVIDER === 'supabase' && !config.SUPABASE_URL) {
+    warnings.push('SUPABASE_URL not set — Supabase data layer cannot connect yet');
+  }
+  if (config.DATABASE_PROVIDER === 'supabase' && !config.SUPABASE_SECRET_KEY) {
+    warnings.push('SUPABASE_SECRET_KEY not set — backend cannot use the Supabase service role yet');
+  }
+  if (!process.env.HF_API_TOKEN) {
+    warnings.push('HF_API_TOKEN not set — embedding service will fail, causing silent RAG degradation to ungrounded answers');
+  }
+  if (!process.env.QDRANT_URL) {
+    warnings.push('QDRANT_URL not set — RAG retrieval will fail, all responses will be ungrounded (direct_no_chunks path)');
   }
 
   if (warnings.length > 0) {

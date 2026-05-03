@@ -12,9 +12,10 @@
  */
 
 const axios = require('axios');
+const config = require('../config');
 
-const PROVIDER   = (process.env.FALLBACK_LLM_PROVIDER || '').toLowerCase().trim();
-const API_KEY    = (process.env.FALLBACK_LLM_API_KEY  || '').trim();
+const PROVIDER   = (config.FALLBACK_LLM_PROVIDER || '').toLowerCase().trim();
+const API_KEY    = (config.FALLBACK_LLM_API_KEY  || '').trim();
 const MAX_TOKENS = 2000;
 const TIMEOUT_MS = 30000;
 

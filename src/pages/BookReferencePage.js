@@ -826,7 +826,7 @@ const BookReferencePage = () => {
             </Typography>
 
             {filteredBooks.length === 0 ? (
-              <Box sx={{ textAlign: "center", py: 10 }}>
+              <Box sx={{ textAlign: "center", py: 10 }} role="status" aria-live="polite">
                 <ReadIcon
                   sx={{
                     fontSize: 64,
@@ -840,7 +840,7 @@ const BookReferencePage = () => {
                       Library not populated yet
                     </Typography>
                     <Typography sx={{ color: theme.palette.text.secondary, mb: 3, maxWidth: 440, mx: "auto" }}>
-                      The book library hasn't been set up. Click "Refresh Library" above to crawl and populate it. This may take a few minutes.
+                      The book library has not been populated yet. Start a fresh scan to pull the latest college-ready reference list; it can take a few minutes.
                     </Typography>
                     <Button
                       variant="contained"
@@ -858,7 +858,7 @@ const BookReferencePage = () => {
                       No books found.
                     </Typography>
                     <Typography sx={{ color: theme.palette.text.secondary }}>
-                      Try clearing your search or switching courses/years.
+                      Try clearing your search, switching course/year filters, or refreshing the library scan.
                     </Typography>
                   </>
                 )}

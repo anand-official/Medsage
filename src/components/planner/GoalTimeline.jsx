@@ -21,8 +21,13 @@ export default function GoalTimeline({ goals }) {
     const handleTick = async (g) => {
         if (ticking) return;
         setTicking(g.id);
-        await tickGoal(currentKey, g.id);
-        setTicking(null);
+        try {
+            await tickGoal(currentKey, g.id);
+        } catch {
+            // StudyContext surfaces the error in the planner diagnostics.
+        } finally {
+            setTicking(null);
+        }
     };
 
     return (
@@ -33,6 +38,8 @@ export default function GoalTimeline({ goals }) {
                     onChange={(e, v) => setTabIndex(v)}
                     textColor="primary"
                     indicatorColor="primary"
+                    variant="scrollable"
+                    scrollButtons="auto"
                     sx={{ minHeight: 40 }}
                 >
                     {tabs.map((t, idx) => (
@@ -53,6 +60,7 @@ export default function GoalTimeline({ goals }) {
                     <Typography color="text.secondary" fontStyle="italic">No pending milestones for this period.</Typography>
                 </Box>
             ) : (
+                <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 <List sx={{ pt: 0, px: 1 }}>
                     <AnimatePresence mode="wait">
                         <motion.div
@@ -107,6 +115,7 @@ export default function GoalTimeline({ goals }) {
                         </motion.div>
                     </AnimatePresence>
                 </List>
+                </Box>
             )}
         </Paper>
     );

@@ -93,7 +93,7 @@ export default function SystemDiagnosticsPanel({
   }, [runHealthCheck]);
 
   const diagnosticsApiBase = getApiBaseUrl() || 'same-origin';
-  const diagnosticsBuild = process.env.REACT_APP_BUILD_SHA || process.env.NODE_ENV || 'development';
+  const diagnosticsBuild = process.env.NEXT_PUBLIC_BUILD_SHA || process.env.NODE_ENV || 'development';
   const healthSummary = getHealthSummary(healthState);
   const visibleIssue = Array.from(new Set([latestIssue, healthState.error].filter(Boolean))).join(' | ') || null;
   const lastChecked = useMemo(() => {

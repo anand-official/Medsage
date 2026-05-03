@@ -22,8 +22,8 @@ const definition = {
             BearerAuth: {
                 type: 'http',
                 scheme: 'bearer',
-                bearerFormat: 'Firebase JWT',
-                description: 'Firebase ID token. Obtain via `firebase.auth().currentUser.getIdToken()`.',
+                bearerFormat: 'Google ID Token',
+                description: 'Google ID token returned by the frontend Google OAuth flow.',
             },
         },
         schemas: {
@@ -108,7 +108,7 @@ const definition = {
                             trust:             { $ref: '#/components/schemas/TrustMetadata' },
                             flags:             { type: 'array', items: { type: 'string' } },
                             verified:          { type: 'boolean' },
-                            log_id:            { type: 'string', description: 'MongoDB ObjectId for feedback submission' },
+                            log_id:            { type: 'string', description: 'Audit log identifier for feedback submission' },
                             disclaimer:        { type: 'string' },
                             timestamp:         { type: 'string', format: 'date-time' },
                         },

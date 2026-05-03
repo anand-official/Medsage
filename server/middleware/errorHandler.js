@@ -13,7 +13,7 @@ const logger = require('../utils/logger');
  * - AppError (4xx): operational / expected — message is safe to show the client.
  * - AppError (5xx) or generic Error: unexpected — show a generic message and log
  *   the real error server-side only. Stack traces never reach the client.
- * - Mongoose/validation errors are mapped to 400.
+ * - Validation and conflict errors are mapped to 4xx.
  */
 const errorHandler = (err, req, res, next) => {
   // ----- Classify -----
@@ -21,20 +21,20 @@ const errorHandler = (err, req, res, next) => {
   let message    = err.message    || 'Internal server error';
   let code       = err.code       || null;
 
-  // Mongoose document validation
+  // Document validation
   if (err.name === 'ValidationError' && !err.statusCode) {
     statusCode = 400;
     code       = 'VALIDATION_ERROR';
   }
 
-  // Mongoose bad ObjectId cast
+  // Bad identifier cast
   if (err.name === 'CastError' && !err.statusCode) {
     statusCode = 400;
     message    = 'Invalid ID format';
     code       = 'INVALID_ID';
   }
 
-  // Mongoose duplicate key
+  // Duplicate key conflict
   if (err.code === 11000) {
     statusCode = 409;
     message    = 'Duplicate entry';

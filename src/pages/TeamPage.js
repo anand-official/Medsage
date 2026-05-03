@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../utils/navigation';
 
 // ─── Responsive Styles (injected once) ──────────────────────────────────────
 const RESPONSIVE_STYLE_ID = 'team-page-responsive';
@@ -465,8 +465,9 @@ function Modal({ member, onClose }) {
     );
 }
 
-export default function TeamPage() {
-    const navigate = useNavigate();
+export default function TeamPage({ navigation = null }) {
+    const fallbackNavigate = useNavigate();
+    const navigate = navigation?.navigate || fallbackNavigate;
     const [selected, setSelected] = useState(null);
     useResponsiveStyles();
 

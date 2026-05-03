@@ -1,44 +1,104 @@
 'use strict';
 
+const { OAuth2Client } = require('google-auth-library');
+
 const logger = require('../utils/logger');
 const { UnauthorizedError, ForbiddenError } = require('../utils/errors');
+const config = require('../config');
 
-function getClientId() {
-  return process.env.GOOGLE_CLIENT_ID;
-}
+const GOOGLE_VERIFY_TIMEOUT_MS = 8000;
+const GOOGLE_ISSUERS = new Set(['accounts.google.com', 'https://accounts.google.com']);
 
-// Verify a Google ID token using Google's tokeninfo endpoint.
-// This keeps dependencies light, but audience / issuer / email checks are mandatory.
-async function verifyGoogleToken(token) {
-  const clientId = getClientId();
-  if (!clientId) {
+let googleAuthClient = null;
+
+function getGoogleAuthClient() {
+  if (!config.GOOGLE_CLIENT_ID) {
     logger.error('[Auth] GOOGLE_CLIENT_ID is not configured');
     throw new Error('Authentication service misconfigured');
   }
 
-  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
-  const payload = await res.json();
-
-  if (!res.ok || payload.error_description) {
-    console.error('[Auth] Google tokeninfo rejected token:', payload.error_description);
-    throw new UnauthorizedError('Invalid authentication token');
+  if (!googleAuthClient) {
+    googleAuthClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
   }
 
-  if (payload.aud !== clientId) {
-    logger.warn('[Auth] Token audience mismatch', { expected: clientId, got: payload.aud });
-    throw new UnauthorizedError('Authentication token audience mismatch');
-  }
-  if (!['accounts.google.com', 'https://accounts.google.com'].includes(payload.iss)) {
-    throw new UnauthorizedError('Authentication token issuer mismatch');
-  }
-  if (`${payload.email_verified}` !== 'true') {
-    throw new UnauthorizedError('Authentication token email not verified');
-  }
-  if (parseInt(payload.exp, 10) * 1000 < Date.now()) {
-    throw new UnauthorizedError('Authentication token expired');
+  return googleAuthClient;
+}
+
+function mapGoogleVerificationError(error) {
+  if (error instanceof UnauthorizedError) return error;
+
+  const message = String(error?.message || '');
+
+  if (message === 'Authentication verification unavailable') {
+    return new Error('Authentication verification unavailable');
   }
 
-  return payload;
+  if (
+    /timeout|network|fetch|certificate|socket|ECONNRESET|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN/i.test(message)
+  ) {
+    return new Error('Authentication verification unavailable');
+  }
+
+  if (/wrong recipient|audience|requiredaudience/i.test(message)) {
+    return new UnauthorizedError('Authentication token audience mismatch');
+  }
+
+  if (/expired|used too late|max expiry/i.test(message)) {
+    return new UnauthorizedError('Authentication token expired');
+  }
+
+  return new UnauthorizedError('Invalid authentication token');
+}
+
+// Verify a Google ID token using Google's official auth library.
+async function verifyGoogleToken(token) {
+  const client = getGoogleAuthClient();
+
+  let timeoutHandle = null;
+  try {
+    const ticket = await Promise.race([
+      client.verifyIdToken({
+        idToken: token,
+        audience: config.GOOGLE_CLIENT_ID,
+      }),
+      new Promise((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new Error('Authentication verification unavailable')),
+          GOOGLE_VERIFY_TIMEOUT_MS
+        );
+      }),
+    ]);
+
+    const payload = ticket?.getPayload?.();
+    if (!payload?.sub || !payload?.email) {
+      throw new UnauthorizedError('Invalid authentication token');
+    }
+    if (payload.aud !== config.GOOGLE_CLIENT_ID) {
+      logger.warn('[Auth] Token audience mismatch', { expected: config.GOOGLE_CLIENT_ID, got: payload.aud });
+      throw new UnauthorizedError('Authentication token audience mismatch');
+    }
+    if (!GOOGLE_ISSUERS.has(payload.iss)) {
+      throw new UnauthorizedError('Authentication token issuer mismatch');
+    }
+    if (`${payload.email_verified}` !== 'true') {
+      throw new UnauthorizedError('Authentication token email not verified');
+    }
+    if (parseInt(payload.exp, 10) * 1000 < Date.now()) {
+      throw new UnauthorizedError('Authentication token expired');
+    }
+
+    return payload;
+  } catch (error) {
+    const normalizedError = mapGoogleVerificationError(error);
+    if (normalizedError.message === 'Authentication verification unavailable') {
+      logger.warn('[Auth] Google token verification unavailable', { err: error.message });
+    }
+    throw normalizedError;
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
 }
 
 function sendAuthError(res, reqId, statusCode, code, message) {
@@ -76,6 +136,9 @@ const verifyToken = async (req, res, next) => {
     if (error.message === 'Authentication service misconfigured') {
       return sendAuthError(res, req.id, 500, 'AUTH_MISCONFIGURED', 'Authentication is temporarily unavailable');
     }
+    if (error.message === 'Authentication verification unavailable') {
+      return sendAuthError(res, req.id, 503, 'AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable');
+    }
 
     const code = error.message === 'Authentication token expired'
       ? 'AUTH_TOKEN_EXPIRED'
@@ -107,7 +170,7 @@ const isAdmin = (req, res, next) => {
   if (!req.user) {
     return sendAuthError(res, req.id, 401, 'AUTH_MISSING_TOKEN', 'Authentication required');
   }
-  const adminUids = (process.env.ADMIN_UIDS || '').split(',').map(u => u.trim()).filter(Boolean);
+  const adminUids = config.ADMIN_UIDS;
   if (adminUids.includes(req.user.uid)) return next();
   logger.warn('[Auth] Admin access denied', { uid: req.user.uid, path: req.path });
   const err = new ForbiddenError('Forbidden');
@@ -123,5 +186,5 @@ module.exports = {
   verifyToken,
   optionalAuth,
   isAdmin,
-  firebaseEnabled: Boolean(getClientId()),
+  googleAuthEnabled: Boolean(config.GOOGLE_CLIENT_ID),
 };

@@ -16,21 +16,42 @@ services:
       - key: PORT
         value: 10000
 
-      # ----------------------------------------
-      # Add ALL of the following in your Render Dashboard
-      # under Environment → Environment Variables:
-      # ----------------------------------------
-      # MONGODB_URI              — MongoDB Atlas connection string
-      # JWT_SECRET               — Strong random secret (use: openssl rand -base64 32)
-      # GEMINI_API_KEY           — Google Gemini API key
-      # GEMINI_MODEL             — gemini-2.5-flash (optional, this is the default)
-      # HF_API_TOKEN             — HuggingFace API token (for embeddings)
-      # HF_EMBEDDING_MODEL       — BAAI/bge-large-en-v1.5 (optional, this is the default)
-      # GOOGLE_BOOKS_API_KEY     — Google Books API key
-      # FIREBASE_PROJECT_ID      — From Firebase console → Project Settings
-      # FIREBASE_CLIENT_EMAIL    — From Firebase service account JSON
-      # FIREBASE_PRIVATE_KEY     — From Firebase service account JSON (include the full key with \n)
-      # QDRANT_URL               — Qdrant Cloud cluster URL (e.g. https://xxx.qdrant.io)
-      # QDRANT_API_KEY           — Qdrant Cloud API key
-      # ALLOWED_ORIGINS          — Comma-separated list: https://medsage.pro,https://www.medsage.pro
-      # ----------------------------------------
+      # ─────────────────────────────────────────────────────────────────────
+      # Add ALL of the following in your Render Dashboard under:
+      #   Dashboard → medsage-backend → Environment → Environment Variables
+      # ─────────────────────────────────────────────────────────────────────
+
+      # Required — Supabase (data layer)
+      # SUPABASE_URL                — Supabase project URL (https://xxx.supabase.co)
+      # SUPABASE_PUBLISHABLE_KEY    — Supabase anon/publishable key (sb_publishable_...)
+      # SUPABASE_SECRET_KEY         — Supabase service-role secret key (sb_secret_...)
+
+      # Required — AI
+      # GEMINI_API_KEY              — Google Gemini API key
+      # GEMINI_MODEL                — gemini-2.5-flash  (optional, this is the default)
+      # PLANNER_GEMINI_API_KEY      — Separate Gemini key for study planner (can be same as above)
+      # PLANNER_GEMINI_MODEL        — gemini-2.5-flash  (optional)
+
+      # Required — Google OAuth (server-side token verification)
+      # GOOGLE_CLIENT_ID            — OAuth 2.0 client ID from Google Cloud Console
+
+      # Required — Vector DB
+      # QDRANT_URL                  — Qdrant Cloud cluster URL (https://xxx.qdrant.io)
+      # QDRANT_API_KEY              — Qdrant Cloud API key
+
+      # Required — Embeddings
+      # HF_API_TOKEN                — HuggingFace API token
+      # HF_EMBEDDING_MODEL          — BAAI/bge-large-en-v1.5  (optional, this is the default)
+
+      # Required — CORS
+      # ALLOWED_ORIGINS             — Comma-separated: https://medsage.pro,https://www.medsage.pro,https://medsage-ai.vercel.app
+
+      # Optional — Fallback LLM (used when Gemini is unavailable)
+      # FALLBACK_LLM_PROVIDER       — claude  (optional, claude is default)
+      # FALLBACK_LLM_API_KEY        — Anthropic or OpenAI API key
+
+      # Optional — Admin
+      # ADMIN_UIDS                  — Comma-separated Google UIDs with admin access
+
+      # Optional — Alerting
+      # ALERT_WEBHOOK_URL           — Slack/Discord webhook for error-rate alerts

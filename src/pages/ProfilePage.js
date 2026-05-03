@@ -28,12 +28,12 @@ import {
     Replay as ReviewIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudyContext } from '../contexts/StudyContext';
 import { differenceInDays } from 'date-fns';
 import collegesData from '../data/colleges.json';
 import '../animations.css';
+import { useNavigate } from '../utils/navigation';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const YEARS = [
@@ -436,10 +436,11 @@ function PanelHead({ icon, title, subtitle, badge, right }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function ProfilePage() {
+export default function ProfilePage({ navigation = null }) {
     const { userProfile, updateOnboardingProfile, logout, deleteAccount } = useAuth();
     const { studyPlan, analyticsData, todayData, getStudyPlan, fetchAnalytics, fetchToday } = useStudyContext();
-    const navigate = useNavigate();
+    const fallbackNavigate = useNavigate();
+    const navigate = navigation?.navigate || fallbackNavigate;
 
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);

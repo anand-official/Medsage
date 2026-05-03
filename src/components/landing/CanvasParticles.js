@@ -1,13 +1,16 @@
 import React, { useEffect, useRef } from 'react';
+import { canUseDOM } from '../../utils/browser';
 
 export default function CanvasParticles() {
     const canvasRef = useRef(null);
     const mouseRef = useRef({ x: -9999, y: -9999 });
 
     useEffect(() => {
+        if (!canUseDOM()) return undefined;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return undefined;
         let animId;
         let W = window.innerWidth;
         let H = window.innerHeight;

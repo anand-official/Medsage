@@ -13,6 +13,8 @@ describe('personaResolver', () => {
         expect(persona.response_contract).toContain('exam-relevant distinctions');
         expect(persona.response_contract).toContain('Preserve subject continuity');
         expect(persona.follow_up_policy).toContain('address the objection first');
+        expect(persona.structure_preference).toContain('exam-facing frame');
+        expect(persona.objection_handling).toContain('Treat this as an objection');
     });
 
     test('falls back to the default professor for unknown subjects', () => {
@@ -26,5 +28,7 @@ describe('personaResolver', () => {
         expect(persona.flavor).toBe('Medical Science');
         expect(persona.voice).toContain('first principles');
         expect(persona.response_contract).toContain('fresh topic explanation');
+        expect(persona.analogy_style).toContain('concrete analogy');
+        expect(persona.viva_style).toContain('only when they sharpen understanding');
     });
 });

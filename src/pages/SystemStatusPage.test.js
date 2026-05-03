@@ -1,6 +1,5 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -27,13 +26,9 @@ jest.mock('../services/api', () => {
   };
 });
 
-jest.mock('react-router-dom', () => {
-  const actual = jest.requireActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
+jest.mock('../utils/navigation', () => ({
+  useNavigate: () => mockNavigate,
+}));
 
 import SystemStatusPage from './SystemStatusPage';
 
@@ -45,9 +40,7 @@ async function renderPage() {
   await act(async () => {
     root.render(
       <ThemeProvider theme={createTheme()}>
-        <MemoryRouter>
-          <SystemStatusPage />
-        </MemoryRouter>
+        <SystemStatusPage />
       </ThemeProvider>
     );
   });
@@ -93,7 +86,7 @@ test('renders live health details on the system status page', async () => {
       service: 'cortex-api',
       uptime_s: 42,
       checks: {
-        mongodb: 'ok',
+        supabase: 'ok',
         gemini: 'ok',
       },
     },
@@ -105,7 +98,7 @@ test('renders live health details on the system status page', async () => {
   expect(container.textContent).toContain('System Status');
   expect(container.textContent).toContain('Operational Snapshot');
   expect(container.textContent).toContain('API: ok');
-  expect(container.textContent).toContain('mongodb: ok');
+  expect(container.textContent).toContain('supabase: ok');
   expect(container.textContent).toContain('cortex-api is reporting ok status');
 
   await cleanup();

@@ -29,7 +29,7 @@ async function expandQuery(query) {
     return [q];
   }
 
-  if (q.length < 12) {
+  if (q.length < 18) {
     return [q];
   }
 

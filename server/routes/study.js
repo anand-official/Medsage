@@ -27,6 +27,11 @@ router.post('/generate',
     body('selectedTopicKeys').optional().isArray(),
     body('weakTopics').optional().isArray(),
     body('strongTopics').optional().isArray(),
+    body('dailyAvailableMinutes').optional({ nullable: true }).isInt({ min: 20, max: 720 }).toInt(),
+    body('targetIntensity').optional({ nullable: true }).isIn(['light', 'balanced', 'intense']),
+    body('preferredStudyWindows').optional().isArray(),
+    body('weeklyOffDays').optional().isArray(),
+    body('learningStyle').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
     validate,
     studyController.generateStudyPlan
 );
@@ -40,7 +45,7 @@ router.get('/today', verifyToken, studyController.getTodayTasks);
 // ── POST /api/v1/study/tick ───────────────────────────────────────────────────
 router.post('/tick',
     verifyToken,
-    body('dateStr').notEmpty().isString().trim().isLength({ max: 20 }),
+    body('dateStr').notEmpty().isString().trim().matches(/^\d{4}-\d{2}-\d{2}$/),
     body('taskId').notEmpty().isString().trim().isLength({ max: 100 }),
     body('completed').isBoolean().toBoolean(),
     validate,
@@ -50,7 +55,7 @@ router.post('/tick',
 // ── POST /api/v1/study/task/add ───────────────────────────────────────────────
 router.post('/task/add',
     verifyToken,
-    body('dateStr').notEmpty().isString().trim().isLength({ max: 20 }),
+    body('dateStr').notEmpty().isString().trim().matches(/^\d{4}-\d{2}-\d{2}$/),
     body('text').notEmpty().isString().trim().isLength({ min: 1, max: 500 }),
     validate,
     studyController.addTask
@@ -59,7 +64,7 @@ router.post('/task/add',
 // ── PUT /api/v1/study/task/edit ───────────────────────────────────────────────
 router.put('/task/edit',
     verifyToken,
-    body('dateStr').notEmpty().isString().trim().isLength({ max: 20 }),
+    body('dateStr').notEmpty().isString().trim().matches(/^\d{4}-\d{2}-\d{2}$/),
     body('taskId').notEmpty().isString().trim().isLength({ max: 100 }),
     body('newText').notEmpty().isString().trim().isLength({ min: 1, max: 500 }),
     validate,
@@ -68,6 +73,46 @@ router.put('/task/edit',
 
 // ── GET /api/v1/study/analytics ───────────────────────────────────────────────
 router.get('/analytics', verifyToken, studyController.getAnalytics);
+
+// --- POST /api/v1/study/plan/rebalance ------------------------------------
+router.post('/plan/rebalance',
+    verifyToken,
+    body('reason').optional({ nullable: true }).isString().trim().isLength({ max: 200 }),
+    body('maxMoved').optional({ nullable: true }).isInt({ min: 1, max: 30 }).toInt(),
+    validate,
+    studyController.rebalancePlan
+);
+
+// --- POST /api/v1/study/assistant/chat -------------------------------------
+router.post('/assistant/chat',
+    verifyToken,
+    body('message').notEmpty().isString().trim().isLength({ min: 1, max: 2000 }),
+    validate,
+    studyController.assistantChat
+);
+
+// --- POST /api/v1/study/assistant/apply ------------------------------------
+router.post('/assistant/apply',
+    verifyToken,
+    body('proposalId').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
+    body('proposal_id').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
+    validate,
+    studyController.applyAssistantProposal
+);
+
+// --- GET /api/v1/study/resources -------------------------------------------
+router.get('/resources',
+    verifyToken,
+    query('subject').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
+    query('topic').optional({ nullable: true }).isString().trim().isLength({ max: 200 }),
+    query('country').optional({ nullable: true }).isString().trim().isLength({ max: 100 }),
+    query('year').optional({ nullable: true }).isInt({ min: 1, max: 6 }).toInt(),
+    validate,
+    studyController.getResources
+);
+
+// ── GET /api/v1/study/advisory ────────────────────────────────────────────────
+router.get('/advisory', verifyToken, studyController.getDailyAdvisory);
 
 // ── POST /api/v1/study/goal/tick ──────────────────────────────────────────────
 router.post('/goal/tick',

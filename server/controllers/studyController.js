@@ -12,7 +12,12 @@ class StudyController {
         selectedSubjects,
         selectedTopicKeys,
         weakTopics,
-        strongTopics
+        strongTopics,
+        dailyAvailableMinutes,
+        targetIntensity,
+        preferredStudyWindows,
+        weeklyOffDays,
+        learningStyle
       } = req.body;
       const uid = req.user.uid;
 
@@ -44,7 +49,12 @@ class StudyController {
         selectedSubjects: selectedSubjects || [],
         selectedTopicKeys: selectedTopicKeys || [],
         weakTopics: weakTopics || [],
-        strongTopics: strongTopics || []
+        strongTopics: strongTopics || [],
+        dailyAvailableMinutes,
+        targetIntensity,
+        preferredStudyWindows,
+        weeklyOffDays,
+        learningStyle
       });
 
       res.json({
@@ -148,6 +158,68 @@ class StudyController {
     }
   }
 
+  async rebalancePlan(req, res, next) {
+    try {
+      const uid = req.user.uid;
+      if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+      const result = await studyService.rebalancePlan(uid, {
+        reason: req.body.reason || 'manual',
+        maxMoved: req.body.maxMoved
+      });
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assistantChat(req, res, next) {
+    try {
+      const uid = req.user.uid;
+      if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+      const { message } = req.body;
+      if (!message) return res.status(400).json({ success: false, error: 'Message is required' });
+
+      const assistantResponse = await studyService.chatWithPlannerAssistant(uid, message);
+      res.json({ success: true, data: assistantResponse });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async applyAssistantProposal(req, res, next) {
+    try {
+      const uid = req.user.uid;
+      if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+      const proposalId = req.body.proposalId || req.body.proposal_id;
+      if (!proposalId) return res.status(400).json({ success: false, error: 'proposalId is required' });
+
+      const result = await studyService.applyAssistantProposal(uid, proposalId);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getResources(req, res, next) {
+    try {
+      const uid = req.user?.uid;
+      const { subject, topic, country, year } = req.query;
+      const resources = await studyService.getResources({
+        uid,
+        subject,
+        topic,
+        country,
+        year
+      });
+      res.json({ success: true, data: resources });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async tickGoal(req, res, next) {
     try {
       const uid = req.user.uid;
@@ -158,6 +230,17 @@ class StudyController {
 
       const updatedGoals = await studyService.tickGoal(uid, goalType, goalId);
       res.json({ success: true, data: updatedGoals });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDailyAdvisory(req, res, next) {
+    try {
+      const uid = req.user.uid;
+      if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
+      const advisory = await studyService.getDailyAdvisory(uid);
+      res.json({ success: true, data: advisory });
     } catch (error) {
       next(error);
     }

@@ -6,9 +6,9 @@ const sm2Service = require('../services/sm2Service');
 const { buildTrustMetadata } = require('../services/cortexResponsePolicy');
 const { verifyToken, optionalAuth } = require('../middleware/auth');
 const redisRateLimiter = require('../middleware/redisRateLimiter');
-const UserProfile = require('../models/UserProfile');
-const StudyPlan = require('../models/StudyPlan');
-const AuditLog = require('../models/AuditLog');
+const userProfileRepo = require('../repositories/userProfileRepo');
+const studyPlanRepo = require('../repositories/studyPlanRepo');
+const auditLogRepo = require('../repositories/auditLogRepo');
 const { getCachedLearnerContext, setCachedLearnerContext } = require('../services/learnerContextCache');
 
 // Per-authenticated-user rate limiter — Redis-backed, survives restarts and works
@@ -30,7 +30,26 @@ const visionLimiter = redisRateLimiter(
   (req) => req.user.uid
 );
 
-// ── Learner context cache (avoids 2 MongoDB hits per request) ────────────────
+// ── Concurrent stream tracker ─────────────────────────────────────────────────
+// Limits simultaneous open SSE connections per authenticated user.
+// Each stream holds a live Gemini call for its entire duration (~5-15s).
+// Without this, a single user could open 60 concurrent streams per minute,
+// exhausting Gemini quota and server file descriptors.
+// In-process only — does not coordinate across multiple server instances,
+// but still protects against single-instance abuse (the common case at launch).
+const _activeStreams = new Map(); // uid -> count
+const MAX_CONCURRENT_STREAMS_PER_USER = 3;
+
+function _incrementStream(uid) {
+  _activeStreams.set(uid, (_activeStreams.get(uid) || 0) + 1);
+}
+function _decrementStream(uid) {
+  const n = _activeStreams.get(uid) || 1;
+  if (n <= 1) _activeStreams.delete(uid);
+  else _activeStreams.set(uid, n - 1);
+}
+
+// ── Learner context cache (avoids 2 database reads per request) ────────────────
 function normalizeHistoryItems(history = []) {
   return (history || [])
     .filter((item) => item && (item.role === 'user' || item.role === 'ai'))
@@ -62,10 +81,23 @@ async function buildLearnerContext(uid) {
   const cached = getCachedLearnerContext(uid);
   if (cached) return cached;
 
-  const [userProfile, studyPlan] = await Promise.all([
-    UserProfile.findOne({ uid }).lean(),
-    StudyPlan.findOne({ uid }).lean(),
-  ]);
+  let userProfile = null;
+  let studyPlan = null;
+  try {
+    [userProfile, studyPlan] = await Promise.all([
+      userProfileRepo.findByUid(uid).catch((err) => {
+        console.warn('[CORTEX] learner profile lookup failed, continuing without profile context:', err.message);
+        return null;
+      }),
+      studyPlanRepo.findByUid(uid).catch((err) => {
+        console.warn('[CORTEX] learner study-plan lookup failed, continuing without plan context:', err.message);
+        return null;
+      }),
+    ]);
+  } catch (error) {
+    console.warn('[CORTEX] buildLearnerContext failed, continuing without personalisation:', error.message);
+    return null;
+  }
 
   if (!userProfile && !studyPlan) return null;
 
@@ -119,7 +151,7 @@ async function buildLearnerContext(uid) {
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
  *       401:
- *         description: Missing or invalid Firebase token
+ *         description: Missing or invalid Google ID token
  *       429:
  *         description: Rate limit exceeded (60 queries/min per user)
  *       500:
@@ -236,6 +268,7 @@ router.post('/query', [
       subject: aiResponse.meta?.subject || null,
       answerMode: aiResponse.meta?.answer_mode || null,
       threadMode: aiResponse.meta?.thread_mode || null,
+      followUpOptions: aiResponse.followUpOptions || aiResponse.follow_up_options || [],
       disclaimer: 'Cortex responses are for educational purposes only and do not constitute medical advice. Always verify with authoritative textbooks and clinical guidelines.',
       timestamp: new Date().toISOString()
     };
@@ -244,7 +277,7 @@ router.post('/query', [
     let logId = null;
     let feedbackId = null;
     try {
-      const auditEntry = new AuditLog({
+      const auditEntry = await auditLogRepo.create({
         user_id:        uid || 'anonymous',
         question:       message,
         mode:           mode || 'unknown',
@@ -258,9 +291,8 @@ router.post('/query', [
         model_version:  aiResponse.meta?.model_version || process.env.GEMINI_MODEL || null,
         is_clarification: Boolean(aiResponse.is_clarification_required),
       });
-      await auditEntry.save();
       logId = auditEntry.log_id;
-      feedbackId = auditEntry._id.toString();
+      feedbackId = auditEntry._id;
     } catch (err) {
       console.error('[Audit] write failed:', err.message);
       // logId stays null — feedback submission will not be available for this response
@@ -284,11 +316,7 @@ router.post('/query', [
           // confidence/sourcing was too low to serve it as a final response. The UI can
           // display it above the clarification prompt rather than discarding it.
           partial_answer: aiResponse.partial_answer || null,
-          followUpOptions: isGreeting ? [] : [
-            'Share the exact organ/system involved',
-            'Mention key symptoms or findings',
-            'Tell me if you want conceptual or exam-focused depth'
-          ]
+          followUpOptions: isGreeting ? [] : (aiResponse.followUpOptions || aiResponse.follow_up_options || [])
         }
       });
     }
@@ -305,7 +333,7 @@ router.post('/query', [
     });
 
   } catch (error) {
-    console.error('Medical query error:', error);
+    console.error('[Medical Query] Pipeline error', { rid: req.id, uid: req.user?.uid, error: error.message });
     res.status(500).json({
       success: false,
       error: 'Failed to process your question. Please try again later.'
@@ -356,7 +384,7 @@ router.post('/query', [
  *       400:
  *         description: Validation error
  *       401:
- *         description: Missing or invalid Firebase token
+ *         description: Missing or invalid Google ID token
  *       429:
  *         description: Rate limit exceeded
  */
@@ -382,8 +410,19 @@ router.post('/query/stream', [
   const history = normalizeHistoryItems(rawHistory);
   const uid = req.user?.uid;
 
+  // Reject before opening SSE if the user already has too many live streams.
+  // Must be checked before flushHeaders() since we can still send HTTP 429 here.
+  if (uid && (_activeStreams.get(uid) || 0) >= MAX_CONCURRENT_STREAMS_PER_USER) {
+    return res.status(429).json({
+      success: false,
+      error: `Too many simultaneous streams. You have ${MAX_CONCURRENT_STREAMS_PER_USER} streams already open — wait for one to finish.`,
+    });
+  }
+
   // Set SSE headers FIRST — before any async work so that any downstream error
   // can be delivered as an SSE event rather than an unhandled HTTP 500.
+  if (uid) _incrementStream(uid);
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -395,10 +434,10 @@ router.post('/query/stream', [
     pipeline: 'fast_draft',
     flags: ['FAST_DRAFT_MODE']
   });
-  res.write(`event: start\ndata: ${JSON.stringify({ trust: fastDraftTrust, mode })}\n\n`);
+  res.write(`event: start\ndata: ${JSON.stringify({ trust: fastDraftTrust, mode, pipeline: 'fast_draft' })}\n\n`);
 
   try {
-    // buildLearnerContext is inside the try block so a MongoDB failure is caught
+    // buildLearnerContext is inside the try block so a data-layer failure is caught
     // and delivered as an SSE error rather than crashing the response mid-stream.
     // Fail-open: null learnerContext degrades gracefully (no personalisation).
     const learnerContext = await buildLearnerContext(uid).catch((err) => {
@@ -421,9 +460,10 @@ router.post('/query/stream', [
     // Signal stream completion
     res.write('event: done\ndata: {}\n\n');
   } catch (error) {
-    console.error('[CORTEX Stream] Error:', error.message);
+    console.error('[CORTEX Stream] Error', { rid: req.id, uid, error: error.message });
     res.write(`event: error\ndata: ${JSON.stringify({ message: 'Stream error. Please try again.' })}\n\n`);
   } finally {
+    if (uid) _decrementStream(uid);
     res.end();
   }
 });

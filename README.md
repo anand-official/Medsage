@@ -32,7 +32,7 @@ We engineered MedSage with a robust and modern tech stack:
 - **Frontend Stack:** React 18, Material-UI (MUI) v5, Framer Motion (for fluid animations), React Router v6, and Workbox for PWA features.
 - **Backend Stack:** Node.js with Express.js powers our scalable and resilient API layer.
 - **AI Engine:** Powered by **Google Gemini** with a grounded medical answer pipeline for retrieval, citations, and confidence scoring.
-- **Database & Caching:** MongoDB for persistent user data plus an in-process query cache for fast repeat responses.
+- **Database & Caching:** Supabase Postgres for persistent user data plus an in-process query cache for fast repeat responses.
 - **Offline Resiliency:** Progressive Web App (PWA) architecture ensures your learning never stops—even in a hospital basement without a signal.
 
 ---
@@ -74,7 +74,7 @@ We are just getting started! Our immediate roadmap includes:
 ### Prerequisites
 - Node.js (v16+)
 - npm or yarn
-- MongoDB (optional for full features)
+- Supabase project credentials for the server data layer
 - No external cache is required for local development
 
 ### Installation & Run
@@ -92,25 +92,48 @@ We are just getting started! Our immediate roadmap includes:
 
 3. **Environment Setup**
    ```bash
-   cp .env.example .env
+   cp .env.example .env.local
+   cp server/.env.example server/.env
    ```
-   Add your config to `.env`:
+   Add your frontend config to `.env.local`:
    ```env
-   REACT_APP_API_URL=http://localhost:4000
-   REACT_APP_OFFLINE_MODE=true
+   REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
+   REACT_APP_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_project_key_here
+   ```
+   Add your backend config to `server/.env`:
+   ```env
+   SUPABASE_URL=https://your-project-ref.supabase.co
+   SUPABASE_SECRET_KEY=sb_secret_your_server_secret_here
+   GOOGLE_CLIENT_ID=your_google_oauth_client_id_here
+   GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
 4. **Available Scripts**
    ```bash
-   # Start development server
-   npm start
-   
-   # Build for production
+   # Start backend
+   npm run dev:backend
+
+   # Start frontend
+   npm run start:frontend
+
+   # Build frontend for production
    npm run build
-   
-   # Run tests
-   npm test
+
+   # Run backend tests
+   npm run test:backend
+
+   # Run frontend tests
+   npm run test:frontend
    ```
+
+### Legacy Data Import
+If you still have MongoDB JSON exports from the pre-Supabase build, import them with:
+
+```bash
+npm run migrate:mongo-export -- --dir C:\path\to\mongo-exports
+```
+
+Supported files are `UserProfile.json`, `StudyPlan.json`, `ChatSession.json`, `Flashcard.json`, and `AuditLog.json` or their snake_case equivalents. Add `--truncate` only if you intentionally want to clear the current Supabase tables before import.
 
 ---
 

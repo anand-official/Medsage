@@ -18,12 +18,20 @@ function withRequestId(message, error) {
   return label ? `${message} ${label}` : message;
 }
 
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export const StudyProvider = ({ children }) => {
   const { userProfile, authStatus } = useAuth();
 
   const [studyPlan, setStudyPlan] = useState(null);
   const [todayData, setTodayData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [dailyAdvisory, setDailyAdvisory] = useState(null);
 
   const [planState, setPlanState] = useState('idle');
   const [todayState, setTodayState] = useState('idle');
@@ -48,6 +56,7 @@ export const StudyProvider = ({ children }) => {
     setStudyPlan(null);
     setTodayData(null);
     setAnalyticsData(null);
+    setDailyAdvisory(null);
     setPlanState('idle');
     setTodayState('idle');
     setAnalyticsState('idle');
@@ -81,7 +90,7 @@ export const StudyProvider = ({ children }) => {
   }, [canLoadStudyData]);
 
   const getStudyPlan = useCallback(async () => {
-    if (!canLoadStudyData) return null;
+    if (!canLoadStudyData) return undefined;
     setPlanState('loading');
     setPlanError(null);
     try {
@@ -93,7 +102,7 @@ export const StudyProvider = ({ children }) => {
     } catch (err) {
       setPlanError(withRequestId(err.message || 'Failed to fetch study plan.', err));
       setPlanState('error');
-      return null;
+      return undefined;
     }
   }, [canLoadStudyData]);
 
@@ -119,19 +128,40 @@ export const StudyProvider = ({ children }) => {
     }
   }, [canLoadStudyData]);
 
+  const fetchDailyAdvisory = useCallback(async () => {
+    if (!canLoadStudyData) return null;
+    try {
+      const res = await plannerAPI.getDailyAdvisory();
+      const advisory = res?.data ?? null;
+      if (advisory?.text) setDailyAdvisory(advisory);
+      return advisory;
+    } catch {
+      return null;
+    }
+  }, [canLoadStudyData]);
+
+  const refreshPlannerViews = useCallback(async () => {
+    const [plan, today, analytics] = await Promise.all([
+      getStudyPlan(),
+      fetchToday(),
+      fetchAnalytics()
+    ]);
+    fetchDailyAdvisory();
+    return { plan, today, analytics };
+  }, [fetchAnalytics, fetchToday, getStudyPlan, fetchDailyAdvisory]);
+
   const generateStudyPlan = useCallback(async (planData) => {
     setIsGenerating(true);
     setGenerateError(null);
     try {
       const res = await plannerAPI.generateStudyPlan({
         ...planData,
-        country: userProfile?.country || 'India',
+        country: planData?.country || userProfile?.country || 'India',
       });
       const nextPlan = res?.data ?? null;
       setStudyPlan(nextPlan);
       setPlanState(nextPlan ? 'ready' : 'empty');
-      await fetchToday();
-      await fetchAnalytics();
+      await Promise.all([fetchToday(), fetchAnalytics()]);
       return nextPlan;
     } catch (err) {
       setGenerateError(withRequestId(err.message || 'Failed to generate study plan.', err));
@@ -145,9 +175,10 @@ export const StudyProvider = ({ children }) => {
     if (!nextTodayData?.tasks) return;
     setStudyPlan((prev) => {
       if (!prev) return prev;
+      const dailyPlan = Array.isArray(prev.daily_plan) ? prev.daily_plan : [];
       return {
         ...prev,
-        daily_plan: prev.daily_plan.map((day) =>
+        daily_plan: dailyPlan.map((day) =>
           day.date === dateStr ? { ...day, tasks: nextTodayData.tasks } : day
         )
       };
@@ -159,9 +190,13 @@ export const StudyProvider = ({ children }) => {
       setTodayError(null);
       const res = await plannerAPI.tickTask(dateStr, taskId, completedStatus);
       if (res?.data) {
-        setTodayData(res.data);
-        setTodayState('ready');
-        syncTodayIntoPlan(dateStr, res.data);
+        const changedDay = res.data;
+        const todayStr = todayData?.date || getLocalDateString();
+        if (changedDay.date === todayStr) {
+          setTodayData(changedDay);
+          setTodayState('ready');
+        }
+        syncTodayIntoPlan(changedDay.date || dateStr, changedDay);
       }
       return res?.data ?? null;
     } catch (err) {
@@ -169,7 +204,7 @@ export const StudyProvider = ({ children }) => {
       setTodayError(message);
       throw new Error(message);
     }
-  }, [syncTodayIntoPlan]);
+  }, [syncTodayIntoPlan, todayData?.date]);
 
   const tickGoal = useCallback(async (goalType, goalId) => {
     setStudyPlan((prev) => {
@@ -212,9 +247,13 @@ export const StudyProvider = ({ children }) => {
       setTodayError(null);
       const res = await plannerAPI.addTask(dateStr, text);
       if (res?.data) {
-        setTodayData(res.data);
-        setTodayState('ready');
-        syncTodayIntoPlan(dateStr, res.data);
+        const changedDay = res.data;
+        const todayStr = todayData?.date || getLocalDateString();
+        if (changedDay.date === todayStr) {
+          setTodayData(changedDay);
+          setTodayState('ready');
+        }
+        syncTodayIntoPlan(changedDay.date || dateStr, changedDay);
       }
       return res?.data ?? null;
     } catch (err) {
@@ -222,16 +261,20 @@ export const StudyProvider = ({ children }) => {
       setTodayError(message);
       throw new Error(message);
     }
-  }, [syncTodayIntoPlan]);
+  }, [syncTodayIntoPlan, todayData?.date]);
 
   const updateTaskText = useCallback(async (dateStr, taskId, newText) => {
     try {
       setTodayError(null);
       const res = await plannerAPI.editTask(dateStr, taskId, newText);
       if (res?.data) {
-        setTodayData(res.data);
-        setTodayState('ready');
-        syncTodayIntoPlan(dateStr, res.data);
+        const changedDay = res.data;
+        const todayStr = todayData?.date || getLocalDateString();
+        if (changedDay.date === todayStr) {
+          setTodayData(changedDay);
+          setTodayState('ready');
+        }
+        syncTodayIntoPlan(changedDay.date || dateStr, changedDay);
       }
       return res?.data ?? null;
     } catch (err) {
@@ -239,13 +282,62 @@ export const StudyProvider = ({ children }) => {
       setTodayError(message);
       throw new Error(message);
     }
-  }, [syncTodayIntoPlan]);
+  }, [syncTodayIntoPlan, todayData?.date]);
+
+  const rebalancePlan = useCallback(async (payload = {}) => {
+    setPlanError(null);
+    try {
+      const res = await plannerAPI.rebalancePlan(payload);
+      const nextPlan = res?.data?.plan ?? null;
+      if (nextPlan) {
+        setStudyPlan(nextPlan);
+        setPlanState('ready');
+      }
+      await Promise.all([fetchToday(), fetchAnalytics()]);
+      return res?.data ?? null;
+    } catch (err) {
+      const message = withRequestId(err.message || 'Failed to rebalance planner.', err);
+      setPlanError(message);
+      throw new Error(message);
+    }
+  }, [fetchAnalytics, fetchToday]);
+
+  const chatWithPlannerAssistant = useCallback(async (message) => {
+    setPlanError(null);
+    try {
+      const res = await plannerAPI.chatWithPlannerAssistant(message);
+      return res?.data ?? null;
+    } catch (err) {
+      const nextMessage = withRequestId(err.message || 'Planner coach failed to respond.', err);
+      setPlanError(nextMessage);
+      throw new Error(nextMessage);
+    }
+  }, []);
+
+  const applyAssistantProposal = useCallback(async (proposalId) => {
+    setPlanError(null);
+    try {
+      const res = await plannerAPI.applyAssistantProposal(proposalId);
+      const nextPlan = res?.data?.plan ?? null;
+      if (nextPlan) {
+        setStudyPlan(nextPlan);
+        setPlanState('ready');
+      }
+      await Promise.all([fetchToday(), fetchAnalytics()]);
+      return res?.data ?? null;
+    } catch (err) {
+      const message = withRequestId(err.message || 'Failed to apply planner coach changes.', err);
+      setPlanError(message);
+      throw new Error(message);
+    }
+  }, [fetchAnalytics, fetchToday]);
 
   const value = {
     userProfile,
     studyPlan,
     todayData,
     analyticsData,
+    dailyAdvisory,
     planState,
     todayState,
     analyticsState,
@@ -263,11 +355,16 @@ export const StudyProvider = ({ children }) => {
     fetchToday,
     getStudyPlan,
     fetchAnalytics,
+    fetchDailyAdvisory,
+    refreshPlannerViews,
     generateStudyPlan,
     tickTask,
     tickGoal,
     addNewTask,
     updateTaskText,
+    rebalancePlan,
+    chatWithPlannerAssistant,
+    applyAssistantProposal,
   };
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>;

@@ -1,6 +1,10 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { googleLogout } from '@react-oauth/google';
-import { authAPI, formatRequestIdLabel } from '../services/api';
+import {
+  authAPI,
+  formatRequestIdLabel,
+  registerAuthInvalidationHandler,
+} from '../services/api';
 import {
   clearAuthToken,
   getAuthToken,
@@ -9,6 +13,7 @@ import {
 } from '../utils/authStorage';
 
 const AuthContext = createContext();
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 15000;
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -31,6 +36,20 @@ function buildUserFromPayload(payload) {
   };
 }
 
+function isBootstrapAbort(error) {
+  return error?.name === 'AbortError'
+    || error?.name === 'CanceledError'
+    || error?.code === 'ERR_CANCELED'
+    || error?.message === 'canceled';
+}
+
+function createBootstrapTimeoutError() {
+  const error = new Error('The Medsage account service took too long to respond. Please try again.');
+  error.code = 'AUTH_BOOTSTRAP_TIMEOUT';
+  error.retryable = true;
+  return error;
+}
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -38,6 +57,8 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState(null);
 
   const refreshTimerRef = useRef(null);
+  const bootstrapControllerRef = useRef(null);
+  const mountedRef = useRef(true);
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimerRef.current) {
@@ -45,6 +66,23 @@ export function AuthProvider({ children }) {
       refreshTimerRef.current = null;
     }
   }, []);
+
+  const cancelBootstrap = useCallback(() => {
+    const controller = bootstrapControllerRef.current;
+    bootstrapControllerRef.current = null;
+    if (controller) {
+      controller.abort();
+    }
+    clearRefreshTimer();
+  }, [clearRefreshTimer]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      cancelBootstrap();
+    };
+  }, [cancelBootstrap]);
 
   const scheduleTokenRefresh = useCallback((expEpochSeconds) => {
     clearRefreshTimer();
@@ -56,18 +94,27 @@ export function AuthProvider({ children }) {
     }
   }, [clearRefreshTimer]);
 
-  const clearSession = useCallback(() => {
+  const applySignedOutState = useCallback(() => {
     clearAuthToken();
     clearRefreshTimer();
     setCurrentUser(null);
     setUserProfile(null);
     setAuthError(null);
+    setAuthStatus('signed_out');
   }, [clearRefreshTimer]);
+
+  const transitionToSignedOut = useCallback(() => {
+    cancelBootstrap();
+    applySignedOutState();
+  }, [applySignedOutState, cancelBootstrap]);
 
   const formatAuthError = useCallback((error) => {
     const requestIdText = formatRequestIdLabel(error?.requestId);
     if (error?.statusCode === 401) {
       return 'Your session expired. Please sign in again.';
+    }
+    if (error?.code === 'AUTH_BOOTSTRAP_TIMEOUT') {
+      return error.message;
     }
     if (error?.retryable) {
       return requestIdText
@@ -79,52 +126,123 @@ export function AuthProvider({ children }) {
       : (error?.message || 'Authentication failed.');
   }, []);
 
+  const createBootstrapController = useCallback(() => {
+    cancelBootstrap();
+    const controller = new AbortController();
+    bootstrapControllerRef.current = controller;
+    return controller;
+  }, [cancelBootstrap]);
+
+  const isActiveBootstrap = useCallback((controller, token) => (
+    mountedRef.current
+    && bootstrapControllerRef.current === controller
+    && getAuthToken() === token
+  ), []);
+
   const bootstrapFromToken = useCallback(async (token) => {
     if (!token) {
-      clearSession();
-      setAuthStatus('signed_out');
+      transitionToSignedOut();
       return 'signed_out';
     }
 
     const payload = decodeJwt(token);
     if (!payload || payload.exp * 1000 <= Date.now() + 5 * 60 * 1000) {
-      clearSession();
-      setAuthStatus('signed_out');
+      transitionToSignedOut();
       return 'signed_out';
     }
 
+    const controller = createBootstrapController();
     const user = buildUserFromPayload(payload);
-    setCurrentUser(user);
+
+    setCurrentUser(null);
+    setUserProfile(null);
     setAuthStatus('loading');
     setAuthError(null);
     scheduleTokenRefresh(payload.exp);
 
+    let timeoutHandle = null;
     try {
-      const profile = await authAPI.createOrUpdateUser({
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        uid: user.uid,
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(createBootstrapTimeoutError());
+          controller.abort();
+        }, AUTH_BOOTSTRAP_TIMEOUT_MS);
       });
+
+      const profile = await Promise.race([
+        authAPI.createOrUpdateUser({
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          uid: user.uid,
+        }, {
+          signal: controller.signal,
+        }),
+        timeoutPromise,
+      ]);
+
+      if (!isActiveBootstrap(controller, token)) {
+        return 'aborted';
+      }
+
+      setCurrentUser(user);
       setUserProfile(profile?.data ?? profile);
       setAuthStatus('authenticated');
       return 'authenticated';
     } catch (error) {
+      if (error?.code === 'AUTH_BOOTSTRAP_TIMEOUT') {
+        if (isActiveBootstrap(controller, token)) {
+          setCurrentUser(null);
+          setUserProfile(null);
+          setAuthError(formatAuthError(error));
+          setAuthStatus('degraded');
+        }
+        return 'degraded';
+      }
+
+      if (isBootstrapAbort(error) || controller.signal.aborted) {
+        return 'aborted';
+      }
+
+      if (!isActiveBootstrap(controller, token)) {
+        return 'aborted';
+      }
+
       if (error?.statusCode === 401) {
-        clearSession();
-        setAuthStatus('signed_out');
+        transitionToSignedOut();
         return 'signed_out';
       }
+
+      setCurrentUser(null);
       setUserProfile(null);
       setAuthError(formatAuthError(error));
       setAuthStatus('degraded');
       return 'degraded';
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+      if (bootstrapControllerRef.current === controller) {
+        bootstrapControllerRef.current = null;
+      }
     }
-  }, [clearSession, formatAuthError, scheduleTokenRefresh]);
+  }, [
+    createBootstrapController,
+    formatAuthError,
+    isActiveBootstrap,
+    scheduleTokenRefresh,
+    transitionToSignedOut,
+  ]);
 
-  useEffect(() => {
+  useEffect(() => registerAuthInvalidationHandler(() => {
+    transitionToSignedOut();
+  }), [transitionToSignedOut]);
+
+  useLayoutEffect(() => {
     const token = migrateLegacyAuthToken();
     if (!token) {
+      setCurrentUser(null);
+      setUserProfile(null);
       setAuthStatus('signed_out');
       return;
     }
@@ -146,10 +264,9 @@ export function AuthProvider({ children }) {
   }, [bootstrapFromToken]);
 
   const logout = useCallback(() => {
+    transitionToSignedOut();
     googleLogout();
-    clearSession();
-    setAuthStatus('signed_out');
-  }, [clearSession]);
+  }, [transitionToSignedOut]);
 
   const ensureAuthenticated = useCallback(() => {
     if (authStatus !== 'authenticated') {
@@ -188,7 +305,6 @@ export function AuthProvider({ children }) {
     updateStudyPreferences,
     updateOnboardingProfile,
     deleteAccount,
-    signInWithGoogle: null,
   };
 
   return (

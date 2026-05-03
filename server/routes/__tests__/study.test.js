@@ -6,6 +6,11 @@ jest.mock('../../controllers/studyController', () => ({
   addTask: jest.fn((req, res) => res.json({ success: true, data: { tasks: [{ text: req.body.text }] } })),
   editTask: jest.fn((req, res) => res.json({ success: true, data: { tasks: [{ id: req.body.taskId, text: req.body.newText }] } })),
   getAnalytics: jest.fn((req, res) => res.json({ success: true, data: { heatmap: [] } })),
+  rebalancePlan: jest.fn((req, res) => res.json({ success: true, data: { moved: [] } })),
+  assistantChat: jest.fn((req, res) => res.json({ success: true, data: { message: 'ok', proposed_changes: [] } })),
+  applyAssistantProposal: jest.fn((req, res) => res.json({ success: true, data: { applied_changes: [] } })),
+  getResources: jest.fn((req, res) => res.json({ success: true, data: { resources: [] } })),
+  getDailyAdvisory: jest.fn((req, res) => res.json({ success: true, data: { summary: 'Keep going' } })),
   tickGoal: jest.fn((req, res) => res.json({ success: true, data: { done: true } })),
   getSyllabus: jest.fn((req, res) => res.json({ success: true, data: {} })),
 }));
@@ -115,6 +120,9 @@ describe('study routes', () => {
           selectedTopicKeys: ['Pathology::Inflammation'],
           weakTopics: ['Inflammation'],
           strongTopics: [],
+          dailyAvailableMinutes: 120,
+          targetIntensity: 'balanced',
+          learningStyle: 'visual',
         }),
       });
       const body = await response.json();
@@ -142,6 +150,26 @@ describe('study routes', () => {
       expect(body.error).toBe('Validation failed');
       expect(body.requestId).toBe('rid-add-invalid');
       expect(studyController.addTask).not.toHaveBeenCalled();
+    });
+  });
+
+  test('POST /tick validates planner date format', async () => {
+    await withServer(async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/v1/study/tick`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+          'x-request-id': 'rid-tick-invalid',
+        },
+        body: JSON.stringify({ dateStr: 'tomorrow', taskId: 'task-1', completed: true }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toBe('Validation failed');
+      expect(body.requestId).toBe('rid-tick-invalid');
+      expect(studyController.tickTask).not.toHaveBeenCalled();
     });
   });
 
@@ -177,6 +205,43 @@ describe('study routes', () => {
       expect(await analyticsResponse.json()).toEqual({ success: true, data: { heatmap: [] } });
       expect(studyController.getTodayTasks).toHaveBeenCalled();
       expect(studyController.getAnalytics).toHaveBeenCalled();
+    });
+  });
+
+  test('new v2 planner endpoints are reachable with auth and validate payloads', async () => {
+    await withServer(async (baseUrl) => {
+      const headers = {
+        Authorization: 'Bearer token',
+        'Content-Type': 'application/json',
+      };
+
+      const chatResponse = await fetch(`${baseUrl}/api/v1/study/assistant/chat`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message: 'make tomorrow lighter' }),
+      });
+      const applyResponse = await fetch(`${baseUrl}/api/v1/study/assistant/apply`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ proposalId: 'proposal-1' }),
+      });
+      const rebalanceResponse = await fetch(`${baseUrl}/api/v1/study/plan/rebalance`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason: 'missed days', maxMoved: 5 }),
+      });
+      const resourceResponse = await fetch(`${baseUrl}/api/v1/study/resources?subject=Pathology&topic=Inflammation&country=India&year=2`, {
+        headers: { Authorization: 'Bearer token' },
+      });
+
+      expect(chatResponse.status).toBe(200);
+      expect(applyResponse.status).toBe(200);
+      expect(rebalanceResponse.status).toBe(200);
+      expect(resourceResponse.status).toBe(200);
+      expect(studyController.assistantChat).toHaveBeenCalled();
+      expect(studyController.applyAssistantProposal).toHaveBeenCalled();
+      expect(studyController.rebalancePlan).toHaveBeenCalled();
+      expect(studyController.getResources).toHaveBeenCalled();
     });
   });
 });

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleOAuthRuntime } from '../contexts/GoogleOAuthContext';
+import { consumePostAuthRedirect } from '../utils/authRedirect';
+import { getHistoryRedirectState, navigateTo } from '../utils/navigation';
 import '../animations.css';
 
 // ─── SVGs ────────────────────────────────────────────────────────────────
@@ -55,27 +57,59 @@ const features = [
   }
 ];
 
+const DASHBOARD_PATH = '/';
+
+function resolvePostLoginTarget(path) {
+  if (typeof path !== 'string' || !path.startsWith('/')) {
+    return DASHBOARD_PATH;
+  }
+
+  return path;
+}
+
 // ─── COMPONENT ──────────────────────────────────────────────────────────
-export default function SignIn() {
-  const { handleGoogleSuccess } = useAuth();
+export default function SignIn({ navigation = null }) {
+  const { handleGoogleSuccess, authStatus, currentUser } = useAuth();
+  const {
+    clientId: googleClientId,
+    loading: googleConfigLoading,
+    error: googleConfigError,
+    unavailable: googleConfigUnavailable,
+  } = useGoogleOAuthRuntime();
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [signingIn, setSigningIn] = useState(false);
+  const navigate = navigation?.navigate || navigateTo;
+  const redirectTargetRef = useRef(
+    resolvePostLoginTarget(navigation?.from || getHistoryRedirectState() || consumePostAuthRedirect() || DASHBOARD_PATH)
+  );
+  const redirectTarget = redirectTargetRef.current;
+  const signInInProgress = signingIn || authStatus === 'loading';
+
+  useEffect(() => {
+    if (authStatus === 'authenticated' && currentUser) {
+      navigate(redirectTarget, { replace: true });
+    }
+  }, [authStatus, currentUser, navigate, redirectTarget]);
 
   const onGoogleSuccess = async (credentialResponse) => {
     try {
       setError('');
+      setSigningIn(true);
       const status = await handleGoogleSuccess(credentialResponse);
       if (status !== 'authenticated') {
         setError('Sign-in succeeded, but Medsage could not load your account. Please try again.');
+        setSigningIn(false);
         return;
       }
-      navigate('/');
+      navigate(redirectTarget, { replace: true });
     } catch (err) {
       setError(err.message || 'Failed to sign in with Google');
+      setSigningIn(false);
     }
   };
 
   const onGoogleError = () => {
+    setSigningIn(false);
     setError('Google sign-in failed. Please try again.');
   };
 
@@ -150,7 +184,7 @@ export default function SignIn() {
           style={{ position: 'absolute', top: 'max(env(safe-area-inset-top, 16px), 16px)', left: 16, zIndex: 100 }}
         >
           <div
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/landing')}
             style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px',
               background: 'rgba(255,255,255,0.05)', borderRadius: 100,
@@ -180,7 +214,7 @@ export default function SignIn() {
         }}>
           <motion.div initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
             {/* Logo Section */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 70, cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 70, cursor: 'pointer' }} onClick={() => navigate('/landing')}>
               <div style={{
                 position: 'relative', width: 36, height: 36,
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -277,7 +311,7 @@ export default function SignIn() {
               }} />
 
               {/* Mobile logo */}
-              <div className="mobile-logo-only" style={{ display: 'none', justifyContent: 'center', marginBottom: 28, cursor: 'pointer' }} onClick={() => navigate('/')}>
+              <div className="mobile-logo-only" style={{ display: 'none', justifyContent: 'center', marginBottom: 28, cursor: 'pointer' }} onClick={() => navigate('/landing')}>
                 <div style={{
                   width: 52, height: 52, borderRadius: 14,
                   background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15))',
@@ -326,36 +360,84 @@ export default function SignIn() {
               </AnimatePresence>
 
               {/* Custom Google button */}
-              <div style={{ position: 'relative', width: '100%', marginBottom: 28 }}>
-                {/* Visible white pill */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                  width: '100%', height: 52, borderRadius: 100,
-                  background: '#ffffff',
-                  boxShadow: '0 2px 16px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)',
-                  fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, color: '#1a1a2e',
-                  pointerEvents: 'none', userSelect: 'none',
-                }}>
-                  <IconGoogle />
-                  Continue with Google
-                </div>
-                {/* Invisible Google button layered on top to capture clicks */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  opacity: 0.01, overflow: 'hidden', borderRadius: 100,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer',
-                }}>
-                  <GoogleLogin
-                    onSuccess={onGoogleSuccess}
-                    onError={onGoogleError}
-                    theme="filled_black"
-                    size="large"
-                    shape="pill"
-                    width="500"
-                    text="continue_with"
-                  />
-                </div>
+              <div style={{ width: '100%', marginBottom: 28 }}>
+                {googleConfigLoading ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                    width: '100%', height: 52, borderRadius: 100,
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: 600,
+                  }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.18)', borderTopColor: '#fff',
+                      animation: 'spinner 0.8s linear infinite',
+                    }} />
+                    Loading Google sign-in...
+                  </div>
+                ) : signInInProgress ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                    width: '100%', height: 52, borderRadius: 100,
+                    background: 'rgba(255,255,255,0.95)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: '#1a1a2e', fontSize: 15, fontWeight: 700,
+                    boxShadow: '0 2px 16px rgba(0,0,0,0.35)',
+                  }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: '50%',
+                      border: '2px solid rgba(26,26,46,0.18)', borderTopColor: '#6366f1',
+                      animation: 'spinner 0.8s linear infinite',
+                    }} />
+                    Opening dashboard...
+                  </div>
+                ) : googleClientId ? (
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                      width: '100%', height: 52, borderRadius: 100,
+                      background: '#ffffff',
+                      boxShadow: '0 2px 16px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)',
+                      fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, color: '#1a1a2e',
+                      pointerEvents: 'none', userSelect: 'none',
+                    }}>
+                      <IconGoogle />
+                      Continue with Google
+                    </div>
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      opacity: 0.01, overflow: 'hidden', borderRadius: 100,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}>
+                      <GoogleLogin
+                        onSuccess={onGoogleSuccess}
+                        onError={onGoogleError}
+                        theme="filled_black"
+                        size="large"
+                        shape="pill"
+                        width="500"
+                        text="continue_with"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '14px 16px',
+                    borderRadius: 16,
+                    background: 'rgba(251,191,36,0.08)',
+                    border: '1px solid rgba(251,191,36,0.25)',
+                    color: '#fde68a',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    textAlign: 'left',
+                  }}>
+                    {googleConfigUnavailable
+                      ? (googleConfigError || 'Google sign-in is unavailable right now. Please try again later.')
+                      : 'Google sign-in is unavailable right now. Please try again later.'}
+                  </div>
+                )}
               </div>
 
               {/* Terms */}

@@ -2,10 +2,19 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 
-export default function ProgressRing({ percentage, size = 150, strokeWidth = 10, color = "#10b981", trackColor = "rgba(255,255,255,0.05)" }) {
+export default function ProgressRing({ percentage, size = 150, strokeWidth = 10, color, trackColor = "rgba(255,255,255,0.05)" }) {
+    const safePercentage = Math.min(100, Math.max(0, Number.isFinite(Number(percentage)) ? Number(percentage) : 0));
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
-    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    const strokeDashoffset = circumference - (safePercentage / 100) * circumference;
+
+    // Dynamic colour: explicit prop overrides; otherwise tracks completion level.
+    const resolvedColor = color ?? (
+        safePercentage === 100 ? '#10b981' :
+        safePercentage >= 60  ? '#f59e0b' :
+        safePercentage > 0    ? '#6366f1' :
+                                'rgba(255,255,255,0.15)'
+    );
 
     return (
         <Box sx={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -21,7 +30,7 @@ export default function ProgressRing({ percentage, size = 150, strokeWidth = 10,
                 />
                 {/* Progress */}
                 <motion.circle
-                    stroke={color}
+                    stroke={resolvedColor}
                     fill="transparent"
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
@@ -36,8 +45,8 @@ export default function ProgressRing({ percentage, size = 150, strokeWidth = 10,
                 />
             </svg>
             <Box sx={{ textAlign: 'center', zIndex: 1 }}>
-                <Typography variant="h4" fontWeight={900} color={color} sx={{ letterSpacing: '-1px' }}>
-                    {percentage}%
+                <Typography variant="h4" fontWeight={900} color={resolvedColor} sx={{ letterSpacing: '-1px' }}>
+                    {safePercentage}%
                 </Typography>
                 <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
                     Done

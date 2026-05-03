@@ -56,8 +56,14 @@ const getSubjectsForPlanner = (country, year) => {
     return COUNTRY_SUBJECTS[plannerCountry]?.[year] || COUNTRY_SUBJECTS.India[year] || [];
 };
 const topicKey = (subject, topic) => `${subject}::${topic}`;
+const formatDateInput = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
-export default function PlannerSetup({ onCancel }) {
+export default function PlannerSetup({ onCancel, onGenerated }) {
     const { userProfile } = useAuth();
     const {
         generateStudyPlan,
@@ -70,12 +76,13 @@ export default function PlannerSetup({ onCancel }) {
     const plannerCountry = normalizePlannerCountry(userProfile?.country);
     const initialYear = studyPlan?.mbbs_year || userProfile?.mbbs_year || 1;
     const initialMode = studyPlan?.plan_mode || (studyPlan ? (studyPlan?.exam_date ? 'exam' : 'self_study') : 'exam');
+    const minExamDate = formatDateInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
     const [activeStep, setActiveStep] = useState(0);
     const [selectedYear, setSelectedYear] = useState(initialYear);
     const [planMode, setPlanMode] = useState(initialMode);
     const [examDate, setExamDate] = useState(
-        studyPlan?.exam_date ? new Date(studyPlan.exam_date).toISOString().split('T')[0] : ''
+        studyPlan?.exam_date ? formatDateInput(new Date(studyPlan.exam_date)) : ''
     );
     const [studyDurationDays, setStudyDurationDays] = useState(studyPlan?.plan_duration_days || 21);
     const [syllabus, setSyllabus] = useState({});
@@ -84,6 +91,9 @@ export default function PlannerSetup({ onCancel }) {
     const [selectedTopicKeys, setSelectedTopicKeys] = useState(studyPlan?.selected_topic_keys || []);
     const [weakTopics, setWeakTopics] = useState(studyPlan?.weak_topics || []);
     const [strongTopics, setStrongTopics] = useState(studyPlan?.strong_topics || []);
+    const [dailyAvailableMinutes, setDailyAvailableMinutes] = useState(studyPlan?.constraints?.daily_available_minutes || 120);
+    const [targetIntensity, setTargetIntensity] = useState(studyPlan?.constraints?.target_intensity || 'balanced');
+    const [learningStyle, setLearningStyle] = useState(studyPlan?.learner_profile?.learning_style || 'balanced');
 
     const subjectsForSelectedYear = useMemo(
         () => getSubjectsForPlanner(plannerCountry, selectedYear),
@@ -171,7 +181,7 @@ export default function PlannerSetup({ onCancel }) {
 
     const selectedTopicCount = selectedTopicKeys.length;
     const isStep1Valid = planMode === 'exam'
-        ? (!!examDate && new Date(examDate) >= new Date(Date.now() + 24 * 60 * 60 * 1000))
+        ? (!!examDate && examDate >= minExamDate)
         : Number(studyDurationDays) >= 7 && Number(studyDurationDays) <= 84;
 
     const steps = [
@@ -350,16 +360,27 @@ export default function PlannerSetup({ onCancel }) {
     };
 
     const handleGenerate = async () => {
-        await generateStudyPlan({
-            year: selectedYear,
-            planMode,
-            examDate: planMode === 'exam' ? examDate : null,
-            studyDurationDays: planMode === 'self_study' ? Number(studyDurationDays) : null,
-            selectedSubjects: selectedSubjectsForPlan,
-            selectedTopicKeys: selectedTopicKeys.filter(key => availableTopicKeys.has(key)),
-            weakTopics,
-            strongTopics
-        });
+        try {
+            const nextPlan = await generateStudyPlan({
+                year: selectedYear,
+                country: plannerCountry,
+                planMode,
+                examDate: planMode === 'exam' ? examDate : null,
+                studyDurationDays: planMode === 'self_study' ? Number(studyDurationDays) : null,
+                selectedSubjects: selectedSubjectsForPlan,
+                selectedTopicKeys: selectedTopicKeys.filter(key => availableTopicKeys.has(key)),
+                weakTopics,
+                strongTopics,
+                dailyAvailableMinutes: Number(dailyAvailableMinutes),
+                targetIntensity,
+                learningStyle
+            });
+            if (nextPlan) {
+                onGenerated?.(nextPlan);
+            }
+        } catch {
+            // generateStudyPlan sets the error via context; nothing else to do here.
+        }
     };
 
     const nextStep = () => setActiveStep(prev => Math.min(prev + 1, steps.length - 1));
@@ -391,7 +412,7 @@ export default function PlannerSetup({ onCancel }) {
 
                     <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
                         {steps.map((step, index) => (
-                            <Box key={step.label} sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: index <= activeStep ? 'primary.main' : 'grey.200', transition: 'background-color 0.3s' }} />
+                            <Box key={step.label} sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: index <= activeStep ? 'primary.main' : 'rgba(255,255,255,0.1)', transition: 'background-color 0.3s' }} />
                         ))}
                     </Box>
 
@@ -413,7 +434,7 @@ export default function PlannerSetup({ onCancel }) {
 
                                 {activeStep === 0 && (
                                     <Grid container spacing={4}>
-                                        <Grid item xs={12}>
+                                        <Grid size={{ xs: 12 }}>
                                             <ToggleButtonGroup
                                                 fullWidth
                                                 exclusive
@@ -444,13 +465,16 @@ export default function PlannerSetup({ onCancel }) {
                                             </ToggleButtonGroup>
                                         </Grid>
 
-                                        <Grid item xs={12} md={6}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             <TextField
                                                 select
                                                 fullWidth
                                                 label="Current MBBS Year"
                                                 value={selectedYear}
-                                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                                onChange={(e) => {
+                                                    setSelectedYear(Number(e.target.value));
+                                                    if (error && setError) setError(null);
+                                                }}
                                                 SelectProps={{ native: true }}
                                                 InputLabelProps={{ shrink: true }}
                                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
@@ -463,7 +487,7 @@ export default function PlannerSetup({ onCancel }) {
                                             </TextField>
                                         </Grid>
 
-                                        <Grid item xs={12} md={6}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             {planMode === 'exam' ? (
                                                 <TextField
                                                     type="date"
@@ -477,7 +501,7 @@ export default function PlannerSetup({ onCancel }) {
                                                     InputLabelProps={{ shrink: true }}
                                                     InputProps={{ startAdornment: <CalendarIcon color="action" sx={{ mr: 1 }} /> }}
                                                     inputProps={{
-                                                        min: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                                                        min: minExamDate
                                                     }}
                                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                                                 />
@@ -487,16 +511,67 @@ export default function PlannerSetup({ onCancel }) {
                                                     fullWidth
                                                     label="Self-Study Horizon (Days)"
                                                     value={studyDurationDays}
-                                                    onChange={(e) => setStudyDurationDays(e.target.value)}
+                                                    onChange={(e) => {
+                                                        setStudyDurationDays(e.target.value);
+                                                        if (error && setError) setError(null);
+                                                    }}
                                                     InputLabelProps={{ shrink: true }}
-                                                    inputProps={{ min: 7, max: 84 }}
+                                                    inputProps={{ min: 7, max: 84, step: 1 }}
                                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                                                     helperText="Pick how many days you want this focused self-study plan to run."
                                                 />
                                             )}
                                         </Grid>
 
-                                        <Grid item xs={12}>
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                type="number"
+                                                fullWidth
+                                                label="Daily Minutes"
+                                                value={dailyAvailableMinutes}
+                                                onChange={(e) => setDailyAvailableMinutes(e.target.value)}
+                                                inputProps={{ min: 20, max: 720, step: 1 }}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                label="Intensity"
+                                                value={targetIntensity}
+                                                onChange={(e) => setTargetIntensity(e.target.value)}
+                                                SelectProps={{ native: true }}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                                            >
+                                                <option value="light">Light</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="intense">Intense</option>
+                                            </TextField>
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, md: 4 }}>
+                                            <TextField
+                                                select
+                                                fullWidth
+                                                label="Learning Style"
+                                                value={learningStyle}
+                                                onChange={(e) => setLearningStyle(e.target.value)}
+                                                SelectProps={{ native: true }}
+                                                InputLabelProps={{ shrink: true }}
+                                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                                            >
+                                                <option value="balanced">Balanced</option>
+                                                <option value="visual">Visual</option>
+                                                <option value="question_first">Question-first</option>
+                                                <option value="deep_reading">Deep reading</option>
+                                            </TextField>
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12 }}>
                                             <Alert severity="info" sx={{ borderRadius: 3, '& .MuiAlert-message': { width: '100%' } }}>
                                                 <Typography variant="subtitle2" fontWeight={700}>
                                                     {plannerCountry} MBBS syllabus, Year {selectedYear}
@@ -602,7 +677,7 @@ export default function PlannerSetup({ onCancel }) {
                                 <Button
                                     variant="contained"
                                     size="large"
-                                    disabled={isGenerating}
+                                    disabled={isGenerating || !isStep1Valid || isLoadingSyllabus}
                                     onClick={handleGenerate}
                                     startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <SparkleIcon />}
                                     sx={{
