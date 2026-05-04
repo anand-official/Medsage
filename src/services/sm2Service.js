@@ -1,7 +1,7 @@
 /**
  * SM-2 API Service
  * Uses the shared api.js axios instance which automatically attaches
- * the real Firebase ID token via the request interceptor.
+ * the real Google ID token via the request interceptor.
  */
 
 import api from './api';

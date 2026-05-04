@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const { GEMINI_MODEL } = require('../config');
+const { GEMINI_API_KEY, GEMINI_MODEL } = require('../config');
 const fallbackLLM = require('./fallbackLLMService');
 const { getImageMimeType } = require('./cortexRequestUtils');
 const { MODE_SYSTEM } = require('./cortexTeachingConfig');
@@ -11,7 +11,7 @@ const {
 
 class CortexLLMClient {
     constructor() {
-        this.apiKey = process.env.GEMINI_API_KEY;
+        this.apiKey = GEMINI_API_KEY;
         this.modelName = GEMINI_MODEL;
 
         if (this.apiKey) {

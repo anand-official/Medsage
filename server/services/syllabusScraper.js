@@ -9,6 +9,7 @@ try {
 }
 
 const geminiService = require('./geminiService');
+const config = require('../config');
 const {
     normalizeCountry,
     getExpectedSubjects,
@@ -145,7 +146,7 @@ class SyllabusScraper {
                     }
                 }
 
-                if (!process.env.GEMINI_API_KEY) {
+                if (!config.GEMINI_API_KEY) {
                     throw new Error('No API Key, cannot generate syllabus dynamically.');
                 }
 

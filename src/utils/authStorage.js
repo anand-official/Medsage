@@ -3,6 +3,7 @@ import {
   getStoredValue,
   removeSessionStoredValue,
   removeStoredValue,
+  setStoredValue,
   setSessionStoredValue,
 } from './browser';
 
@@ -15,13 +16,14 @@ export function getAuthToken() {
 export function setAuthToken(token) {
   if (!token) return false;
   const stored = setSessionStoredValue(AUTH_TOKEN_STORAGE_KEY, token);
-  // Only remove from localStorage after confirmed sessionStorage write.
-  // Previously this always ran, silently wiping the token if sessionStorage
-  // was full/unavailable (e.g. quota exceeded in incognito mode).
+  // Prefer sessionStorage, but fall back to localStorage for constrained
+  // in-app browsers where sessionStorage can be unavailable or unreliable.
   if (stored) {
     removeStoredValue(AUTH_TOKEN_STORAGE_KEY);
+    return true;
   }
-  return stored;
+
+  return setStoredValue(AUTH_TOKEN_STORAGE_KEY, token);
 }
 
 export function clearAuthToken() {

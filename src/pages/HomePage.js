@@ -6,7 +6,7 @@ import {
   IconButton, Skeleton, Divider,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../utils/navigation';
 import {
   Send as SendIcon,
   AutoAwesome as AskIcon,
@@ -43,12 +43,17 @@ const C = {
 
 // ─── Framer Motion variants ───────────────────────────────────────────────────
 const fadeUp = {
-  hidden:  { opacity: 0, y: 16 },
+  hidden:  { opacity: 0, y: 22, filter: 'blur(4px)' },
   visible: (i = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.4, delay: i * 0.05, ease: [0.4, 0, 0.2, 1] },
+    opacity: 1, y: 0, filter: 'blur(0px)',
+    transition: {
+      type: 'spring', stiffness: 240, damping: 26, mass: 0.9,
+      delay: i * 0.06,
+    },
   }),
 };
+
+const springHover = { type: 'spring', stiffness: 420, damping: 22 };
 
 const MotionBox = motion(Box);
 
@@ -84,26 +89,36 @@ function ProgressRing({ pct = 0, size = 72, sw = 6 }) {
 }
 
 // ─── Compact stat pill ────────────────────────────────────────────────────────
-function StatPill({ icon, value, label, color, loading, custom = 0 }) {
+function StatPill({ icon, value, label, color, loading, custom = 0, isDark = false }) {
   return (
     <MotionBox
       variants={fadeUp}
       custom={custom}
+      whileHover={{ y: -4, scale: 1.025 }}
+      whileTap={{ scale: 0.98 }}
+      transition={springHover}
       sx={{
         flex: '1 1 0',
         minWidth: 0,
         display: 'flex', alignItems: 'center', gap: 1.5,
         px: 2.25, py: 1.75, borderRadius: 3.5,
         border: `1px solid ${color}22`,
-        background: `linear-gradient(145deg, ${color}10 0%, rgba(0,0,0,0.2) 100%)`,
-        boxShadow: `0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05)`,
+        background: isDark
+          ? `linear-gradient(145deg, ${color}10 0%, rgba(0,0,0,0.2) 100%)`
+          : `linear-gradient(145deg, ${color}12 0%, rgba(255,248,241,0.96) 100%)`,
+        boxShadow: isDark
+          ? '0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
+          : `0 12px 28px ${color}14, inset 0 1px 0 rgba(255,255,255,0.5)`,
         position: 'relative', overflow: 'hidden',
-        transition: 'all 0.3s',
+        cursor: 'default',
         '&:hover': {
-            background: `linear-gradient(145deg, ${color}18 0%, rgba(0,0,0,0.25) 100%)`,
-            transform: 'translateY(-2px)',
-            boxShadow: `0 8px 24px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)`,
-            borderColor: `${color}35`,
+            background: isDark
+              ? `linear-gradient(145deg, ${color}20 0%, rgba(0,0,0,0.28) 100%)`
+              : `linear-gradient(145deg, ${color}20 0%, rgba(255,250,245,1) 100%)`,
+            boxShadow: isDark
+              ? `0 14px 36px ${color}30, inset 0 1px 0 rgba(255,255,255,0.08)`
+              : `0 16px 36px ${color}22, inset 0 1px 0 rgba(255,255,255,0.6)`,
+            borderColor: `${color}55`,
         }
       }}
     >
@@ -127,12 +142,12 @@ function StatPill({ icon, value, label, color, loading, custom = 0 }) {
       </Box>
       <Box sx={{ minWidth: 0, position: 'relative', zIndex: 1 }}>
         {loading
-          ? <Skeleton width={40} height={22} sx={{ bgcolor: 'rgba(255,255,255,0.07)' }} />
-          : <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, lineHeight: 1, color, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          ? <Skeleton width={40} height={22} sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(184,106,63,0.08)' }} />
+          : <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, lineHeight: 1, color, textShadow: isDark ? '0 2px 4px rgba(0,0,0,0.3)' : 'none' }}>
               {value ?? '—'}
             </Typography>
         }
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 700, lineHeight: 1, display: 'block', mt: 0.5, letterSpacing: '0.02em' }}>
+        <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#7b6655', fontWeight: 700, lineHeight: 1, display: 'block', mt: 0.5, letterSpacing: '0.02em' }}>
           {label}
         </Typography>
       </Box>
@@ -141,7 +156,7 @@ function StatPill({ icon, value, label, color, loading, custom = 0 }) {
 }
 
 // ─── Quick-launch row item ────────────────────────────────────────────────────
-function LaunchRow({ icon, label, desc, gradient, glow, onClick, custom = 0 }) {
+function LaunchRow({ icon, label, desc, gradient, glow, onClick, custom = 0, isDark = false }) {
   const [hovered, setHovered] = useState(false);
   return (
     <MotionBox
@@ -150,15 +165,20 @@ function LaunchRow({ icon, label, desc, gradient, glow, onClick, custom = 0 }) {
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      whileHover={{ x: 4 }}
+      whileTap={{ scale: 0.97 }}
+      transition={springHover}
       sx={{
         display: 'flex', alignItems: 'center', gap: 1.75,
         px: 2, py: 1.5, cursor: 'pointer', borderRadius: 3,
-        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        background: hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        transition: 'background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
+        background: hovered
+          ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(184,106,63,0.08)')
+          : 'transparent',
         border: '1px solid transparent',
-        borderColor: hovered ? 'rgba(255,255,255,0.08)' : 'transparent',
-        boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.1)' : 'none',
-        '&:active': { background: 'rgba(255,255,255,0.07)' },
+        borderColor: hovered ? (isDark ? 'rgba(139,92,246,0.25)' : 'rgba(184,106,63,0.18)') : 'transparent',
+        boxShadow: hovered ? `0 8px 24px ${glow}` : 'none',
+        '&:active': { background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(184,106,63,0.12)' },
       }}
     >
       <Box sx={{
@@ -181,12 +201,12 @@ function LaunchRow({ icon, label, desc, gradient, glow, onClick, custom = 0 }) {
         {icon}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography fontWeight={800} sx={{ fontSize: '0.9rem', lineHeight: 1.2, color: hovered ? '#fff' : 'text.primary', transition: 'color 0.2s' }}>{label}</Typography>
-        <Typography variant="caption" sx={{ color: hovered ? 'rgba(255,255,255,0.6)' : 'text.secondary', transition: 'color 0.2s' }}>{desc}</Typography>
+        <Typography fontWeight={800} sx={{ fontSize: '0.9rem', lineHeight: 1.2, color: hovered ? (isDark ? '#fff' : '#412a1b') : 'text.primary', transition: 'color 0.2s' }}>{label}</Typography>
+        <Typography variant="caption" sx={{ color: hovered ? (isDark ? 'rgba(255,255,255,0.6)' : '#856c58') : 'text.secondary', transition: 'color 0.2s' }}>{desc}</Typography>
       </Box>
       <ChevronIcon sx={{
         fontSize: 18, flexShrink: 0,
-        color: hovered ? '#fff' : 'text.disabled',
+        color: hovered ? (isDark ? '#fff' : '#b86a3f') : 'text.disabled',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: hovered ? 'translateX(4px)' : 'none',
       }} />
@@ -215,18 +235,22 @@ function SessionCard({ session, isDark, onClick, custom = 0 }) {
       variants={fadeUp}
       custom={custom}
       onClick={onClick}
+      whileHover={{ y: -3, scale: 1.015 }}
+      whileTap={{ scale: 0.98 }}
+      transition={springHover}
       sx={{
         flexShrink: 0,
         width: { xs: 220, sm: 260, md: 'auto' },
         flex: { md: 1 },
         p: 2, borderRadius: 3, cursor: 'pointer',
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-        background: isDark ? 'rgba(14,11,26,0.65)' : 'rgba(255,255,255,0.9)',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(181,126,83,0.12)'}`,
+        background: isDark ? 'rgba(14,11,26,0.65)' : 'rgba(255,250,244,0.92)',
         backdropFilter: 'blur(16px)',
-        transition: 'border-color 0.18s, background 0.18s',
+        transition: 'border-color 0.18s, background 0.18s, box-shadow 0.25s',
         '&:hover': {
-          borderColor: `${C.indigoL}55`,
-          background: isDark ? 'rgba(20,15,35,0.8)' : 'rgba(255,255,255,1)',
+          borderColor: `${C.indigoL}66`,
+          background: isDark ? 'rgba(20,15,35,0.85)' : 'rgba(255,248,241,1)',
+          boxShadow: isDark ? '0 12px 32px rgba(99,102,241,0.18)' : '0 14px 36px rgba(184,106,63,0.14)',
         },
       }}
     >
@@ -254,10 +278,10 @@ function SessionCard({ session, isDark, onClick, custom = 0 }) {
           size="small"
           sx={{
             height: 20, fontSize: '0.62rem', fontWeight: 700,
-            bgcolor: 'rgba(99,102,241,0.12)', color: C.indigoL,
-            border: `1px solid rgba(99,102,241,0.2)`,
+            bgcolor: 'rgba(184,106,63,0.12)', color: C.indigo,
+            border: `1px solid rgba(184,106,63,0.18)`,
             cursor: 'pointer',
-            '&:hover': { bgcolor: 'rgba(99,102,241,0.2)' },
+            '&:hover': { bgcolor: 'rgba(184,106,63,0.18)' },
           }}
         />
       </Box>
@@ -304,12 +328,12 @@ function Card({ children, isDark, sx = {} }) {
   return (
     <Paper elevation={0} sx={{
       borderRadius: 4,
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+      border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(181,126,83,0.12)'}`,
       background: isDark 
         ? 'linear-gradient(145deg, rgba(20,20,38,0.7) 0%, rgba(10,10,20,0.85) 100%)' 
-        : 'linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(247,244,255,0.98) 100%)',
+        : 'linear-gradient(145deg, rgba(255,250,244,0.96) 0%, rgba(248,236,223,0.98) 100%)',
       backdropFilter: 'blur(24px)',
-      boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.05)',
+      boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.2)' : '0 14px 36px rgba(130,88,48,0.08)',
       overflow: 'hidden',
       ...sx,
     }}>
@@ -319,12 +343,13 @@ function Card({ children, isDark, sx = {} }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-function getTaskTypeCopy(taskType) {
+function getTaskTypeCopy(taskType, isDark) {
   if (taskType === 'review') {
     return {
       label: 'Review',
       tone: 'Retention',
       gradient: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+      toneColor: '#fbbf24',
     };
   }
 
@@ -333,13 +358,17 @@ function getTaskTypeCopy(taskType) {
       label: 'Mock',
       tone: 'Pressure',
       gradient: 'linear-gradient(135deg, #ef4444, #f97316)',
+      toneColor: '#fb7185',
     };
   }
 
   return {
     label: 'Learn',
     tone: 'Depth',
-    gradient: 'linear-gradient(135deg, #6366f1, #a855f7)',
+    gradient: isDark
+      ? 'linear-gradient(135deg, #6366f1, #a855f7)'
+      : 'linear-gradient(135deg, #d59668, #b86a3f)',
+    toneColor: isDark ? '#818cf8' : '#b86a3f',
   };
 }
 
@@ -457,7 +486,10 @@ const HomePage = () => {
         secondaryLabel: 'Ask Cortex First',
         secondaryAction: () => navigate('/question'),
         chips: ['No plan yet', 'Personalization locked', 'Daily loop inactive'],
-        accent: 'linear-gradient(135deg, #6366f1, #a855f7)',
+        accent: isDark
+          ? 'linear-gradient(135deg, #6366f1, #a855f7)'
+          : 'linear-gradient(135deg, #d59668, #b86a3f)',
+        toneColor: isDark ? '#818cf8' : '#b86a3f',
       };
     }
 
@@ -478,11 +510,12 @@ const HomePage = () => {
           plannerMode === 'exam' ? 'Exam retention mode' : 'Self-study retention mode',
         ],
         accent: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+        toneColor: '#fbbf24',
       };
     }
 
     if (nextTask) {
-      const taskTypeCopy = getTaskTypeCopy(nextTask.type);
+      const taskTypeCopy = getTaskTypeCopy(nextTask.type, isDark);
       const taskTopic = nextTask.topic || weakTopics[0] || studyPlan?.subjects_selected?.[0] || 'your next topic';
       return {
         eyebrow: `${taskTypeCopy.tone} block ready`,
@@ -511,6 +544,7 @@ const HomePage = () => {
           completionPct === 100 ? 'Today complete' : `${completionPct}% of today done`,
         ],
         accent: taskTypeCopy.gradient,
+        toneColor: taskTypeCopy.toneColor,
       };
     }
 
@@ -524,7 +558,10 @@ const HomePage = () => {
         secondaryLabel: 'Open Library',
         secondaryAction: () => navigate('/books'),
         chips: ['Planner caught up', 'Cortex context ready', 'Use spare depth block'],
-        accent: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+        accent: isDark
+          ? 'linear-gradient(135deg, #0ea5e9, #6366f1)'
+          : 'linear-gradient(135deg, #efb08a, #d78663)',
+        toneColor: isDark ? '#7dd3fc' : '#b86a3f',
       };
     }
 
@@ -546,11 +583,13 @@ const HomePage = () => {
       secondaryAction: () => navigate('/review'),
       chips: ['Momentum preserved', 'Use a quick reinforcement block', plannerMode === 'exam' ? 'Exam mode active' : 'Mastery mode active'],
       accent: 'linear-gradient(135deg, #10b981, #059669)',
+      toneColor: '#34d399',
     };
   }, [
     completionPct,
     daysToExam,
     dueReviewCount,
+    isDark,
     lastSession,
     navigate,
     nextTask,
@@ -644,7 +683,7 @@ const HomePage = () => {
               fontSize: { xs: '1.55rem', sm: '1.75rem', md: '2rem' },
               letterSpacing: '-0.04em',
               lineHeight: 1.1,
-              background: 'linear-gradient(135deg, #a78bfa 0%, #f472b6 55%, #fb923c 100%)',
+              background: 'linear-gradient(135deg, #a85632 0%, #d78c64 52%, #f1b26f 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}
@@ -675,12 +714,12 @@ const HomePage = () => {
           sx={{
             borderRadius: 3, fontWeight: 700, px: 3, py: 1.25,
             fontSize: '0.88rem',
-            background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+            background: 'linear-gradient(135deg, #d59668, #b86a3f)',
             color: '#fff',
-            boxShadow: '0 4px 18px rgba(99,102,241,0.35)',
+            boxShadow: '0 6px 20px rgba(184,106,63,0.26)',
             flexShrink: 0,
             '@media (hover: hover)': {
-              '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #9333ea)', boxShadow: '0 6px 22px rgba(99,102,241,0.5)' },
+              '&:hover': { background: 'linear-gradient(135deg, #c98558, #9a5731)', boxShadow: '0 8px 24px rgba(184,106,63,0.34)' },
             },
           }}
         >
@@ -696,24 +735,24 @@ const HomePage = () => {
             overflow: 'hidden',
             background: isDark
               ? 'linear-gradient(145deg, rgba(20,20,38,0.7) 0%, rgba(10,10,20,0.85) 100%)'
-              : 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(247,244,255,0.98))',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.08)'}`,
+              : 'linear-gradient(135deg, rgba(255,250,244,0.98), rgba(248,236,223,0.98))',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(181,126,83,0.14)'}`,
           }}
         >
           <Box sx={{ position: 'absolute', inset: 0, background: commandCenter.accent, opacity: isDark ? 0.08 : 0.04, pointerEvents: 'none' }} />
           <Box sx={{ position: 'absolute', top: -120, right: -80, width: 300, height: 300, borderRadius: '50%', background: commandCenter.accent, opacity: isDark ? 0.15 : 0.08, filter: 'blur(45px)', pointerEvents: 'none', animation: 'flowBg 15s ease-in-out infinite alternate', '@keyframes flowBg': { '0%': { transform: 'translate(0, 0)' }, '100%': { transform: 'translate(-20px, 10px)' } } }} />
-          <Box sx={{ position: 'absolute', bottom: -100, left: -60, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', bottom: -100, left: -60, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(184,106,63,0.12) 0%, transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
           <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 4 } }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.45fr 1fr' }, gap: { xs: 3, lg: 4 }, alignItems: 'stretch' }}>
               <Box>
-                <Typography variant="overline" sx={{ color: commandCenter.accent.includes('indigo') ? '#818cf8' : commandCenter.accent.includes('amber') ? '#fbbf24' : '#34d399', fontWeight: 900, letterSpacing: '0.18em', textShadow: '0 2px 8px rgba(0,0,0,0.4)', textTransform: 'uppercase' }}>
+                <Typography variant="overline" sx={{ color: commandCenter.toneColor, fontWeight: 900, letterSpacing: '0.18em', textShadow: isDark ? '0 2px 8px rgba(0,0,0,0.4)' : 'none', textTransform: 'uppercase' }}>
                   Study Operating System
                 </Typography>
                 <Typography sx={{ mt: 0.5, fontWeight: 900, fontSize: { xs: '1.85rem', md: '2.5rem' }, letterSpacing: '-0.04em', lineHeight: 1.05, textShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
                   Today Command Center
                 </Typography>
-                <Typography sx={{ mt: 1.5, maxWidth: 640, fontSize: { xs: '0.95rem', md: '1.05rem' }, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
+                <Typography sx={{ mt: 1.5, maxWidth: 640, fontSize: { xs: '0.95rem', md: '1.05rem' }, color: isDark ? 'rgba(255,255,255,0.7)' : '#6f5a49', lineHeight: 1.6 }}>
                   {commandCenter.eyebrow}. Medsage is prioritizing the next move that keeps your recall, planner pace, and weak-topic coverage aligned.
                 </Typography>
                 <Stack direction="row" spacing={1.5} flexWrap="wrap" sx={{ mt: 3, rowGap: 1.5 }}>
@@ -722,24 +761,24 @@ const HomePage = () => {
                       key={chip}
                       label={chip}
                       size="small"
-                      sx={{ height: 26, fontSize: '0.75rem', fontWeight: 800, bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.72)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(99,102,241,0.15)'}`, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                      sx={{ height: 26, fontSize: '0.75rem', fontWeight: 800, bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,248,241,0.9)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(181,126,83,0.16)'}`, boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.1)' : '0 6px 16px rgba(130,88,48,0.08)' }}
                     />
                   ))}
                 </Stack>
               </Box>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', p: { xs: 2.5, md: 3 }, borderRadius: 4, background: isDark ? 'rgba(20,20,38,0.5)' : 'rgba(255,255,255,0.78)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.15)'}`, boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.3)' : '0 18px 40px rgba(99,102,241,0.08)', backdropFilter: 'blur(12px)', position: 'relative', overflow: 'hidden' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', p: { xs: 2.5, md: 3 }, borderRadius: 4, background: isDark ? 'rgba(20,20,38,0.5)' : 'rgba(255,249,243,0.82)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(181,126,83,0.16)'}`, boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.3)' : '0 18px 40px rgba(130,88,48,0.12)', backdropFilter: 'blur(12px)', position: 'relative', overflow: 'hidden' }}>
                 <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: commandCenter.accent }} />
                 <Box sx={{ width: 48, height: 48, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: commandCenter.accent, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', mb: 2, border: '1px solid rgba(255,255,255,0.2)' }}>
                   <BoltIcon sx={{ fontSize: 24 }} />
                 </Box>
-                <Typography sx={{ fontSize: '0.76rem', fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>
+                <Typography sx={{ fontSize: '0.76rem', fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.5)' : '#9a7d66' }}>
                   Next Best Move
                 </Typography>
-                <Typography sx={{ mt: 0.75, fontWeight: 800, fontSize: { xs: '1.1rem', md: '1.25rem' }, lineHeight: 1.25, color: '#fff' }}>
+                <Typography sx={{ mt: 0.75, fontWeight: 800, fontSize: { xs: '1.1rem', md: '1.25rem' }, lineHeight: 1.25, color: isDark ? '#fff' : '#352419' }}>
                   {commandCenter.title}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1.25, lineHeight: 1.7, color: 'rgba(255,255,255,0.65)' }}>
+                <Typography variant="body2" sx={{ mt: 1.25, lineHeight: 1.7, color: isDark ? 'rgba(255,255,255,0.65)' : '#755f4d' }}>
                   {commandCenter.body}
                 </Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 3 }}>
@@ -753,7 +792,7 @@ const HomePage = () => {
                   <Button
                     onClick={commandCenter.secondaryAction}
                     variant="outlined"
-                    sx={{ borderRadius: 3, fontWeight: 800, px: 2.5, py: 1.2, borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(99,102,241,0.2)', color: isDark ? '#fff' : C.indigo, '&:hover': { background: 'rgba(255,255,255,0.05)', borderColor: isDark ? 'rgba(255,255,255,0.4)' : C.indigoL } }}
+                    sx={{ borderRadius: 3, fontWeight: 800, px: 2.5, py: 1.2, borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(181,126,83,0.24)', color: isDark ? '#fff' : C.indigo, '&:hover': { background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(184,106,63,0.08)', borderColor: isDark ? 'rgba(255,255,255,0.4)' : C.indigoL } }}
                   >
                     {commandCenter.secondaryLabel}
                   </Button>
@@ -778,37 +817,37 @@ const HomePage = () => {
         <StatPill
           icon={<StreakIcon />} value={streak || 0}
           label="Day Streak" color={C.streak}
-          loading={todayLoading && !streak} custom={1}
+          loading={todayLoading && !streak} custom={1} isDark={isDark}
         />
         <StatPill
           icon={<CheckIcon />}
           value={todayLoading ? null : `${doneTasks}/${totalTasks}`}
           label="Today's Tasks" color={C.indigo}
-          loading={todayLoading} custom={2}
+          loading={todayLoading} custom={2} isDark={isDark}
         />
         <StatPill
           icon={<TrendingIcon />} value={topicsDone}
           label="Topics Mastered" color={C.emerald}
-          loading={todayLoading} custom={3}
+          loading={todayLoading} custom={3} isDark={isDark}
         />
         <StatPill
           icon={<ReviewIcon />}
           value={reviewStats.loading ? null : dueReviewCount}
           label="Due Reviews" color={C.amber}
-          loading={reviewStats.loading} custom={4}
+          loading={reviewStats.loading} custom={4} isDark={isDark}
         />
         {plannerMode === 'exam' && daysToExam !== null && (
           <StatPill
             icon={<CalendarIcon />} value={daysToExam}
             label="Days to Exam" color={C.amber}
-            loading={false} custom={5}
+            loading={false} custom={5} isDark={isDark}
           />
         )}
         {plannerMode === 'self_study' && planDurationDays !== null && (
           <StatPill
             icon={<PlannerIcon />} value={planDurationDays}
             label="Study Horizon" color={C.emerald}
-            loading={false} custom={5}
+            loading={false} custom={5} isDark={isDark}
           />
         )}
       </Box>
@@ -1015,23 +1054,23 @@ const HomePage = () => {
               <Stack divider={<Divider sx={{ borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }} />}>
                 <LaunchRow
                   icon={<AskIcon />} label="Cortex" desc="Ask any medical question"
-                  gradient="linear-gradient(135deg, #6366f1, #a855f7)" glow="rgba(99,102,241,0.35)"
-                  onClick={() => navigate('/question')} custom={7}
+                  gradient="linear-gradient(135deg, #d59668, #b86a3f)" glow="rgba(184,106,63,0.28)"
+                  onClick={() => navigate('/question')} custom={7} isDark={isDark}
                 />
                 <LaunchRow
                   icon={<PlannerIcon />} label="Study Planner" desc="AI-generated schedule"
                   gradient="linear-gradient(135deg, #10b981, #059669)" glow="rgba(16,185,129,0.35)"
-                  onClick={() => navigate('/planner')} custom={8}
+                  onClick={() => navigate('/planner')} custom={8} isDark={isDark}
                 />
                 <LaunchRow
                   icon={<ReviewIcon />} label="Daily Review" desc="Spaced repetition session"
                   gradient="linear-gradient(135deg, #f59e0b, #ea580c)" glow="rgba(245,158,11,0.35)"
-                  onClick={() => navigate('/review')} custom={9}
+                  onClick={() => navigate('/review')} custom={9} isDark={isDark}
                 />
                 <LaunchRow
                   icon={<LibraryIcon />} label="Book Library" desc="Medical references"
-                  gradient="linear-gradient(135deg, #0ea5e9, #6366f1)" glow="rgba(14,165,233,0.35)"
-                  onClick={() => navigate('/books')} custom={10}
+                  gradient="linear-gradient(135deg, #efb08a, #d78663)" glow="rgba(215,134,99,0.28)"
+                  onClick={() => navigate('/books')} custom={10} isDark={isDark}
                 />
               </Stack>
               <Box sx={{ height: 6 }} />

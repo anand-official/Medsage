@@ -21,7 +21,7 @@ function shouldRewriteQuery(normalizedQuestion, truncatedHistory = []) {
 }
 
 function shouldExpandQuery({ truncatedHistory = [], confidence = 0, searchPhrase = '' }) {
-    return truncatedHistory.length > 0 || confidence < 0.85 || searchPhrase.length < 48;
+    return truncatedHistory.length > 0 || confidence < 0.72 || (searchPhrase.length >= 18 && searchPhrase.length < 64);
 }
 
 async function rewriteSearchPhrase({

@@ -13,10 +13,10 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const axios = require('axios');
+const embeddingService = require('../services/embeddingService');
 
 const QDRANT_URL  = process.env.QDRANT_URL  || 'http://localhost:6333';
-const QDRANT_KEY  = process.env.QDRANT_API_KEY;
-const HF_TOKEN    = process.env.HF_API_TOKEN;
+const QDRANT_KEY  = (process.env.QDRANT_API_KEY || '').trim() || undefined;
 const HF_MODEL    = process.env.HF_EMBEDDING_MODEL || 'BAAI/bge-large-en-v1.5';
 const EXPECTED_DIM = 1024;
 
@@ -25,12 +25,7 @@ const client = new QdrantClient({ url: QDRANT_URL, apiKey: QDRANT_KEY });
 const SEP = '─'.repeat(60);
 
 async function embed(text) {
-    const res = await axios.post(
-        `https://router.huggingface.co/hf-inference/pipeline/feature-extraction/${HF_MODEL}`,
-        { inputs: text, options: { wait_for_model: true } },
-        { headers: { Authorization: `Bearer ${HF_TOKEN}`, 'Content-Type': 'application/json' }, timeout: 15000 }
-    );
-    return res.data;
+    return embeddingService.getEmbedding(text);
 }
 
 async function main() {
@@ -99,7 +94,7 @@ async function main() {
         vector = await embed('cardiac cycle phases and heart sounds');
         const dim = Array.isArray(vector) ? vector.length : '?';
         if (dim === EXPECTED_DIM) {
-            console.log(`   ✅ HuggingFace embedding OK — dim=${dim}`);
+            console.log(`   ✅ Embedding OK — dim=${dim}`);
         } else {
             console.error(`   ❌ Wrong vector dimension: got ${dim}, expected ${EXPECTED_DIM}`);
             console.error('      → This means ingestion and query are using different models.');

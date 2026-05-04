@@ -1,4 +1,4 @@
-const Flashcard = require('../models/Flashcard');
+const flashcardRepo = require('../repositories/flashcardRepo');
 const confidenceEngine = require('./confidenceEngine');
 
 /**
@@ -70,7 +70,7 @@ class SM2Service {
      * Creates a flashcard from a pipeline response.
      * HARD GATE: blocks creation if final_confidence < SM2_CONFIDENCE_GATE.
      *
-     * @param {string}  userId       - MongoDB ObjectId
+     * @param {string}  userId       - Authenticated user UID
      * @param {string}  question     - Original question text
      * @param {object}  pipelineResponse  - Full response from OpenAI pipeline
      * @param {string}  answerSummary     - Distilled key fact (1–3 sentences)
@@ -90,7 +90,7 @@ class SM2Service {
         }
 
         // ── Deduplication Check ──────────────────────────────────────────────
-        const existing = await Flashcard.findOne({ user_id: userId, question: question }).lean();
+        const existing = await flashcardRepo.findByUserQuestion(userId, question);
         if (existing) {
             console.log(`[SM-2] ↩ Duplicate skipped | topic=${pipelineResponse.meta?.topic_id} | existing_id=${existing._id}`);
             return null;
@@ -106,7 +106,7 @@ class SM2Service {
         const sourceBook = firstChunk?.book || meta.source_book || null;
         const sourcePages = firstChunk ? `${firstChunk.page_start}–${firstChunk.page_end}` : null;
 
-        const card = await Flashcard.create({
+        const card = await flashcardRepo.create({
             user_id: userId,
             topic_id: meta.topic_id || 'UNKNOWN',
             subject: meta.subject || 'General',
@@ -153,10 +153,7 @@ class SM2Service {
         if (filters.topic_id) query.topic_id = filters.topic_id;
         if (filters.subject) query.subject = filters.subject;
 
-        const cards = await Flashcard.find(query)
-            .sort({ next_review: 1 })  // oldest due first (most urgent)
-            .limit(limit)
-            .lean();
+        const cards = await flashcardRepo.listDueCards(userId, filters, limit);
 
         console.log(`[SM-2] Due cards for user ${userId}: ${cards.length} (limit=${limit})`);
         return cards;
@@ -172,7 +169,7 @@ class SM2Service {
      * @param {number} quality  - 0–5 rating
      */
     async submitReview(cardId, userId, quality) {
-        const card = await Flashcard.findOne({ _id: cardId, user_id: userId });
+        const card = await flashcardRepo.findByIdForUser(cardId, userId);
         if (!card) throw new Error(`Flashcard ${cardId} not found or access denied`);
 
         const { ease_factor, interval_days, repetitions, next_review } = this.applyReview(card, quality);
@@ -206,24 +203,25 @@ class SM2Service {
      */
     async getStats(userId) {
         const [total, due, suspended] = await Promise.all([
-            Flashcard.countDocuments({ user_id: userId }),
-            Flashcard.countDocuments({ user_id: userId, next_review: { $lte: new Date() }, is_suspended: false }),
-            Flashcard.countDocuments({ user_id: userId, is_suspended: true })
+            flashcardRepo.countByUser(userId),
+            flashcardRepo.countDueByUser(userId),
+            flashcardRepo.countSuspendedByUser(userId)
         ]);
 
-        const retention = await Flashcard.aggregate([
-            { $match: { user_id: userId, total_reviews: { $gt: 0 } } },
-            {
-                $group: {
-                    _id: null,
-                    avg_retention: { $avg: { $divide: ['$total_correct', '$total_reviews'] } },
-                    avg_ef: { $avg: '$ease_factor' },
-                    total_reviews: { $sum: '$total_reviews' }
-                }
-            }
-        ]);
+        const reviewedCards = await flashcardRepo.listReviewedByUser(userId);
+        const totals = reviewedCards.reduce((acc, card) => {
+            acc.totalReviews += card.total_reviews || 0;
+            acc.totalCorrect += card.total_correct || 0;
+            acc.ease += card.ease_factor || 2.5;
+            acc.count += 1;
+            return acc;
+        }, { totalReviews: 0, totalCorrect: 0, ease: 0, count: 0 });
 
-        const r = retention[0] || { avg_retention: 0, avg_ef: 2.5, total_reviews: 0 };
+        const r = {
+            avg_retention: totals.totalReviews > 0 ? (totals.totalCorrect / totals.totalReviews) : 0,
+            avg_ef: totals.count > 0 ? (totals.ease / totals.count) : 2.5,
+            total_reviews: totals.totalReviews,
+        };
 
         return {
             total_cards: total,
@@ -238,21 +236,22 @@ class SM2Service {
     // ─── Suspend / Unsuspend ──────────────────────────────────────────────────
 
     async suspendCard(cardId, userId) {
-        const card = await Flashcard.findOneAndUpdate(
-            { _id: cardId, user_id: userId },
-            { is_suspended: true },
-            { new: true }
-        );
+        const card = await flashcardRepo.findByIdForUser(cardId, userId);
+        if (card) {
+            card.is_suspended = true;
+            await card.save();
+        }
         if (!card) throw new Error(`Card ${cardId} not found`);
         return card;
     }
 
     async unsuspendCard(cardId, userId) {
-        const card = await Flashcard.findOneAndUpdate(
-            { _id: cardId, user_id: userId },
-            { is_suspended: false, next_review: new Date() },
-            { new: true }
-        );
+        const card = await flashcardRepo.findByIdForUser(cardId, userId);
+        if (card) {
+            card.is_suspended = false;
+            card.next_review = new Date();
+            await card.save();
+        }
         if (!card) throw new Error(`Card ${cardId} not found`);
         return card;
     }

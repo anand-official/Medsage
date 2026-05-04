@@ -10,7 +10,9 @@ const express = require('express');
 const router = express.Router();
 const { body, query, param, validationResult } = require('express-validator');
 const { verifyToken, isAdmin } = require('../middleware/auth');
-const AuditLog = require('../models/AuditLog');
+const auditLogRepo = require('../repositories/auditLogRepo');
+
+const OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/i;
 
 /**
  * @swagger
@@ -18,7 +20,7 @@ const AuditLog = require('../models/AuditLog');
  *   post:
  *     summary: Submit thumbs up/down feedback for a query response
  *     description: |
- *       Records user feedback against an AuditLog entry identified by `log_id`.
+ *       Records user feedback against an audit log entry identified by `log_id`.
  *       A thumbs-down automatically flags the entry for admin review.
  *     tags: [Audit]
  *     security:
@@ -31,7 +33,7 @@ const AuditLog = require('../models/AuditLog');
  *             type: object
  *             required: [log_id, rating]
  *             properties:
- *               log_id:  { type: string, description: MongoDB ObjectId from query response }
+ *               log_id:  { type: string, description: Public audit log identifier from query response }
  *               rating:  { type: string, enum: [up, down] }
  *               comment: { type: string, maxLength: 500 }
  *     responses:
@@ -108,7 +110,7 @@ const AuditLog = require('../models/AuditLog');
 // ── POST /api/audit/feedback ─────────────────────────────────────────────────
 
 router.post('/feedback', [
-    body('feedback_id').optional().isMongoId().withMessage('Valid feedback_id required'),
+    body('feedback_id').optional().matches(OBJECT_ID_PATTERN).withMessage('Valid feedback_id required'),
     body('log_id').optional().isString().isLength({ min: 8, max: 64 }).withMessage('Valid log_id required'),
     body('rating').isIn(['up', 'down']).withMessage('rating must be "up" or "down"'),
     body('comment').optional().isString().isLength({ max: 500 }),
@@ -134,20 +136,19 @@ router.post('/feedback', [
             : { log_id, user_id: uid };
 
         // Only allow the owner to rate their own query
-        const log = await AuditLog.findOneAndUpdate(
-            selector,
-            {
-                $set: {
-                    'feedback.rating': rating,
-                    'feedback.comment': comment,
-                    'feedback.rated_at': new Date(),
-                    // Auto-flag thumbs-down for admin review
-                    flagged: rating === 'down',
-                    flag_reason: rating === 'down' ? 'user_thumbs_down' : '',
+        const existing = await auditLogRepo.findBySelector(selector);
+        const log = existing
+            ? await auditLogRepo.updateBySelector(selector, {
+                feedback: {
+                    ...(existing.feedback || {}),
+                    rating,
+                    comment,
+                    rated_at: new Date(),
                 },
-            },
-            { new: true }
-        );
+                flagged: rating === 'down',
+                flag_reason: rating === 'down' ? 'user_thumbs_down' : '',
+            })
+            : null;
 
         if (!log) {
             return res.status(404).json({ success: false, error: 'Log entry not found or not yours.' });
@@ -176,21 +177,10 @@ router.get('/admin/review', [
     const limit = req.query.limit || 50;
     const skip = req.query.skip || 0;
 
-    let mongoFilter = {};
-    if (filter === 'thumbs_down')    mongoFilter = { 'feedback.rating': 'down' };
-    else if (filter === 'flagged')   mongoFilter = { flagged: true };
-    else if (filter === 'low_confidence') mongoFilter = { confidence: { $lt: 0.5, $ne: null } };
-    // 'all' → no filter
-
     try {
         const [logs, total] = await Promise.all([
-            AuditLog.find(mongoFilter)
-                .sort({ created_at: -1 })
-                .skip(skip)
-                .limit(limit)
-                .select('-answer')   // omit full answer to keep payload small; fetch individually if needed
-                .lean(),
-            AuditLog.countDocuments(mongoFilter),
+            auditLogRepo.listForReview(filter, limit, skip),
+            auditLogRepo.countForReview(filter),
         ]);
 
         res.json({ success: true, total, skip, limit, logs });
@@ -203,7 +193,7 @@ router.get('/admin/review', [
 // ── GET /api/audit/admin/log/:id ──────────────────────────────────────────────
 
 router.get('/admin/log/:id', [
-    param('id').isMongoId(),
+    param('id').matches(OBJECT_ID_PATTERN),
 ], verifyToken, isAdmin, async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -211,7 +201,7 @@ router.get('/admin/log/:id', [
     }
 
     try {
-        const log = await AuditLog.findById(req.params.id).lean();
+        const log = await auditLogRepo.findById(req.params.id);
         if (!log) return res.status(404).json({ success: false, error: 'Not found.' });
         res.json({ success: true, log });
     } catch (err) {
@@ -222,7 +212,7 @@ router.get('/admin/log/:id', [
 // ── POST /api/audit/admin/flag/:id ────────────────────────────────────────────
 
 router.post('/admin/flag/:id', [
-    param('id').isMongoId(),
+    param('id').matches(OBJECT_ID_PATTERN),
     body('reason').optional().isString().isLength({ max: 200 }),
 ], verifyToken, isAdmin, async (req, res) => {
     const errors = validationResult(req);
@@ -231,11 +221,7 @@ router.post('/admin/flag/:id', [
     }
 
     try {
-        const log = await AuditLog.findByIdAndUpdate(
-            req.params.id,
-            { $set: { flagged: true, flag_reason: req.body.reason || 'admin_manual' } },
-            { new: true }
-        );
+        const log = await auditLogRepo.flagById(req.params.id, req.body.reason || 'admin_manual');
         if (!log) return res.status(404).json({ success: false, error: 'Not found.' });
         res.json({ success: true, message: 'Log flagged for review.' });
     } catch (err) {

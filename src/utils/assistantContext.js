@@ -50,9 +50,9 @@ function buildAiHistoryContent(message = {}) {
   return segments.filter(Boolean).join('\n');
 }
 
-// Backend accepts up to 2000 chars per history item and 8000 chars total budget.
-// Token budget of 2000 ≈ 8000 chars at 4 chars/token.
-export function buildHistoryForRequest(messages, tokenBudget = 2000) {
+// Backend accepts up to 2000 chars per history item and a tighter shared budget.
+// Token budget of 1200 ≈ 4800 chars at 4 chars/token.
+export function buildHistoryForRequest(messages, tokenBudget = 1200) {
   const turns = messages
     .filter((m) => m.role === 'user' || m.role === 'ai')
     .map((m) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { getViewportWidth, subscribeToMediaQuery } from '../../utils/browser';
+import { useNavigate } from '../../utils/navigation';
 
 function useIsMobile(breakpoint = 768) {
     const [isMobile, setIsMobile] = useState(() => getViewportWidth() < breakpoint);
@@ -340,8 +340,9 @@ export function SplitModal({ member, onClose }) {
     );
 }
 
-export default function TeamSection() {
-    const navigate = useNavigate();
+export default function TeamSection({ navigation = null }) {
+    const fallbackNavigate = useNavigate();
+    const navigate = navigation?.navigate || fallbackNavigate;
     const [selected, setSelected] = useState(null);
     const isMobile = useIsMobile();
 

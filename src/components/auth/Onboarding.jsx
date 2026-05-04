@@ -26,7 +26,7 @@ const YEARS = [
 ];
 
 export default function Onboarding() {
-    const { userProfile, updateOnboardingProfile } = useAuth();
+    const { userProfile, updateOnboardingProfile, authStatus } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -43,13 +43,13 @@ export default function Onboarding() {
     });
 
     useEffect(() => {
-        if (userProfile && !userProfile.onboarded) {
+        if (authStatus === 'authenticated' && userProfile && !userProfile.onboarded) {
             setFormData(prev => ({ ...prev, displayName: userProfile.displayName || '' }));
             setOpen(true);
         } else {
             setOpen(false);
         }
-    }, [userProfile]);
+    }, [authStatus, userProfile]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -72,12 +72,21 @@ export default function Onboarding() {
     };
 
     const handleSubmit = async () => {
+        if (loading || authStatus !== 'authenticated') {
+            return;
+        }
         if (!formData.college.trim()) {
             setError('Please enter your college name'); return;
         }
         try {
             setLoading(true); setError('');
-            await updateOnboardingProfile({ ...formData, onboarded: true });
+            await updateOnboardingProfile({
+                ...formData,
+                displayName: formData.displayName.trim(),
+                college: formData.college.trim(),
+                mbbs_year: Number(formData.mbbs_year),
+                onboarded: true,
+            });
             // setOpen(false) is handled by the useEffect watching userProfile.onboarded
         } catch (err) {
             console.error('Onboarding save failed:', err);

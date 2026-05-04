@@ -1,14 +1,40 @@
-const UserProfile = require('../models/UserProfile');
+const userProfileRepo = require('../repositories/userProfileRepo');
 const { invalidateLearnerContext } = require('../services/learnerContextCache');
-const StudyPlan = require('../models/StudyPlan');
-const ChatSession = require('../models/ChatSession');
-const Flashcard = require('../models/Flashcard');
-const AuditLog = require('../models/AuditLog');
+const studyPlanRepo = require('../repositories/studyPlanRepo');
+const chatSessionRepo = require('../repositories/chatSessionRepo');
+const flashcardRepo = require('../repositories/flashcardRepo');
+const auditLogRepo = require('../repositories/auditLogRepo');
+const { GOOGLE_CLIENT_ID } = require('../config');
+
+function normalizeGoogleClientId(value) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    const normalized = trimmed.toLowerCase();
+    if (['fill_in', 'your_google_oauth_client_id_here', 'your_google_client_id_here'].includes(normalized)) {
+        return null;
+    }
+    return trimmed;
+}
 
 class AuthController {
+    async getPublicConfig(req, res, next) {
+        try {
+            const googleClientId = normalizeGoogleClientId(GOOGLE_CLIENT_ID);
+            res.set('Cache-Control', 'no-store');
+            res.json({
+                success: true,
+                data: {
+                    googleClientId,
+                    googleAuthEnabled: Boolean(googleClientId),
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 
-    // POST /auth/user
-    // Called by frontend after Firebase Google Sign-In to sync UserProfile
+    // POST /api/v1/auth/user
+    // Called by the frontend after Google OAuth sign-in to sync the user profile.
     async syncUser(req, res, next) {
         try {
             const {
@@ -25,20 +51,17 @@ class AuthController {
             // Upsert user profile.
             // Only set displayName/photoURL on initial creation ($setOnInsert) so that
             // custom names set during onboarding are not overwritten on every login.
-            const user = await UserProfile.findOneAndUpdate(
-                { uid },
-                {
-                    $set: {
-                        email,
-                        lastLoginAt: new Date()
-                    },
-                    $setOnInsert: {
-                        displayName: displayName || email.split('@')[0],
-                        photoURL: photoURL || '',
-                    }
-                },
-                { new: true, upsert: true }
-            );
+            const existingUser = await userProfileRepo.findByUid(uid);
+            const user = await userProfileRepo.updateByUid(uid, {
+                uid,
+                email,
+                lastLoginAt: new Date(),
+                ...(!existingUser ? {
+                    displayName: displayName || email.split('@')[0],
+                    photoURL: photoURL || '',
+                    country: 'India',
+                } : {}),
+            }, { upsert: true });
 
             res.json({
                 success: true,
@@ -50,7 +73,7 @@ class AuthController {
         }
     }
 
-    // GET /auth/profile
+    // GET /api/v1/auth/profile
     // Fetch current user's profile - REQUIRES AUTH
     async getProfile(req, res, next) {
         try {
@@ -60,7 +83,7 @@ class AuthController {
                 return res.status(401).json({ success: false, error: 'Unauthorized: No UID provided' });
             }
 
-            const user = await UserProfile.findOne({ uid });
+            const user = await userProfileRepo.findByUid(uid);
 
             if (!user) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
@@ -78,7 +101,7 @@ class AuthController {
         }
     }
 
-    // PUT /auth/profile
+    // PUT /api/v1/auth/profile
     // Update onboarding data (Name, Year, College, Country) - REQUIRES AUTH
     async updateProfile(req, res, next) {
         try {
@@ -121,13 +144,7 @@ class AuthController {
                 updates.onboarded = Boolean(onboarded);
             }
 
-            const user = await UserProfile.findOneAndUpdate(
-                { uid },
-                {
-                    $set: updates
-                },
-                { new: true, runValidators: true }
-            );
+            const user = await userProfileRepo.updateByUid(uid, updates);
 
             if (!user) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
@@ -145,7 +162,7 @@ class AuthController {
         }
     }
 
-    // PUT /auth/preferences (Used by Study Planner setup) - REQUIRES AUTH
+    // PUT /api/v1/auth/preferences (Used by Study Planner setup) - REQUIRES AUTH
     // Update weak/strong subjects and exam date
     async updatePreferences(req, res, next) {
         try {
@@ -157,20 +174,16 @@ class AuthController {
 
             const { subjects_weak, subjects_strong, topics_weak, topics_strong } = req.body;
 
-            const user = await UserProfile.findOneAndUpdate(
-                { uid },
-                {
-                    $set: {
-                        ...(topics_weak ?? subjects_weak) && { topics_weak: topics_weak ?? subjects_weak },
-                        ...(topics_strong ?? subjects_strong) && { topics_strong: topics_strong ?? subjects_strong }
-                    }
-                },
-                { new: true }
-            );
+            const user = await userProfileRepo.updateByUid(uid, {
+                ...(topics_weak ?? subjects_weak) && { topics_weak: topics_weak ?? subjects_weak },
+                ...(topics_strong ?? subjects_strong) && { topics_strong: topics_strong ?? subjects_strong }
+            });
 
             if (!user) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
             }
+
+            invalidateLearnerContext(uid);
 
             res.json({
                 success: true,
@@ -182,7 +195,7 @@ class AuthController {
         }
     }
 
-    // DELETE /auth/profile - REQUIRES AUTH
+    // DELETE /api/v1/auth/profile - REQUIRES AUTH
     async deleteAccount(req, res, next) {
         try {
             const uid = req.user?.uid;
@@ -198,19 +211,19 @@ class AuthController {
                 deletedFlashcards,
                 deletedAuditLogs,
             ] = await Promise.all([
-                StudyPlan.deleteOne({ uid }),
-                UserProfile.findOneAndDelete({ uid }),
-                ChatSession.deleteMany({ user_id: uid }),
-                Flashcard.deleteMany({ user_id: uid }),
-                AuditLog.deleteMany({ user_id: uid }),
+                studyPlanRepo.deleteByUid(uid),
+                userProfileRepo.deleteByUid(uid),
+                chatSessionRepo.deleteByUser(uid),
+                flashcardRepo.deleteByUser(uid),
+                auditLogRepo.deleteByUser(uid),
             ]);
 
             if (
                 !deletedUser
-                && deletedStudyPlan.deletedCount === 0
-                && deletedSessions.deletedCount === 0
-                && deletedFlashcards.deletedCount === 0
-                && deletedAuditLogs.deletedCount === 0
+                && !deletedStudyPlan
+                && deletedSessions.length === 0
+                && deletedFlashcards.length === 0
+                && deletedAuditLogs.length === 0
             ) {
                 return res.status(404).json({ success: false, error: 'User profile not found' });
             }

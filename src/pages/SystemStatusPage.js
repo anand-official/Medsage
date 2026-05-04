@@ -1,12 +1,13 @@
 import React from 'react';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudyContext } from '../contexts/StudyContext';
 import SystemDiagnosticsPanel from '../components/system/SystemDiagnosticsPanel';
+import { useNavigate } from '../utils/navigation';
 
-export default function SystemStatusPage() {
-  const navigate = useNavigate();
+export default function SystemStatusPage({ navigation = null }) {
+  const fallbackNavigate = useNavigate();
+  const navigate = navigation?.navigate || fallbackNavigate;
   const { authStatus, authError, retryBootstrap } = useAuth();
   const {
     planState,

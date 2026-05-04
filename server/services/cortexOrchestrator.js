@@ -13,11 +13,13 @@ const claimValidator = require('./claimValidator');
 const {
     buildDirectPrompt,
     buildHistoryBlock,
+    chooseOutputTokenBudget,
     detectFollowUpIntent,
     hasMedicalSignal,
     looksLikeFollowUp,
     truncateHistory,
 } = require('./cortexRequestUtils');
+const { buildFollowUpOptions } = require('./cortexFollowUpSuggester');
 const {
     recordCitationCompliance,
     recordConfidenceTier,
@@ -44,11 +46,7 @@ class CortexOrchestrator {
      * CortexOrchestrator instance handles concurrent requests.
      */
     async generateMedicalResponse(rawQuestion, userContext = {}) {
-        const ctx = conversationStateService.createInitialState(
-            rawQuestion,
-            userContext,
-            this._buildCacheContext(userContext)
-        );
+        const ctx = this._createTurnContext(rawQuestion, userContext);
 
         // ── Pre-scoring guardrails (run before any async work) ──────────────
         const emptyResult = this._handleEmptyQuery(ctx);
@@ -121,74 +119,40 @@ class CortexOrchestrator {
     }
 
     async *streamMedicalResponse(rawQuestion, userContext = {}) {
-        const normalizedQuestion = (rawQuestion || '').trim();
-        const mode = userContext.mode || 'conceptual';
-        const history = userContext.history || [];
-        const hintSubject = userContext.subject || null;
-        const learnerContext = userContext.learnerContext || null;
-
-        // ── Guardrail 1: empty query ──────────────────────────────────────────
-        if (!normalizedQuestion) {
-            yield 'Tell me the exact medical topic you want help with.';
+        const ctx = this._createTurnContext(rawQuestion, userContext);
+        const guardrailResponse =
+            this._handleEmptyQuery(ctx)
+            || this._handleGreeting(ctx)
+            || this._handleOffTopic(ctx);
+        if (guardrailResponse) {
+            yield guardrailResponse.answer || guardrailResponse.short_note || '';
             return;
         }
 
-        // ── Guardrail 2: greeting detection (mirrors main pipeline) ───────────
-        if (history.length === 0 && GREETING_PATTERNS.test(normalizedQuestion)) {
-            yield 'Hey! Ask me anything in medicine — anatomy, physiology, pharmacology, pathology, or any clinical topic. What would you like to study?';
+        await this._buildPipelineContext(ctx);
+        const lowConfidenceResponse = await this._handleLowConfidence(ctx);
+        if (lowConfidenceResponse) {
+            yield lowConfidenceResponse.answer || lowConfidenceResponse.short_note || '';
             return;
         }
 
-        // ── Guardrail 3: off-topic check (mirrors main pipeline) ─────────────
-        if (!hasMedicalSignal(normalizedQuestion) && !looksLikeFollowUp(normalizedQuestion, history.length)) {
-            const quickScore = topicScorer.scoreQuery(normalizedQuestion);
-            if (!quickScore.matched && quickScore.confidence < 0.3) {
-                yield 'Cortex is focused on medical education. Please ask a medical or health-related question.';
-                return;
-            }
-        }
+        yield 'Fast draft - not citation-verified. Please verify with standard textbooks before clinical use.\n\n';
 
-        const truncatedHistory = truncateHistory(history);
-        const historyBlock = buildHistoryBlock(truncatedHistory);
-        const topicResult = await this._scoreTopic(normalizedQuestion);
-        const calibratedTopicConfidence = this._calibrateTopicConfidence(topicResult);
-        const threadMode = (looksLikeFollowUp(normalizedQuestion, history.length) && history.length > 0) ? 'follow_up' : 'new_topic';
-        const professorSubject = conversationStateService.resolveSubject({
-            hintSubject,
-            priorSubject: conversationStateService.inferSubjectFromHistory(history),
-            topicResult,
-            threadMode,
-        });
-        const persona = resolvePersona(professorSubject, {
-            mode,
-            threadMode,
-            followUpIntent: detectFollowUpIntent(normalizedQuestion, history.length),
-            learnerContext,
-        });
-
-        // ── Guardrail 4: low topic confidence → clarification (last resort only) ─
-        // Mirror the same logic as _handleLowConfidence: only block if genuinely
-        // ambiguous (no medical signal, very short, near-zero confidence).
-        const streamWordCount = normalizedQuestion.trim().split(/\s+/).filter(Boolean).length;
-        const streamShouldClarify =
-            !hasMedicalSignal(normalizedQuestion) &&
-            threadMode !== 'follow_up' &&
-            calibratedTopicConfidence < 0.35 &&
-            streamWordCount < 5;
-        if (streamShouldClarify) {
-            yield 'I can help best if you name the disease, organ system, or core concept you want explained.';
-            return;
-        }
-
-        // ── Disclaimer (fast draft path is not citation-verified) ─────────────
-        yield '⚠️ *Fast draft — not citation-verified. Please verify with standard textbooks before clinical use.*\n\n';
-
-        // sanitizeInput applied inside buildDirectPrompt — normalizedQuestion is safe to pass
-        const prompt = buildDirectPrompt(persona, mode, historyBlock, normalizedQuestion, learnerContext);
+        const prompt = buildDirectPrompt(
+            ctx.persona,
+            ctx.mode,
+            ctx.historyBlock,
+            ctx.normalizedQuestion,
+            ctx.learnerContext
+        );
 
         for await (const chunk of this.llmClient.streamText(prompt, {
-            temperature: mode === 'exam' ? 0.15 : 0.35,
-            max_tokens: 2500,
+            temperature: ctx.mode === 'exam' ? 0.12 : 0.28,
+            max_tokens: chooseOutputTokenBudget({
+                mode: ctx.mode,
+                question: ctx.normalizedQuestion,
+                pipeline: 'stream',
+            }),
         })) {
             yield chunk;
         }
@@ -266,7 +230,7 @@ class CortexOrchestrator {
         if (quickScore.matched || quickScore.confidence >= 0.3) return null;
 
         return this._buildClarificationResponse({
-            answer:      'Cortex is focused on medical education. Please ask a medical or health-related question.',
+            answer:      'I am optimized for medical education. I can help if you turn this into a medical, viva, pathology, pharmacology, or clinical reasoning question.',
             pipeline:    'off_topic_refusal',
             topicResult: quickScore,
             subject:     ctx.hintSubject,
@@ -313,6 +277,15 @@ class CortexOrchestrator {
             short_note:           visionAnswer.text,
             high_yield_summary:   this._extractKeyBullets(visionAnswer.text),
             key_bullets:          this._extractKeyBullets(visionAnswer.text),
+            followUpOptions:      buildFollowUpOptions({
+                pipeline: 'vision',
+                type: 'ANSWER',
+                subject: ctx.professorSubject,
+                question: ctx.normalizedQuestion,
+                mode: ctx.mode,
+                threadMode: ctx.threadMode,
+                followUpIntent: ctx.followUpIntent,
+            }),
             citations:            [],
             clinical_correlation: '',
             exam_tips:            '',
@@ -353,7 +326,7 @@ class CortexOrchestrator {
         // Moderate confidence or a reasonably long question: RAG is worth trying.
         // A 5+ word query signals the student has given enough context.
         const wordCount = (ctx.normalizedQuestion || '').trim().split(/\s+/).filter(Boolean).length;
-        if (ctx.calibratedTopicConfidence >= 0.35 || wordCount >= 5) return null;
+        if (ctx.calibratedTopicConfidence >= 0.25 || wordCount >= 4) return null;
 
         // Genuinely ambiguous: very short, no medical signal, near-zero confidence.
         // Only now ask for clarification.
@@ -629,13 +602,26 @@ class CortexOrchestrator {
         // Only mark clarification when confidence is genuinely low AND sourcing is absent.
         // A good answer with 0 cited chunks should still be returned — just at lower confidence.
         const isClarificationRequired =
-            (confidenceReport.tier === 'LOW' && confidenceReport.final_confidence < 0.5) ||
-            (sourcedClaimsCount < 1 && confidenceReport.final_confidence < 0.55);
+            !hasMedicalSignal(ctx.normalizedQuestion) &&
+            (
+                (confidenceReport.tier === 'LOW' && confidenceReport.final_confidence < 0.4) ||
+                (sourcedClaimsCount < 1 && confidenceReport.final_confidence < 0.42)
+            );
 
         const finalResponse = applyTrustMetadata({
             answer,
             short_note:           answer,
             partial_answer:       isClarificationRequired ? answer : null,
+            followUpOptions:      buildFollowUpOptions({
+                pipeline: 'full_rag',
+                type: isClarificationRequired ? 'CLARIFICATION' : 'ANSWER',
+                subject: ctx.professorSubject,
+                question: ctx.normalizedQuestion,
+                mode: ctx.mode,
+                threadMode: ctx.threadMode,
+                followUpIntent: ctx.followUpIntent,
+                confidence: confidenceReport,
+            }),
             claim_validation:     claimValidationResult.claim_validation,
             claims:               finalCitationResult.claims,
             allClaimsSourced,
@@ -714,6 +700,14 @@ class CortexOrchestrator {
         };
     }
 
+    _createTurnContext(rawQuestion, userContext = {}) {
+        return conversationStateService.createInitialState(
+            rawQuestion,
+            userContext,
+            this._buildCacheContext(userContext)
+        );
+    }
+
     /**
      * Derives a confidence score for vision responses from response quality signals.
      * Vision responses can never be citation-verified, so the ceiling is capped at
@@ -760,7 +754,14 @@ class CortexOrchestrator {
         if (!answerText) {
             const directAnswer = await this.llmClient.callText(
                 buildDirectPrompt(persona, mode, historyBlock, question, learnerContext),
-                { temperature: mode === 'exam' ? 0.15 : 0.35, max_tokens: 2500 }
+                {
+                    temperature: mode === 'exam' ? 0.15 : 0.3,
+                    max_tokens: chooseOutputTokenBudget({
+                        mode,
+                        question,
+                        pipeline: pipeline === 'structured_fallback' ? 'structured' : pipeline,
+                    }),
+                }
             );
             answerText    = directAnswer.text;
             activeProvider = directAnswer.provider;
@@ -773,6 +774,16 @@ class CortexOrchestrator {
         return applyTrustMetadata({
             answer:               answerText,
             short_note:           answerText,
+            followUpOptions:      buildFollowUpOptions({
+                pipeline,
+                type: 'ANSWER',
+                subject: subject || topicResult?.subject || null,
+                question,
+                mode,
+                threadMode,
+                followUpIntent,
+                confidence,
+            }),
             // Direct (non-RAG) responses are already complete prose — no separate
             // takeaways panel needed, and extracting bullets from markdown causes
             // visible duplication in the UI.
@@ -810,6 +821,13 @@ class CortexOrchestrator {
             answer,
             short_note:           answer,
             partial_answer:       null, // no partial medical content — answer IS the clarification prompt
+            followUpOptions:      buildFollowUpOptions({
+                pipeline,
+                type: 'CLARIFICATION',
+                subject: subject || topicResult?.subject || null,
+                threadMode,
+                followUpIntent,
+            }),
             high_yield_summary:   [],
             key_bullets:          [],
             citations:            [],

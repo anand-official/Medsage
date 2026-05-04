@@ -1,7 +1,7 @@
 # Cortex / MedSage.ai — Project Reference for Claude
 
 ## Project Overview
-Medical education AI assistant for MBBS students. Backend: Node.js/Express. Frontend: React. DB: MongoDB + Qdrant (vector). Auth: Firebase Admin. LLM: Gemini 2.5 Flash with fallback LLM.
+Medical education AI assistant for MBBS students. Backend: Node.js/Express. Frontend: React. DB: Supabase Postgres + Qdrant (vector). Auth: Google ID tokens verified server-side. LLM: Gemini 2.5 Flash with fallback LLM.
 
 ---
 
@@ -24,7 +24,7 @@ Medical education AI assistant for MBBS students. Backend: Node.js/Express. Fron
 | `server/services/promptBuilder.js` | Prompt assembly with safe `_render()` |
 | `server/services/cortexRequestUtils.js` | History sanitization, prompt helpers |
 | `server/services/cortexResponsePolicy.js` | PIPELINE_POLICIES, trust metadata |
-| `server/middleware/auth.js` | Firebase token verification, dev bypass |
+| `server/middleware/auth.js` | Google ID token verification, dev bypass |
 | `server/middleware/monitoring.js` | In-memory metrics, `/metrics`, `/health` |
 
 ### Routes
@@ -32,7 +32,7 @@ Medical education AI assistant for MBBS students. Backend: Node.js/Express. Fron
 |-------|------|-------|
 | `POST /api/medical/query` | verifyToken + uidQueryLimiter | Full RAG pipeline |
 | `POST /api/medical/query/stream` | verifyToken only | Fast draft SSE — **missing uidQueryLimiter** |
-| `GET/POST /api/chat/sessions` | verifyToken | MongoDB chat persistence |
+| `GET/POST /api/chat/sessions` | verifyToken | Supabase chat persistence |
 | `POST /auth/user` | optionalAuth | User sync — **should be verifyToken** |
 | `GET /metrics` | **NONE** | Prometheus metrics — **must be gated** |
 | `GET /health` | **NONE** | Health check — **must be gated** |
@@ -56,12 +56,12 @@ Medical education AI assistant for MBBS students. Backend: Node.js/Express. Fron
 - **`visionLimiter` keyGenerator is always IP-based** — `req.user` is `undefined` at middleware level (verifyToken runs inside the route). Fix: move vision limiting inside the route after `verifyToken`.
 - **`/auth/user` uses `optionalAuth`** — unauthenticated callers can trigger `syncUser`. Fix: use `verifyToken`.
 - **`callVision` and `streamText` have no retry logic** — unlike `callText`/`callStructured`, a single Gemini failure = hard error. Fix: wrap in `_callWithRetry`.
-- **`buildLearnerContext` called outside try-catch in streaming route** — MongoDB failure before SSE headers leaves client in unknown state. Fix: move inside try block, add `serverSelectionTimeoutMS`.
+- **`buildLearnerContext` called outside try-catch in streaming route** — data-layer failure before SSE headers leaves client in unknown state. Fix: move inside try block.
 - **Chat session full-fetch returns up to 2MB** — 200 messages × 10,000 chars, no pagination. Fix: add `?page`/`?limit` params.
-- **`buildLearnerContext` hits MongoDB on every request** — 2 queries per query/stream call, no caching. Fix: LRU cache per UID with 5-minute TTL.
+- **`buildLearnerContext` hits the data layer on every request** — 2 queries per query/stream call, no caching. Fix: LRU cache per UID with 5-minute TTL.
 
 ### MEDIUM
-- **Admin UID list is env-var only** — no hot revocation, no Firebase custom claims. Fix: use Firebase custom claims.
+- **Admin UID list is env-var only** — no hot revocation. Fix: move admin authorization into durable server-managed metadata.
 - **`normalizedQuestion` embedded in schema retry prompt without sanitization** — `cortexOrchestrator.js:262`.
 - **`looksLikeFollowUp` treats all wh-questions as follow-ups** — "What stocks should I buy?" bypasses off-topic guard on fresh sessions. Fix: only apply when `history.length > 0`.
 - **`req.ip` unreliable without `trust proxy` setting** — rate limiting degrades behind nginx/Cloudflare. Fix: `app.set('trust proxy', 1)`.
@@ -72,9 +72,7 @@ Medical education AI assistant for MBBS students. Backend: Node.js/Express. Fron
 
 ### LOW
 - **Duplicate key bug kills `low_confidence` admin filter** — `audit.js:89`: `{ confidence: { $lt: 0.5 }, confidence: { $ne: null } }` — JS silently drops `$lt`. Fix: `{ confidence: { $lt: 0.5, $ne: null } }`.
-- **`log_id` is a MongoDB ObjectId** — leaks server timestamp and machine ID. Fix: use `crypto.randomUUID()`.
 - **Audit `save()` is fire-and-forget** — if it fails, client gets a `log_id` that doesn't exist; feedback submission returns 404 silently.
-- **No MongoDB connection retry** — process continues on DB failure with no alerts or graceful shutdown.
 - **Metrics reset on every restart** — in-memory only, no external sink. No alerting on high error rates.
 - **`subjects_selected` not sliced in `buildLearnerContext`** — `weak_topics`/`strong_topics` capped at 5, but `subjects_selected` is not bounded at source (only at render in `buildLearnerContextBlock` at 6).
 - **`morgan('combined')` logs full URLs** — risk if query params ever carry sensitive data.
@@ -98,7 +96,7 @@ Medical education AI assistant for MBBS students. Backend: Node.js/Express. Fron
 Every response carries `trust` object with: `verified`, `verification_level`, `status_label`, `advisory`, `pipeline`, `provider`, `confidence_tier`, `confidence_score`, `citation_count`, `sourced_claims_count`, `flags`.
 
 ### Learner Context
-Built from MongoDB (`UserProfile` + `StudyPlan`) per request. Fields: `mbbs_year`, `country`, `weak_topics` (max 5), `strong_topics` (max 5), `subjects_selected`, `days_until_exam`. Passed into prompts via `buildLearnerContextBlock()`.
+Built from the Supabase-backed `user_profiles` and `study_plans` repositories per request. Fields: `mbbs_year`, `country`, `weak_topics` (max 5), `strong_topics` (max 5), `subjects_selected`, `days_until_exam`. Passed into prompts via `buildLearnerContextBlock()`.
 
 ### Streaming (SSE)
 - Server: `POST /api/medical/query/stream` → SSE events: `start`, `data` (tokens), `done`, `error`

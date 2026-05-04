@@ -1,4 +1,4 @@
-const LEARNER_CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 300) * 1000;
+const LEARNER_CACHE_TTL_MS = (Number(process.env.LEARNER_CACHE_TTL_SECONDS) || 300) * 1000;
 const MAX_LEARNER_CACHE_SIZE = 1000;
 const learnerContextCache = new Map();
 

@@ -20,7 +20,8 @@ export default function PerformanceChart({ heatmap = [] }) {
                 {last7.map((day, idx) => {
                     const isTdy = day.date ? isToday(parseISO(day.date)) : false;
                     const lbl = day.date ? format(parseISO(day.date), 'EEE') : '-';
-                    const rate = day.rate || 0;
+                    const rawRate = Number(day.rate);
+                    const rate = Math.min(100, Math.max(0, Number.isFinite(rawRate) ? rawRate : 0));
                     const color = rate > 80 ? '#10b981' : rate > 40 ? '#f59e0b' : '#ef4444';
 
                     return (

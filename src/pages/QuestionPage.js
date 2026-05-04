@@ -26,8 +26,7 @@ import {
   ThumbDownAltOutlined as ThumbDownIcon,
   Replay as RetryIcon,
 } from '@mui/icons-material';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchMedicalQuery, submitFeedback, fetchSessionMessages } from '../services/api';
+import { fetchMedicalQuery, submitFeedback, fetchSessionMessages, streamMedicalQuery } from '../services/api';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { buildHistoryForRequest } from '../utils/assistantContext';
@@ -50,6 +49,21 @@ import '../animations.css';
 // Number of messages to render per page when viewing a long session
 const RENDER_PAGE_SIZE = 50;
 const CHAT_SESSIONS_STORAGE_KEY = 'medsage_chat_sessions';
+
+function getNavigationState() {
+  if (typeof window === 'undefined') return {};
+  return window.history?.state?.usr || window.history?.state || {};
+}
+
+function clearNavigationState() {
+  if (typeof window === 'undefined' || !window.history) return;
+  const current = window.history.state || {};
+  window.history.replaceState(
+    { ...current, usr: {} },
+    '',
+    `${window.location.pathname}${window.location.search}${window.location.hash}`
+  );
+}
 
 // ─── Professor personas by topic ─────────────────────────────────────────────
 const PROFESSORS = {
@@ -275,6 +289,7 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
   const isExam = effectiveMode === 'exam';
   const isGreeting = response.pipeline === 'greeting';
   const isClarification = response.type === 'CLARIFICATION' && !isGreeting;
+  const isDraft = response.pipeline === 'fast_draft';
   const trust = response.trust || null;
   const trustVisuals = getTrustVisuals(trust);
   const confidenceLabel = trust?.confidence_label || response.confidence?.tier_label || null;
@@ -416,6 +431,13 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
                 </Typography>
               </Box>
             )}
+            {!streaming && isDraft && (
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', height: 20, px: 1.25, borderRadius: 1.5, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.24)' }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#f97316' }}>
+                  Draft
+                </Typography>
+              </Box>
+            )}
             {msg.timestamp && (
               <Typography sx={{ fontSize: '0.7rem', color: isDark ? '#334155' : '#94a3b8', ml: 'auto', fontVariantNumeric: 'tabular-nums' }}>
                 {msg.timestamp}
@@ -428,7 +450,7 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
             borderRadius: '0 14px 14px 14px',
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,23,42,0.07)'}`,
             borderLeft: `3px solid ${c}88`,
-            background: isDark ? 'rgba(11,18,34,0.85)' : '#ffffff',
+            background: isDark ? 'rgba(11,18,34,0.85)' : 'rgba(255,249,243,0.96)',
             overflow: 'hidden',
             boxShadow: isDark
               ? '0 4px 24px rgba(0,0,0,0.35)'
@@ -576,7 +598,7 @@ function AIMessage({ msg, mode, isDark, onCopy, onFollowUp, onFeedback }) {
             {response.followUpOptions?.length > 0 && (
               <Box sx={{ mx: { xs: 2.5, md: 3 }, mb: 2, px: 2, py: 1.5, borderRadius: 2, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.18)' }}>
                 <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#fbbf24', mb: 0.75 }}>
-                  Try clarifying with
+                  {isClarification ? 'Try clarifying with' : 'Keep going with'}
                 </Typography>
                 <Stack spacing={0.6}>
                   {response.followUpOptions.map((opt, i) => (
@@ -696,7 +718,7 @@ function UserMessage({ msg, isDark }) {
             borderRadius: '20px 20px 4px 20px',
             background: isDark
               ? 'linear-gradient(145deg, #4338ca 0%, #3730a3 100%)'
-              : 'linear-gradient(145deg, #6366f1 0%, #4f46e5 100%)',
+              : 'linear-gradient(145deg, #d59668 0%, #b86a3f 100%)',
             color: '#ffffff',
             boxShadow: isDark
               ? '0 8px 28px rgba(67,56,202,0.38)'
@@ -719,7 +741,7 @@ function UserMessage({ msg, isDark }) {
 
 // ─── Loading row (professor typing) ──────────────────────────────────────────
 function LoadingRow({ isDark }) {
-  const c = '#818cf8';
+  const c = isDark ? '#818cf8' : '#b86a3f';
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <Box sx={{ display: 'flex', gap: 2, mb: 4, alignItems: 'flex-start' }}>
@@ -798,7 +820,7 @@ function WelcomeState({ isDark, onPromptClick }) {
                   sx={{
                     p: 2, borderRadius: 2.5, cursor: 'pointer', textAlign: 'left',
                     border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,23,42,0.07)'}`,
-                    background: isDark ? 'rgba(11,18,34,0.7)' : '#ffffff',
+                    background: isDark ? 'rgba(11,18,34,0.7)' : 'rgba(255,249,243,0.96)',
                     transition: 'all 0.22s cubic-bezier(0.16,1,0.3,1)',
                     '&:hover': {
                       border: `1px solid ${p.color}44`,
@@ -860,7 +882,7 @@ function SessionDrawer({ open, onClose, sessions, currentId, onRestore, onDelete
       PaperProps={{
         sx: {
           width: { xs: '88vw', sm: 340 },
-          bgcolor: isDark ? '#060d1a' : '#fff',
+          bgcolor: isDark ? '#060d1a' : '#f8ede2',
           borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
         }
       }}
@@ -944,8 +966,6 @@ const QuestionPage = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const location = useLocation();
-  const navigate = useNavigate();
   const { userProfile } = useAuth();
 
   const [question, setQuestion] = useState('');
@@ -969,6 +989,7 @@ const QuestionPage = () => {
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const activeDraftsRef = useRef(new Map());
 
   // Load sessions: try server first, fall back to localStorage
   useEffect(() => {
@@ -1030,7 +1051,7 @@ const QuestionPage = () => {
       setSavedSessions(trimmed);
     } catch { /* ignore */ }
 
-    // Sync to MongoDB in background (fire-and-forget)
+    // Sync to the backend session store in background (fire-and-forget)
     api.post('/api/v1/chat/sessions', {
       session_id: sessionIdRef.current,
       title,
@@ -1090,6 +1111,21 @@ const QuestionPage = () => {
 
   const buildHistory = useCallback(() => buildHistoryForRequest(messages), [messages]);
 
+  const replaceDraftMessage = useCallback((draftId, updater) => {
+    setMessages(prev => prev.map((message) => {
+      if (message.id !== draftId) return message;
+      const nextMessage = typeof updater === 'function' ? updater(message) : updater;
+      return {
+        ...message,
+        ...nextMessage,
+        response: {
+          ...(message.response || {}),
+          ...(nextMessage.response || {}),
+        },
+      };
+    }));
+  }, []);
+
   const handleSubmit = useCallback(async (queryText, options = {}) => {
     const q = (typeof queryText === 'string' ? queryText : question).trim();
     const overrideImageDataUrl = options.imageDataUrl || null;
@@ -1103,6 +1139,10 @@ const QuestionPage = () => {
     const threadSubject = looksLikeThreadFollowUp(q) ? getLatestThreadSubject(messages) : null;
     const effectiveSubject = imageDataUrl ? null : (detectedSubject || threadSubject);
     const syllabusLabel = userProfile?.country ? `${userProfile.country} MBBS` : 'Indian MBBS';
+    const canUseHybridDraft = !imageDataUrl;
+    const draftId = canUseHybridDraft ? `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : null;
+    const draftState = canUseHybridDraft ? { finalized: false } : null;
+    if (draftId) activeDraftsRef.current.set(draftId, draftState);
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -1114,9 +1154,85 @@ const QuestionPage = () => {
       imageSrc: imageDataUrl,
       ...messageClock,
     }]);
+    if (canUseHybridDraft) {
+      setMessages(prev => [...prev, {
+        id: draftId,
+        role: 'ai',
+        streaming: true,
+        draft: true,
+        response: {
+          type: 'ANSWER',
+          text: '',
+          keyPoints: [],
+          clinicalRelevance: '',
+          bookReferences: [],
+          followUpOptions: [],
+          confidence: null,
+          trust: null,
+          flags: [],
+          verified: false,
+          verificationLevel: null,
+          pipeline: 'fast_draft',
+          feedback_id: null,
+          public_log_id: null,
+          answerMode: 'draft',
+          threadMode: looksLikeThreadFollowUp(q) ? 'follow_up' : 'new_topic',
+          claims: null,
+          allClaimsSourced: null,
+          partial_answer: null,
+        },
+        modeUsed: mode,
+        subject: effectiveSubject || null,
+        ...createChatTimestamp(),
+      }]);
+    }
     setQuestion('');
     setAttachedImage(null);
     setLoading(true);
+
+    if (canUseHybridDraft) {
+      streamMedicalQuery(
+        q || 'Describe this image',
+        {
+          mode,
+          history,
+          subject: effectiveSubject,
+          onStart: (payload) => {
+            if (draftState?.finalized) return;
+            replaceDraftMessage(draftId, (message) => ({
+              ...message,
+              response: {
+                ...(message.response || {}),
+                trust: payload?.trust || message.response?.trust || null,
+                pipeline: payload?.pipeline || message.response?.pipeline || 'fast_draft',
+              },
+            }));
+          },
+        },
+        (token) => {
+          if (draftState?.finalized) return;
+          replaceDraftMessage(draftId, (message) => ({
+            ...message,
+            response: {
+              ...(message.response || {}),
+              text: `${message.response?.text || ''}${token}`,
+            },
+          }));
+        },
+        () => {
+          if (draftState?.finalized) return;
+          replaceDraftMessage(draftId, { streaming: false });
+        },
+        () => {
+          if (draftState?.finalized) return;
+          replaceDraftMessage(draftId, { streaming: false });
+        },
+        controller.signal
+      ).catch(() => {
+        if (draftState?.finalized) return;
+        replaceDraftMessage(draftId, { streaming: false });
+      });
+    }
 
     // ── Full pipeline ──────────────────────────────────────────────────────
     try {
@@ -1145,42 +1261,73 @@ const QuestionPage = () => {
         allClaimsSourced: raw?.allClaimsSourced ?? null,
         partial_answer: raw?.partial_answer || null,
       };
-      setMessages(prev => [...prev, {
-        role: 'ai', response: responseData,
-        modeUsed: mode,
-        topicId: raw?.topicId || raw?.meta?.topic_id || null,
-        subject: raw?.subject || raw?.meta?.subject || effectiveSubject || null,
-        ...createChatTimestamp(),
-      }]);
+      if (canUseHybridDraft) {
+        draftState.finalized = true;
+        activeDraftsRef.current.delete(draftId);
+        const finalClock = createChatTimestamp();
+        setMessages(prev => prev.map((message) => (
+          message.id === draftId
+            ? {
+                ...message,
+                streaming: false,
+                draft: false,
+                response: responseData,
+                modeUsed: mode,
+                topicId: raw?.topicId || raw?.meta?.topic_id || null,
+                subject: raw?.subject || raw?.meta?.subject || effectiveSubject || null,
+                ...finalClock,
+              }
+            : message
+        )));
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'ai', response: responseData,
+          modeUsed: mode,
+          topicId: raw?.topicId || raw?.meta?.topic_id || null,
+          subject: raw?.subject || raw?.meta?.subject || effectiveSubject || null,
+          ...createChatTimestamp(),
+        }]);
+      }
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError') return;
+      if (canUseHybridDraft) {
+        draftState.finalized = true;
+        activeDraftsRef.current.delete(draftId);
+        replaceDraftMessage(draftId, { streaming: false });
+      }
       setMessages(prev => [...prev, {
         role: 'error',
-        text: err.message || 'Failed to get a response. Is the backend running?',
+        text: canUseHybridDraft
+          ? 'Grounded verification did not finish. The draft answer is still shown above, and you can retry.'
+          : (err.message || 'Failed to get a response. Is the backend running?'),
         retryable: err.retryable !== false, // default true unless explicitly false
         queryText: q,
         imageDataUrl,
         ...createChatTimestamp(),
       }]);
     } finally {
+      if (canUseHybridDraft) {
+        activeDraftsRef.current.delete(draftId);
+      }
       if (abortControllerRef.current === controller) setLoading(false);
       setIsListening(false);
       inputRef.current?.focus();
     }
-  }, [question, mode, attachedImage, buildHistory, messages, userProfile]);
+  }, [question, mode, attachedImage, buildHistory, messages, userProfile, replaceDraftMessage]);
 
   // Guard against re-firing: handleSubmit's identity changes whenever messages
   // grows (buildHistory depends on messages), which would re-trigger this effect
   // and fire the same initial query multiple times.
   const initialQueryFiredRef = useRef(false);
   useEffect(() => {
-    if (location.state?.initialQuery && !initialQueryFiredRef.current) {
+    const navigationState = getNavigationState();
+    if (navigationState?.initialQuery && !initialQueryFiredRef.current) {
       initialQueryFiredRef.current = true;
-      const query = location.state.initialQuery;
-      navigate(location.pathname, { replace: true, state: {} });
+      const query = navigationState.initialQuery;
+      clearNavigationState();
       handleSubmit(query);
     }
-  }, [location.state, navigate, location.pathname, handleSubmit]);
+  }, [handleSubmit]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
@@ -1361,8 +1508,8 @@ const QuestionPage = () => {
   const visibleMessages = renderFromIdx > 0 ? messages.slice(renderFromIdx) : messages;
   const hasOlderMessages = renderFromIdx > 0;
 
-  const inputBg = isDark ? 'rgba(11,18,34,0.92)' : 'rgba(255,255,255,0.96)';
-  const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.1)';
+  const inputBg = isDark ? 'rgba(11,18,34,0.92)' : 'rgba(255,249,243,0.98)';
+  const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(181,126,83,0.16)';
 
   return (
     <Box sx={{ maxWidth: 820, mx: 'auto', display: 'flex', flexDirection: 'column', minHeight: '78vh', position: 'relative' }}>

@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const sm2Service = require('../services/sm2Service');
 const geminiService = require('../services/geminiService');
 const { verifyToken } = require('../middleware/auth');
+const flashcardRepo = require('../repositories/flashcardRepo');
 const redisRateLimiter = require('../middleware/redisRateLimiter');
 const uidQueryLimiter = redisRateLimiter(
     60, 60 * 1000, 'query', (req) => req.user?.uid || req.ip
@@ -12,7 +13,7 @@ const uidQueryLimiter = redisRateLimiter(
 /**
  * SM-2 Flashcard API Routes
  *
- * All routes require Firebase authentication via verifyToken middleware
+ * All routes require Google ID token authentication via verifyToken middleware
  */
 
 // Helper to get userId from verified token only
@@ -164,7 +165,7 @@ router.patch('/flashcard/:id/unsuspend', verifyToken, async (req, res) => {
 router.delete('/flashcard/:id', verifyToken, async (req, res) => {
     try {
         const userId = getUserId(req);
-        const result = await require('../models/Flashcard').findOneAndDelete({ _id: req.params.id, user_id: userId });
+        const result = await flashcardRepo.deleteByIdForUser(req.params.id, userId);
         if (!result) return res.status(404).json({ error: 'Card not found or access denied' });
         res.json({ success: true, deleted_id: req.params.id });
     } catch (err) {

@@ -1,217 +1,18 @@
-const { differenceInDays, format, addDays, parseISO, startOfDay } = require('date-fns');
+﻿const { differenceInDays, format, addDays, parseISO, startOfDay } = require('date-fns');
 const path = require('path');
 const fs = require('fs');
-const StudyPlan = require('../models/StudyPlan');
-const geminiService = require('./geminiService');
+const studyPlanRepo = require('../repositories/studyPlanRepo');
+const chatSessionRepo = require('../repositories/chatSessionRepo');
+const sm2Service = require('./sm2Service');
+const plannerLlmClient = require('./plannerLlmClient');
 const syllabusScraper = require('./syllabusScraper');
 const { invalidateLearnerContext } = require('./learnerContextCache');
+const { rankResources, sanitizeResource, RESOURCE_CATALOG_VERSION } = require('./resourceCatalog');
+const { normalizeCountry } = require('../data/plannerCountryConfig');
+const config = require('../config');
 
 // ─── SM-2 inspired review intervals (days after first learning) ───────────────
 const SRS_INTERVALS = [1, 3, 7, 14, 21, 30];
-
-// ─── Gold-standard resource per subject (the one platform every student should use) ──
-// These are static — the definitive go-to for each subject.
-const SUBJECT_GOLD_STANDARD = {
-    'Anatomy':           { platform: 'Dr. Najeeb Lectures',  type: 'youtube', url: 'https://www.youtube.com/@DrNajeebLectures',    note: 'Most detailed anatomy lectures on the internet' },
-    'Physiology':        { platform: 'Dr. Najeeb Lectures',  type: 'youtube', url: 'https://www.youtube.com/@DrNajeebLectures',    note: 'Unmatched depth for physiology mechanisms' },
-    'Biochemistry':      { platform: 'Ninja Nerd Science',   type: 'youtube', url: 'https://www.youtube.com/@NinjaNerdScience',    note: 'Best visual biochemistry on YouTube' },
-    'Pathology':         { platform: 'Pathoma',              type: 'website', url: 'https://www.pathoma.com',                      note: 'The #1 pathology resource worldwide — Husain Sattar' },
-    'Pharmacology':      { platform: 'Sketchy',              type: 'website', url: 'https://www.sketchy.com',                      note: 'Visual mnemonics — highest retention for pharma' },
-    'Microbiology':      { platform: 'Sketchy',              type: 'website', url: 'https://www.sketchy.com',                      note: 'Visual mnemonics — highest retention for micro' },
-    'Forensic Medicine': { platform: 'Dr. Najeeb Lectures',  type: 'youtube', url: 'https://www.youtube.com/@DrNajeebLectures',    note: 'Comprehensive forensic medicine lectures' },
-    'PSM':               { platform: 'Ninja Nerd Science',   type: 'youtube', url: 'https://www.youtube.com/@NinjaNerdScience',    note: 'Best epidemiology & biostatistics on YouTube' },
-    'Community Medicine':{ platform: 'Ninja Nerd Science',   type: 'youtube', url: 'https://www.youtube.com/@NinjaNerdScience',    note: 'Best epidemiology & public health on YouTube' },
-    'ENT':               { platform: 'Osmosis',              type: 'youtube', url: 'https://www.youtube.com/@osmosis',             note: 'Highest-rated ENT lectures with clinical context' },
-    'Ophthalmology':     { platform: 'Osmosis',              type: 'youtube', url: 'https://www.youtube.com/@osmosis',             note: 'Highest-rated ophthalmology lectures' },
-    'Medicine':          { platform: 'OnlineMedEd',          type: 'website', url: 'https://onlinemeded.org',                     note: 'The gold standard for clinical medicine — free videos' },
-    'Surgery':           { platform: 'TeachMe Surgery',      type: 'website', url: 'https://teachmesurgery.com',                  note: 'Best free surgical anatomy & clinical notes' },
-    'OBGYN':             { platform: 'Ninja Nerd Science',   type: 'youtube', url: 'https://www.youtube.com/@NinjaNerdScience',    note: 'Best OB/GYN deep-dive lectures on YouTube' },
-    'Pediatrics':        { platform: 'Osmosis',              type: 'youtube', url: 'https://www.youtube.com/@osmosis',             note: 'Best pediatrics lectures with visual learning' },
-    'Internship':        { platform: 'Geeky Medics',         type: 'website', url: 'https://geekymedics.com',                     note: 'Best clinical skills & OSCE guides — free' },
-};
-
-// ─── Clinical reference lookup per subject (the "where to look it up fast" resource) ─
-const SUBJECT_REFERENCE = {
-    'Anatomy':           { platform: 'TeachMe Anatomy',           type: 'website', url: 'https://teachmeanatomy.info' },
-    'Physiology':        { platform: 'Khan Academy Medicine',     type: 'website', url: 'https://www.khanacademy.org/science/health-and-medicine' },
-    'Biochemistry':      { platform: 'NCBI Biochemistry',         type: 'website', url: 'https://www.ncbi.nlm.nih.gov/books/NBK594393/' },
-    'Pathology':         { platform: 'Libre Pathology',           type: 'website', url: 'https://librepathology.org' },
-    'Pharmacology':      { platform: 'DrugBank',                  type: 'website', url: 'https://www.drugbank.ca/' },
-    'Microbiology':      { platform: 'CDC A–Z Topics',            type: 'website', url: 'https://www.cdc.gov/az/' },
-    'Forensic Medicine': { platform: 'MedlinePlus',               type: 'website', url: 'https://medlineplus.gov/' },
-    'PSM':               { platform: 'WHO Health Topics',         type: 'website', url: 'https://www.who.int/health-topics/' },
-    'Community Medicine':{ platform: 'WHO Health Topics',         type: 'website', url: 'https://www.who.int/health-topics/' },
-    'ENT':               { platform: 'TeachMe Surgery – ENT',     type: 'website', url: 'https://teachmesurgery.com/ent/' },
-    'Ophthalmology':     { platform: 'EyeWiki (AAO)',             type: 'website', url: 'https://eyewiki.aao.org' },
-    'Medicine':          { platform: 'Merck Manual Professional', type: 'website', url: 'https://www.merckmanuals.com/professional' },
-    'Surgery':           { platform: 'TeachMe Surgery',           type: 'website', url: 'https://teachmesurgery.com/' },
-    'OBGYN':             { platform: 'Merck Manual Professional', type: 'website', url: 'https://www.merckmanuals.com/professional' },
-    'Pediatrics':        { platform: 'Merck Manual Professional', type: 'website', url: 'https://www.merckmanuals.com/professional' },
-    'Internship':        { platform: 'LITFL',                     type: 'website', url: 'https://litfl.com' },
-};
-
-// ─── Topic-specific video searches (two per subject) — curated for MBBS, not generic duplicates ──
-const SUBJECT_VIDEO_SUPPLEMENTS = {
-    Anatomy: [
-        { platform: 'Kenhub', note: '3D anatomy & illustrations', template: 'kenhub {topic} anatomy medical student' },
-        { platform: 'Osmosis', note: 'Clinical anatomy context', template: 'osmosis {topic} anatomy MBBS' },
-    ],
-    Physiology: [
-        { platform: 'Ninja Nerd Science', note: 'Mechanisms & pathways', template: 'ninja nerd {topic} physiology' },
-        { platform: 'Osmosis', note: 'Clinical integration', template: 'osmosis {topic} physiology' },
-    ],
-    Biochemistry: [
-        { platform: 'Osmosis', note: 'Clinical biochemistry', template: 'osmosis {topic} biochemistry' },
-        { platform: 'Armando Hasudungan', note: 'Diagram-heavy summaries', template: 'armando hasudungan {topic} biochemistry' },
-    ],
-    Pathology: [
-        { platform: 'Strong Medicine', note: 'Boards-style pathology', template: 'strong medicine {topic} pathology' },
-        { platform: 'Osmosis', note: 'Clinical pathology', template: 'osmosis {topic} pathology' },
-    ],
-    Pharmacology: [
-        { platform: 'Osmosis', note: 'Clinical pharmacology', template: 'osmosis {topic} pharmacology' },
-        { platform: 'Ninja Nerd Science', note: 'Mechanisms & receptors', template: 'ninja nerd {topic} pharmacology' },
-    ],
-    Microbiology: [
-        { platform: 'Osmosis', note: 'Clinical microbiology', template: 'osmosis {topic} microbiology' },
-        { platform: 'Ninja Nerd Science', note: 'Mechanisms & bugs', template: 'ninja nerd {topic} microbiology' },
-    ],
-    'Forensic Medicine': [
-        { platform: 'Osmosis', note: 'Clinical forensics', template: 'osmosis {topic} forensic medicine' },
-        { platform: 'Ninja Nerd Science', note: 'Mechanisms & review', template: 'ninja nerd {topic} forensic medicine' },
-    ],
-    PSM: [
-        { platform: 'Osmosis', note: 'Epidemiology & public health', template: 'osmosis {topic} epidemiology biostatistics' },
-        { platform: 'Khan Academy', note: 'Statistics intuition', template: 'khan academy statistics healthcare {topic}' },
-    ],
-    'Community Medicine': [
-        { platform: 'Osmosis', note: 'Epidemiology & public health', template: 'osmosis {topic} epidemiology community medicine' },
-        { platform: 'Khan Academy', note: 'Statistics intuition', template: 'khan academy statistics healthcare {topic}' },
-    ],
-    ENT: [
-        { platform: 'Dr. Najeeb Lectures', note: 'ENT physiology & anatomy', template: 'dr najeeb {topic} ENT otolaryngology' },
-        { platform: 'TeachMe Surgery', note: 'ENT clinical', template: 'teach me surgery ENT {topic}' },
-    ],
-    Ophthalmology: [
-        { platform: 'Dr. Najeeb Lectures', note: 'Eye anatomy & physiology', template: 'dr najeeb {topic} ophthalmology eye' },
-        { platform: 'Stanford Medicine', note: 'Academic lectures', template: 'ophthalmology {topic} medical student lecture' },
-    ],
-    Medicine: [
-        { platform: 'Osmosis', note: 'Clinical vignettes', template: 'osmosis {topic} internal medicine' },
-        { platform: 'Strong Medicine', note: 'Pathophysiology focus', template: 'strong medicine {topic} medicine' },
-    ],
-    Surgery: [
-        { platform: 'Osmosis', note: 'Clinical surgery', template: 'osmosis {topic} surgery' },
-        { platform: 'Geeky Medics', note: 'OSCE & clinical skills', template: 'geeky medics {topic} surgery' },
-    ],
-    OBGYN: [
-        { platform: 'Osmosis', note: 'Clinical OBGYN', template: 'osmosis {topic} obstetrics gynecology' },
-        { platform: 'OnlineMedEd', note: 'Clinical rotations', template: 'onlinemeded {topic} obgyn' },
-    ],
-    Pediatrics: [
-        { platform: 'OnlineMedEd', note: 'Peds & development', template: 'onlinemeded {topic} pediatrics' },
-        { platform: 'Ninja Nerd Science', note: 'Mechanisms & peds', template: 'ninja nerd {topic} pediatrics' },
-    ],
-    Internship: [
-        { platform: 'Osmosis', note: 'Clinical reasoning', template: 'osmosis {topic} clinical medicine' },
-        { platform: 'OnlineMedEd', note: 'High-yield review', template: 'onlinemeded {topic} internal medicine' },
-    ],
-};
-
-const DEFAULT_VIDEO_SUPPLEMENTS = [
-    { platform: 'Osmosis', note: 'Clinical overview', template: 'osmosis {topic} {subject} MBBS' },
-    { platform: 'Ninja Nerd Science', note: 'Mechanism-focused review', template: 'ninja nerd {topic} {subject}' },
-];
-
-function _normBrand(s) {
-    return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
-/** Avoid repeating the same channel as gold standard (e.g. Ninja Nerd gold + Ninja Nerd search). */
-function platformOverlapsGoldSupplement(gold, platform) {
-    if (!gold || !platform) return false;
-    const g = _normBrand(gold.platform);
-    const p = _normBrand(platform);
-    const gTokens = new Set(g.match(/[a-z]{4,}/g) || []);
-    const pTokens = new Set(p.match(/[a-z]{4,}/g) || []);
-    for (const t of gTokens) {
-        if (pTokens.has(t)) return true;
-    }
-    if (p.length >= 6 && g.includes(p)) return true;
-    if (g.length >= 6 && p.includes(g)) return true;
-    return false;
-}
-
-function pickVideoSupplements(subject, gold) {
-    const primary = SUBJECT_VIDEO_SUPPLEMENTS[subject] || [];
-    const fallback = DEFAULT_VIDEO_SUPPLEMENTS;
-    const seen = new Set();
-    const out = [];
-    const tryAdd = (arr) => {
-        for (const v of arr) {
-            if (out.length >= 2) break;
-            if (platformOverlapsGoldSupplement(gold, v.platform)) continue;
-            if (seen.has(v.platform)) continue;
-            seen.add(v.platform);
-            out.push(v);
-        }
-    };
-    tryAdd(primary);
-    tryAdd(fallback);
-    return out.slice(0, 2);
-}
-
-function youtubeSearchFromTemplate(template, topic, subject) {
-    const q = template
-        .replace(/\{topic\}/gi, topic)
-        .replace(/\{subject\}/gi, subject)
-        .replace(/\s+/g, ' ')
-        .trim();
-    return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-}
-
-function buildReferenceSearchUrl(ref, topic, subject) {
-    const t = encodeURIComponent(topic);
-    const ts = encodeURIComponent(`${topic} ${subject}`);
-    let url = ref.url;
-
-    if (ref.platform === 'TeachMe Anatomy') url = `https://teachmeanatomy.info/?s=${t}`;
-    else if (ref.platform === 'Geeky Medics') url = `https://geekymedics.com/?s=${t}`;
-    else if (ref.platform === 'TeachMe Surgery – ENT') url = `https://teachmesurgery.com/ent/?s=${t}`;
-    else if (ref.platform === 'TeachMe Surgery') url = `https://teachmesurgery.com/?s=${t}`;
-    else if (ref.platform === 'EyeWiki (AAO)') url = `https://eyewiki.aao.org/w/index.php?search=${t}`;
-    else if (ref.platform === 'Strong Medicine') url = `https://www.youtube.com/results?search_query=strong+medicine+${t}`;
-    else if (ref.platform === 'Ninja Nerd Science') url = `https://www.youtube.com/results?search_query=ninja+nerd+${ts}`;
-    else if (ref.platform === 'Osmosis') url = `https://www.youtube.com/results?search_query=osmosis+${ts}`;
-    else if (ref.platform === 'Khan Academy Medicine') url = `https://www.khanacademy.org/search?search_again=1&page_search_query=${t}`;
-    else if (ref.platform === 'NCBI Biochemistry') url = `https://www.ncbi.nlm.nih.gov/books/b/?term=${t}`;
-    else if (ref.platform === 'Merck Manual Professional') url = `https://www.merckmanuals.com/professional/searchresults?searchterm=${encodeURIComponent(topic)}`;
-    else if (ref.platform === 'PubMed') url = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(`${topic} ${subject}`)}`;
-    else if (ref.platform === 'LITFL') url = `https://litfl.com/?s=${t}`;
-    else if (ref.platform === 'Libre Pathology') url = `https://librepathology.org/wiki/Special:Search?search=${t}`;
-    else if (ref.platform === 'DrugBank') url = `https://www.drugbank.ca/unearth/q?query=${t}&searcher=drugs`;
-    else if (ref.platform === 'CDC A–Z Topics') url = `https://search.cdc.gov/search/?query=${t}`;
-    else if (ref.platform === 'MedlinePlus') url = `https://medlineplus.gov/search.html?query=${t}`;
-    else if (ref.platform === 'WHO Health Topics') url = `https://www.who.int/health-topics/#q=${t}`;
-
-    return url;
-}
-
-/** Build the most useful URL for a gold-standard resource given the current topic.
- *  YouTube channels get a topic-specific search; website platforms get their own search page if available. */
-function buildGoldStandardUrl(gold, topic, subject) {
-    const t = encodeURIComponent(topic);
-    if (gold.type === 'youtube') {
-        const q = `${gold.platform} ${topic} ${subject}`;
-        return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-    }
-    // Website platforms — use their own search where possible
-    if (gold.platform === 'OnlineMedEd')   return `https://onlinemeded.org/spa/search?q=${t}`;
-    if (gold.platform === 'TeachMe Surgery') return `https://teachmesurgery.com/?s=${t}`;
-    if (gold.platform === 'Geeky Medics')  return `https://geekymedics.com/?s=${t}`;
-    // Pathoma and Sketchy require login — homepage is the best we can do
-    return gold.url;
-}
 
 // ─── Subject → library category mapping ──────────────────────────────────────
 const SUBJECT_CATEGORY_MAP = {
@@ -233,8 +34,225 @@ const SUBJECT_CATEGORY_MAP = {
     'Internship':        ['Medicine', 'Surgery', 'Anatomy'],
 };
 
+const SUBJECT_KEYWORDS = {
+    'Anatomy':           ['anatomy', 'thorax', 'abdomen', 'pelvis', 'head', 'neck', 'limb', 'nerve', 'artery', 'vein', 'muscle', 'bone', 'histology', 'embryology', 'dissection'],
+    'Physiology':        ['physiology', 'cardiac output', 'action potential', 'renal', 'respiratory', 'endocrine', 'neurophysiology', 'reflexes', 'ECG', 'spirometry'],
+    'Biochemistry':      ['biochemistry', 'krebs', 'glycolysis', 'enzyme', 'metabolism', 'protein', 'lipid', 'nucleic acid', 'biochem', 'oxidation', 'reduction'],
+    'Pathology':         ['pathology', 'neoplasia', 'inflammation', 'necrosis', 'infarction', 'pathogenesis', 'morphology', 'histopathology', 'autopsy'],
+    'Pharmacology':      ['pharmacology', 'drug', 'pharmacokinetics', 'receptor', 'agonist', 'antagonist', 'antibiotic', 'antihypertensive', 'pharmacodynamics', 'pharma'],
+    'Microbiology':      ['microbiology', 'bacteria', 'virus', 'fungus', 'parasite', 'gram stain', 'culture', 'infection', 'microbio', 'pathogen'],
+    'Forensic Medicine': ['forensic', 'medicolegal', 'autopsy', 'poisoning', 'MLCO', 'evidence'],
+    'Community Medicine':['community medicine', 'PSM', 'epidemiology', 'public health', 'prevention', 'biostatistics', 'nutrition', 'vaccine', 'immunization'],
+    'ENT':               ['ENT', 'ear', 'nose', 'throat', 'otology', 'rhinology', 'laryngology', 'hearing'],
+    'Ophthalmology':     ['ophthalmology', 'eye', 'retina', 'cornea', 'glaucoma', 'cataract', 'vision'],
+    'Medicine':          ['medicine', 'cardiology', 'pulmonology', 'gastroenterology', 'nephrology', 'neurology', 'rheumatology', 'hematology', 'endocrinology', 'hypertension', 'diabetes', 'fever'],
+    'Surgery':           ['surgery', 'surgical', 'appendicitis', 'hernia', 'trauma', 'fracture', 'orthopedics', 'urology', 'thyroid', 'breast', 'colorectal'],
+    'OBGYN':             ['OBGYN', 'obstetrics', 'gynecology', 'pregnancy', 'labour', 'delivery', 'ovary', 'uterus', 'menstrual', 'contraception', 'antenatal'],
+    'Pediatrics':        ['pediatrics', 'paediatrics', 'child', 'neonatal', 'infant', 'growth', 'development', 'vaccination', 'congenital'],
+};
+
+function detectSubjectFromText(text = '') {
+    const lower = text.toLowerCase();
+    for (const [subject, keywords] of Object.entries(SUBJECT_KEYWORDS)) {
+        if (keywords.some(kw => lower.includes(kw.toLowerCase()))) return subject;
+    }
+    return null;
+}
+
 function makeTopicKey(subject, topic) {
     return `${subject}::${topic}`;
+}
+
+function makeTaskIdPart(value) {
+    return String(value || 'task')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 48) || 'task';
+}
+
+function assertPlanDate(dateStr) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) {
+        throw new Error('Date must use YYYY-MM-DD format');
+    }
+    return dateStr;
+}
+
+function buildDayResponse(plan, dateStr) {
+    const dailyPlan = Array.isArray(plan.daily_plan) ? plan.daily_plan : [];
+    const dayPlan = dailyPlan.find(p => p.date === dateStr);
+    return {
+        plan_id: plan._id,
+        date: dateStr,
+        tasks: dayPlan ? dayPlan.tasks : [],
+        streak: plan.streak,
+        analytics: plan.analytics,
+        advisory_text: plan.advisory_text,
+        plan_health: plan.plan_health || null
+    };
+}
+
+function getPlanDays(plan) {
+    if (Array.isArray(plan.schedule_days) && plan.schedule_days.length > 0) return plan.schedule_days;
+    return Array.isArray(plan.daily_plan) ? plan.daily_plan : [];
+}
+
+function defaultConstraints(config = {}) {
+    const intensity = ['light', 'balanced', 'intense'].includes(config.targetIntensity)
+        ? config.targetIntensity
+        : 'balanced';
+    return {
+        daily_available_minutes: Number(config.dailyAvailableMinutes) || 120,
+        target_intensity: intensity,
+        preferred_study_windows: Array.isArray(config.preferredStudyWindows) && config.preferredStudyWindows.length
+            ? config.preferredStudyWindows.slice(0, 3)
+            : ['evening'],
+        weekly_off_days: Array.isArray(config.weeklyOffDays) ? config.weeklyOffDays.slice(0, 2) : [],
+        max_tasks_per_day: intensity === 'intense' ? 7 : intensity === 'light' ? 3 : 5,
+        resource_policy: 'official_open_first'
+    };
+}
+
+function calculateCompletionRate(tasks = []) {
+    if (!tasks.length) return 0;
+    return (tasks.filter(task => task.completed).length / tasks.length) * 100;
+}
+
+function evaluatePlanHealth(plan) {
+    const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
+    const days = getPlanDays(plan);
+    const tasks = days.flatMap(day => day.tasks || []);
+    const total = tasks.length;
+    const completed = tasks.filter(task => task.completed).length;
+    const overdueTasks = days
+        .filter(day => day.date < todayStr)
+        .flatMap(day => (day.tasks || []).filter(task => !task.completed));
+    const nextSeven = days
+        .filter(day => day.date >= todayStr)
+        .slice(0, 7);
+    const weeklyMinutes = nextSeven.reduce((sum, day) => (
+        sum + (day.tasks || []).reduce((taskSum, task) => taskSum + (Number(task.estimated_minutes) || 30), 0)
+    ), 0);
+    const availableWeekly = Math.max(1, (plan.constraints?.daily_available_minutes || 120) * Math.max(1, nextSeven.length));
+    const weakTopics = new Set(plan.weak_topics || []);
+    const weakExposureTotal = tasks.filter(task => weakTopics.has(task.topic)).length;
+    const reviewTasks = tasks.filter(task => ['review', 'active_recall', 'flashcard_review'].includes(task.type)).length;
+    const consistency = total ? Math.round((completed / total) * 100) : 0;
+    const catchUpDebt = overdueTasks.reduce((sum, task) => sum + (Number(task.estimated_minutes) || 30), 0);
+    const workloadPressure = Math.min(100, Math.round((weeklyMinutes / availableWeekly) * 100));
+    const reviewCoverage = total ? Math.round((reviewTasks / total) * 100) : 0;
+    const weakTopicExposure = weakTopics.size ? Math.min(100, Math.round((weakExposureTotal / Math.max(1, weakTopics.size * 2)) * 100)) : 100;
+    const examReadiness = Math.max(0, Math.min(100, Math.round((consistency * 0.45) + (reviewCoverage * 0.25) + (weakTopicExposure * 0.2) + ((100 - workloadPressure) * 0.1))));
+
+    return {
+        workload_pressure: workloadPressure,
+        catch_up_debt: catchUpDebt,
+        weak_topic_exposure: weakTopicExposure,
+        review_coverage: reviewCoverage,
+        consistency,
+        exam_readiness: examReadiness,
+        status: catchUpDebt > 180 ? 'catch_up' : workloadPressure > 115 ? 'overloaded' : examReadiness >= 70 ? 'strong' : 'steady',
+        last_evaluated_at: new Date()
+    };
+}
+
+function normalizeTask(task, fallback = {}) {
+    const typeMap = { learning: 'learn', review: 'review', mock_exam: 'mock' };
+    const type = typeMap[task.type] || task.type || fallback.type || 'learn';
+    return {
+        id: task.id || `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        text: task.text,
+        subject: task.subject || fallback.subject || null,
+        topic: task.topic || fallback.topic || null,
+        type,
+        purpose: task.purpose || type,
+        estimated_minutes: Number(task.estimated_minutes) || fallback.estimated_minutes || (type === 'mock' ? 90 : type === 'active_recall' ? 20 : 35),
+        priority: Number(task.priority) || fallback.priority || 2,
+        source: task.source || fallback.source || 'planner',
+        completed: Boolean(task.completed),
+        resources: (task.resources || []).map(sanitizeResource).filter(Boolean)
+    };
+}
+
+function makePlanV2Payload(plan, config = {}) {
+    const constraints = { ...defaultConstraints(config), ...(plan.constraints?.toObject?.() || plan.constraints || {}) };
+    const dailyPlan = (getPlanDays(plan) || []).map(day => ({
+        date: day.date,
+        tasks: (day.tasks || []).map(task => normalizeTask(task)),
+        completion_rate: calculateCompletionRate(day.tasks || [])
+    }));
+    const learnerProfile = {
+        country: config.country || plan.learner_profile?.country || 'India',
+        mbbs_year: config.year || plan.mbbs_year || plan.learner_profile?.mbbs_year || null,
+        learning_style: config.learningStyle || plan.learner_profile?.learning_style || 'balanced',
+        preferred_resource_types: plan.learner_profile?.preferred_resource_types || ['video', 'website'],
+        weak_topics: plan.weak_topics || [],
+        strong_topics: plan.strong_topics || [],
+        signal_summary: plan.learner_profile?.signal_summary || {}
+    };
+
+    return {
+        planner_version: 2,
+        constraints,
+        learner_profile: learnerProfile,
+        daily_plan: dailyPlan,
+        schedule_days: dailyPlan,
+        plan_health: evaluatePlanHealth({ ...plan.toObject?.() || plan, daily_plan: dailyPlan, schedule_days: dailyPlan, constraints }),
+        resource_recommendations: plan.resource_recommendations || [],
+        adaptation_history: plan.adaptation_history || []
+    };
+}
+
+function createPlannerTask({ dayIndex, slot, type, subject, topic, text, resources = [], completed = false, source = 'planner', priority = 2 }) {
+    const minutesByType = {
+        learn: 45,
+        active_recall: 20,
+        review: 25,
+        mock: 90,
+        catch_up: 35,
+        resource_drill: 25,
+        flashcard_review: 20
+    };
+
+    return {
+        id: `task_${dayIndex}_${type}_${slot}_${makeTaskIdPart(subject)}_${makeTaskIdPart(topic)}`,
+        text,
+        subject,
+        topic,
+        type,
+        purpose: type,
+        estimated_minutes: minutesByType[type] || 30,
+        priority,
+        source,
+        completed,
+        resources
+    };
+}
+
+function buildFallbackTopics(selectedTopicKeys = [], plannerSubjects = []) {
+    const parsedTopics = selectedTopicKeys
+        .map(key => String(key || '').split('::'))
+        .filter(parts => parts.length >= 2 && parts[0] && parts[1])
+        .map(([subject, ...topicParts]) => ({
+            subject: subject.trim(),
+            topic: topicParts.join('::').trim()
+        }));
+
+    if (parsedTopics.length > 0) {
+        return parsedTopics;
+    }
+
+    const subjects = plannerSubjects.length > 0 ? plannerSubjects : ['General Medicine'];
+    return subjects.flatMap(subject => ([
+        { subject, topic: `${subject} foundations` },
+        { subject, topic: `${subject} high-yield review` },
+        { subject, topic: `${subject} exam recall` }
+    ]));
+}
+
+function normalizePlannerCountry(country = 'India') {
+    const normalized = normalizeCountry(country);
+    return normalized === 'Nepal' ? 'Nepal' : 'India';
 }
 
 class StudyService {
@@ -254,58 +272,24 @@ class StudyService {
     // ── Internal: build resources using pre-cached textbook (avoids re-scanning library) ──
     // Order: gold standard → two subject-tuned video searches (deduped vs gold) → fast reference → textbook
     _buildResources(subject, topic, cachedTextbook) {
-        const resources = [];
-        const gold = SUBJECT_GOLD_STANDARD[subject];
-
-        if (gold) {
-            const goldUrl = buildGoldStandardUrl(gold, topic, subject);
-            const linkLabel = gold.type === 'youtube' ? `Search ${gold.platform}` : `Open ${gold.platform}`;
-            resources.push({
-                resourceType: 'gold_standard',
-                platform: gold.platform,
-                title: gold.platform,
-                note: gold.note,
-                type: gold.type,
-                freeLinks: [{ name: linkLabel, url: goldUrl }]
-            });
-        }
-
-        const supplements = pickVideoSupplements(subject, gold);
-        for (const v of supplements) {
-            resources.push({
-                resourceType: 'video',
-                platform: v.platform,
-                title: topic,
-                note: v.note,
-                type: 'youtube',
-                freeLinks: [{
-                    name: `Search ${v.platform}`,
-                    url: youtubeSearchFromTemplate(v.template, topic, subject)
-                }]
-            });
-        }
-
-        const ref = SUBJECT_REFERENCE[subject];
-        if (ref) {
-            const url = buildReferenceSearchUrl(ref, topic, subject);
-            resources.push({
-                resourceType: ref.type === 'youtube' ? 'video' : 'reference',
-                platform: ref.platform,
-                title: topic,
-                type: ref.type,
-                freeLinks: [{ name: `Open ${ref.platform}`, url }]
-            });
-        }
-
+        const resources = rankResources({ subject, topic, limit: 4 });
         if (cachedTextbook) {
-            resources.push({
+            const textbookResource = sanitizeResource({
                 resourceType: 'textbook', platform: 'Library',
                 title: cachedTextbook.title, author: cachedTextbook.author, type: 'book',
+                access: 'free',
+                why: 'Lowest-cost library or preview path found in the Medsage book catalog.',
+                tags: ['library', 'low_cost'],
                 freeLinks: (cachedTextbook.freeLinks || []).slice(0, 1).map(l => ({ name: l.name, url: l.url }))
             });
+            if (textbookResource) resources.push(textbookResource);
         }
 
-        return resources;
+        return resources
+            .map(sanitizeResource)
+            .filter(Boolean)
+            .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))
+            .slice(0, 5);
     }
 
     // ── Public: same pipeline as planner tasks (library textbook resolved here) ───
@@ -324,11 +308,11 @@ class StudyService {
     }
 
     getSubjectsForYear(year, country = 'India') {
-        return syllabusScraper.getExpectedSubjects(country, year);
+        return syllabusScraper.getExpectedSubjects(normalizePlannerCountry(country), year);
     }
 
     async getAllTopics(country, year, subjects) {
-        const yearCurriculum = await syllabusScraper.getCurriculum(country, year);
+        const yearCurriculum = await syllabusScraper.getCurriculum(normalizePlannerCountry(country), year);
         let topics = [];
         for (const sub of subjects) {
             if (yearCurriculum[sub]) {
@@ -338,219 +322,6 @@ class StudyService {
         return topics;
     }
 
-    async generatePlanWithAI(uid, year, country, examDate, selectedSubjects, weakTopics, strongTopics) {
-        const examDateObj = startOfDay(parseISO(examDate));
-        if (isNaN(examDateObj.getTime()) || examDateObj < startOfDay(new Date())) {
-            throw new Error('Valid future exam date is required');
-        }
-
-        // Delete any existing plan
-        await StudyPlan.findOneAndDelete({ uid });
-        invalidateLearnerContext(uid);
-
-        const allTopics = await this.getAllTopics(country || 'India', year, selectedSubjects);
-        if (allTopics.length === 0) {
-            throw new Error('No topics found for the selected subjects and year.');
-        }
-
-        // ── Prioritise: weak → regular → strong ─────────────────────────────
-        const weak    = allTopics.filter(t => weakTopics.includes(t.topic));
-        const strong  = allTopics.filter(t => strongTopics.includes(t.topic));
-        const regular = allTopics.filter(t => !weakTopics.includes(t.topic) && !strongTopics.includes(t.topic));
-        const sortedTopics = [...weak, ...regular, ...strong];
-
-        const today = startOfDay(new Date());
-        const daysUntilExam = differenceInDays(examDateObj, today);
-        if (daysUntilExam < 1) throw new Error('Exam date is too close');
-
-        const learningDaysCount = Math.max(1, Math.floor(daysUntilExam * 0.8));
-        const topicsPerDay = Math.max(1, Math.ceil(sortedTopics.length / learningDaysCount));
-
-        // ── Pre-cache best textbook per subject so we don't re-scan library per task ──
-        const textbookCache = {};
-        if (this._library?.books) {
-            for (const sub of selectedSubjects) {
-                const cats = SUBJECT_CATEGORY_MAP[sub] || [sub];
-                const matches = this._library.books.filter(b =>
-                    cats.some(c => b.category?.toLowerCase() === c.toLowerCase()) &&
-                    b.freeLinks?.length > 0 && b.course === 'MBBS'
-                );
-                matches.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-                textbookCache[sub] = matches[0] || null;
-            }
-        }
-
-        const daily_plan = [];
-        let topicIndex = 0;
-        let totalTasksGenerated = 0;
-
-        // Map: topicName → { dayIdx, subject } for SRS scheduling
-        const topicLearnDates = new Map();
-
-        for (let i = 0; i < daysUntilExam; i++) {
-            const currentDay = addDays(today, i);
-            const tasks = [];
-
-            // ── PHASE 1: LEARNING + SRS (first 80%) ─────────────────────────
-            if (i < learningDaysCount) {
-                // 1a. New learning tasks for today
-                const topicsForToday = sortedTopics.slice(topicIndex, topicIndex + topicsPerDay);
-                topicsForToday.forEach((t, idx) => {
-                    tasks.push({
-                        id: `task_${i}_learn_${idx}_${Date.now() + idx}`,
-                        text: `Analyze & Learn: ${t.subject} — ${t.topic}`,
-                        topic: t.topic,
-                        type: 'learning',
-                        completed: false,
-                        resources: this._buildResources(t.subject, t.topic, textbookCache[t.subject])
-                    });
-                    topicLearnDates.set(t.topic, { dayIdx: i, subject: t.subject });
-                });
-                topicIndex += topicsPerDay;
-
-                // 1b. SRS recall tasks — SM-2 style intervals
-                for (const [pastTopic, info] of topicLearnDates.entries()) {
-                    const daysSinceLearned = i - info.dayIdx;
-                    if (SRS_INTERVALS.includes(daysSinceLearned)) {
-                        const label = daysSinceLearned === 1 ? '1d'
-                            : daysSinceLearned === 3 ? '3d'
-                            : daysSinceLearned === 7 ? '1wk'
-                            : daysSinceLearned === 14 ? '2wk'
-                            : daysSinceLearned === 21 ? '3wk'
-                            : '1mo';
-                        tasks.push({
-                            id: `task_${i}_srs_${daysSinceLearned}d_${Date.now() + i}`,
-                            text: `Spaced Recall (${label}): ${pastTopic}`,
-                            topic: pastTopic,
-                            type: 'review',
-                            completed: false,
-                            resources: this._buildResources(info.subject, pastTopic, textbookCache[info.subject])
-                        });
-                    }
-                }
-            }
-            // ── PHASE 2: MOCK EXAM & TARGETED REVIEW (last 20%) ─────────────
-            else {
-                tasks.push({
-                    id: `task_${i}_mock_${Date.now()}`,
-                    text: `Full Subject Mock Exam: ${selectedSubjects.slice(0, 3).join(', ')}`,
-                    topic: 'Mock Exam',
-                    type: 'mock_exam',
-                    completed: false,
-                    resources: []
-                });
-
-                // Cycle through subjects for targeted reviews
-                const subjectIndex = (i - learningDaysCount) % selectedSubjects.length;
-                const reviewSubject = selectedSubjects[subjectIndex];
-                tasks.push({
-                    id: `task_${i}_targeted_${Date.now() + 1}`,
-                    text: `Targeted Mastery: ${reviewSubject}${weakTopics.length > 0 ? ' — Focus on ' + weakTopics.slice(0, 2).join(', ') : ''}`,
-                    topic: reviewSubject,
-                    type: 'review',
-                    completed: false,
-                    resources: this._buildResources(reviewSubject, reviewSubject, textbookCache[reviewSubject])
-                });
-            }
-
-            if (tasks.length === 0) {
-                tasks.push({
-                    id: `task_${i}_pad_${Date.now()}`,
-                    text: 'General Consolidation & Rest',
-                    topic: 'Review',
-                    type: 'learning',
-                    completed: false,
-                    resources: []
-                });
-            }
-
-            totalTasksGenerated += tasks.length;
-            daily_plan.push({
-                date: format(currentDay, 'yyyy-MM-dd'),
-                tasks,
-                completion_rate: 0
-            });
-        }
-
-        // ── AI Advisory ───────────────────────────────────────────────────────
-        let advisory_text = '';
-        try {
-            const prompt = `Act as an expert medical study advisor. Write a 2-sentence, high-energy, personalised strategy for a Year ${year} MBBS student with ${daysUntilExam} days until exams. Subjects: ${selectedSubjects.join(', ')}. Weak areas: ${weakTopics.slice(0, 4).join(', ') || 'none specified'}. Emphasise spaced repetition and clinical integration.`;
-            if (process.env.GEMINI_API_KEY) {
-                advisory_text = await geminiService.callLLM(prompt, { temperature: 0.55, max_tokens: 160 });
-            }
-        } catch (e) {
-            console.warn('[StudyService] AI advisory failed:', e.message);
-        }
-        if (!advisory_text) {
-            advisory_text = `With ${daysUntilExam} days to go, front-load your weak topics and let spaced repetition lock them in. Stay consistent — even 2 hours daily beats weekend cramming every time.`;
-        }
-
-        // ── Milestone Goals (proper weekly + monthly + quarterly) ─────────────
-        const goals = { daily: [], weekly: [], monthly: [], quarterly: [] };
-
-        // One goal per week
-        const weekCount = Math.min(Math.floor(daysUntilExam / 7), 12);
-        const weeklySubjectCycle = [...selectedSubjects];
-        for (let w = 1; w <= weekCount; w++) {
-            const subjectFocus = weeklySubjectCycle[(w - 1) % weeklySubjectCycle.length];
-            goals.weekly.push({
-                id: `wg${w}`,
-                text: w === 1
-                    ? `Complete Week 1 — establish daily study rhythm`
-                    : w === weekCount
-                        ? `Final sprint — revise all subjects & complete mock exams`
-                        : `Week ${w}: Master ${subjectFocus} key topics`,
-                due: format(addDays(today, w * 7), 'yyyy-MM-dd'),
-                done: false
-            });
-        }
-
-        // Monthly goals
-        const monthCount = Math.min(Math.floor(daysUntilExam / 30), 4);
-        const monthMilestones = [
-            'Complete first pass of all major systems',
-            'Finish learning phase — start intensive SRS review',
-            'Mock exams every 3 days — identify final weak areas',
-            'Final month — high-yield revision and past papers only'
-        ];
-        for (let m = 1; m <= monthCount; m++) {
-            goals.monthly.push({
-                id: `mg${m}`,
-                text: monthMilestones[m - 1] || `Month ${m}: Consolidation checkpoint`,
-                due: format(addDays(today, m * 30), 'yyyy-MM-dd'),
-                done: false
-            });
-        }
-
-        // Quarterly goal if enough time
-        if (daysUntilExam >= 90) {
-            goals.quarterly.push({
-                id: 'qg1',
-                text: `First quarter complete — full curriculum coverage for ${selectedSubjects.join(' + ')}`,
-                due: format(addDays(today, 90), 'yyyy-MM-dd'),
-                done: false
-            });
-        }
-
-        const newPlan = new StudyPlan({
-            uid,
-            mbbs_year: year,
-            exam_date: examDateObj,
-            subjects_selected: selectedSubjects,
-            weak_topics: weakTopics,
-            strong_topics: strongTopics,
-            advisory_text,
-            daily_plan,
-            goals,
-            streak: { current: 0, longest: 0, last_checkin: null },
-            analytics: { total_tasks: totalTasksGenerated, completed: 0, pace_factor: 1.0 }
-        });
-
-        await newPlan.save();
-        invalidateLearnerContext(uid);
-        return newPlan;
-    }
 
     async getScopedTopics(country, year, subjects, selectedTopicKeys = []) {
         const allTopics = await this.getAllTopics(country, year, subjects);
@@ -586,6 +357,43 @@ class StudyService {
         const strong = allTopics.filter(t => strongTopics.includes(t.topic));
         const regular = allTopics.filter(t => !weakTopics.includes(t.topic) && !strongTopics.includes(t.topic));
         return [...weak, ...regular, ...strong];
+    }
+
+    async collectLearnerSignals(uid) {
+        const signals = {
+            due_flashcards: 0,
+            avg_retention: null,
+            recent_chat_subjects: [],
+            recent_chat_topics: []
+        };
+
+        try {
+            const stats = await sm2Service.getStats(uid);
+            signals.due_flashcards = stats?.due_now || 0;
+            signals.avg_retention = stats?.avg_retention ?? null;
+        } catch (error) {
+            signals.sm2_unavailable = true;
+        }
+
+        try {
+            const sessions = await chatSessionRepo.listByUser(uid, { limit: 5 });
+            const subjects = [];
+            const topics = [];
+            sessions.forEach(session => {
+                (session.messages || []).slice(-20).forEach(message => {
+                    const subject = message.meta?.subject || message.response?.subject;
+                    const topic = message.meta?.topic_id || message.response?.topicId;
+                    if (subject) subjects.push(subject);
+                    if (topic) topics.push(topic);
+                });
+            });
+            signals.recent_chat_subjects = [...new Set(subjects)].slice(0, 6);
+            signals.recent_chat_topics = [...new Set(topics)].slice(0, 8);
+        } catch (error) {
+            signals.chat_unavailable = true;
+        }
+
+        return signals;
     }
 
     buildMilestoneGoals({ today, horizonDays, selectedSubjects, planMode, weakTopics }) {
@@ -648,19 +456,31 @@ class StudyService {
     async generatePlanWithAI(uid, config) {
         const {
             year,
-            country,
+            country = 'India',
             planMode = 'exam',
             examDate,
             studyDurationDays,
             selectedSubjects = [],
             selectedTopicKeys = [],
             weakTopics = [],
-            strongTopics = []
+            strongTopics = [],
+            dailyAvailableMinutes,
+            targetIntensity,
+            preferredStudyWindows,
+            weeklyOffDays,
+            learningStyle = 'balanced'
         } = config;
+        const normalizedCountry = normalizePlannerCountry(country);
 
         const today = startOfDay(new Date());
         let examDateObj = null;
         let horizonDays = Number.parseInt(studyDurationDays, 10) || 21;
+        const constraints = defaultConstraints({
+            dailyAvailableMinutes,
+            targetIntensity,
+            preferredStudyWindows,
+            weeklyOffDays
+        });
 
         if (planMode === 'exam') {
             examDateObj = startOfDay(parseISO(examDate));
@@ -673,124 +493,139 @@ class StudyService {
             horizonDays = Math.min(84, Math.max(7, horizonDays));
         }
 
-        await StudyPlan.findOneAndDelete({ uid });
-        invalidateLearnerContext(uid);
-
         const plannerSubjects = selectedSubjects.length > 0
             ? selectedSubjects
-            : this.getSubjectsForYear(year, country || 'India');
-
-        const scopedTopics = await this.getScopedTopics(country || 'India', year, plannerSubjects, selectedTopicKeys);
+            : this.getSubjectsForYear(year, normalizedCountry);
+        let scopedTopics = await this.getScopedTopics(normalizedCountry, year, plannerSubjects, selectedTopicKeys);
         if (scopedTopics.length === 0) {
-            throw new Error('No topics found for the selected year and chapter scope.');
+            scopedTopics = buildFallbackTopics(selectedTopicKeys, plannerSubjects);
         }
 
+        const signals = await this.collectLearnerSignals(uid);
         const scopedSubjects = [...new Set(scopedTopics.map(t => t.subject))];
-        const sortedTopics = this.prioritizeTopics(scopedTopics, weakTopics, strongTopics);
-        const learningDaysCount = Math.max(1, Math.floor(horizonDays * (planMode === 'exam' ? 0.8 : 0.75)));
-        const topicsPerDay = Math.max(1, Math.ceil(sortedTopics.length / learningDaysCount));
+        const sortedTopics = this.prioritizeTopics(scopedTopics, [...weakTopics, ...(signals.recent_chat_topics || [])], strongTopics);
+        const learningDaysCount = Math.max(1, Math.floor(horizonDays * (planMode === 'exam' ? 0.78 : 0.72)));
+        const targetTopicMinutes = Math.max(45, constraints.daily_available_minutes - 25);
+        const topicsPerDay = Math.max(1, Math.min(3, Math.floor(targetTopicMinutes / 55), Math.ceil(sortedTopics.length / learningDaysCount)));
         const textbookCache = this.buildTextbookCache(scopedSubjects);
-
         const daily_plan = [];
         let topicIndex = 0;
-        let totalTasksGenerated = 0;
         const topicLearnDates = new Map();
 
         for (let i = 0; i < horizonDays; i++) {
             const currentDay = addDays(today, i);
             const tasks = [];
+            let slot = 0;
+            const dayIsOff = constraints.weekly_off_days.includes(currentDay.getDay());
 
-            if (i < learningDaysCount) {
+            if (!dayIsOff && i < learningDaysCount) {
                 const topicsForToday = sortedTopics.slice(topicIndex, topicIndex + topicsPerDay);
-                topicsForToday.forEach((t, idx) => {
-                    tasks.push({
-                        id: `task_${i}_learn_${idx}_${Date.now() + idx}`,
-                        text: `${planMode === 'exam' ? 'Analyze & Learn' : 'Deep Study'}: ${t.subject} — ${t.topic}`,
+                topicsForToday.forEach(t => {
+                    const resources = this._buildResources(t.subject, t.topic, textbookCache[t.subject]);
+                    tasks.push(createPlannerTask({
+                        dayIndex: i,
+                        slot: slot++,
+                        type: 'learn',
+                        subject: t.subject,
                         topic: t.topic,
-                        type: 'learning',
-                        completed: false,
-                        resources: this._buildResources(t.subject, t.topic, textbookCache[t.subject])
-                    });
+                        text: `${planMode === 'exam' ? 'Learn for exam mastery' : 'Deep study'}: ${t.subject} - ${t.topic}`,
+                        resources,
+                        priority: weakTopics.includes(t.topic) ? 1 : 2
+                    }));
+                    tasks.push(createPlannerTask({
+                        dayIndex: i,
+                        slot: slot++,
+                        type: 'active_recall',
+                        subject: t.subject,
+                        topic: t.topic,
+                        text: `Active recall: close-book questions for ${t.topic}`,
+                        resources: resources.slice(0, 2),
+                        priority: weakTopics.includes(t.topic) ? 1 : 2
+                    }));
                     topicLearnDates.set(t.topic, { dayIdx: i, subject: t.subject });
                 });
                 topicIndex += topicsPerDay;
+            }
 
-                for (const [pastTopic, info] of topicLearnDates.entries()) {
-                    const daysSinceLearned = i - info.dayIdx;
-                    if (SRS_INTERVALS.includes(daysSinceLearned)) {
-                        const label = daysSinceLearned === 1 ? '1d'
-                            : daysSinceLearned === 3 ? '3d'
+            for (const [pastTopic, info] of topicLearnDates.entries()) {
+                const daysSinceLearned = i - info.dayIdx;
+                if (SRS_INTERVALS.includes(daysSinceLearned) && tasks.length < constraints.max_tasks_per_day) {
+                    const label = daysSinceLearned === 1 ? '1d'
+                        : daysSinceLearned === 3 ? '3d'
                             : daysSinceLearned === 7 ? '1wk'
-                            : daysSinceLearned === 14 ? '2wk'
-                            : daysSinceLearned === 21 ? '3wk'
-                            : '1mo';
-                        tasks.push({
-                            id: `task_${i}_srs_${daysSinceLearned}d_${Date.now() + i}`,
-                            text: `Spaced Recall (${label}): ${pastTopic}`,
-                            topic: pastTopic,
-                            type: 'review',
-                            completed: false,
-                            resources: this._buildResources(info.subject, pastTopic, textbookCache[info.subject])
-                        });
-                    }
+                                : daysSinceLearned === 14 ? '2wk'
+                                    : daysSinceLearned === 21 ? '3wk'
+                                        : '1mo';
+                    tasks.push(createPlannerTask({
+                        dayIndex: i,
+                        slot: slot++,
+                        type: 'review',
+                        subject: info.subject,
+                        topic: pastTopic,
+                        text: `Spaced review (${label}): ${pastTopic}`,
+                        resources: this._buildResources(info.subject, pastTopic, textbookCache[info.subject]).slice(0, 2),
+                        priority: 1
+                    }));
                 }
-            } else if (planMode === 'exam') {
-                tasks.push({
-                    id: `task_${i}_mock_${Date.now()}`,
-                    text: `Full Subject Mock Exam: ${scopedSubjects.slice(0, 3).join(', ')}`,
-                    topic: 'Mock Exam',
-                    type: 'mock_exam',
-                    completed: false,
-                    resources: []
-                });
+            }
 
-                const subjectIndex = (i - learningDaysCount) % scopedSubjects.length;
-                const reviewSubject = scopedSubjects[subjectIndex];
-                tasks.push({
-                    id: `task_${i}_targeted_${Date.now() + 1}`,
-                    text: `Targeted Mastery: ${reviewSubject}${weakTopics.length > 0 ? ' — Focus on ' + weakTopics.slice(0, 2).join(', ') : ''}`,
-                    topic: reviewSubject,
-                    type: 'review',
-                    completed: false,
-                    resources: this._buildResources(reviewSubject, reviewSubject, textbookCache[reviewSubject])
-                });
-            } else {
+            if (!dayIsOff && i >= learningDaysCount && tasks.length < constraints.max_tasks_per_day) {
+                if (planMode === 'exam') {
+                    tasks.push(createPlannerTask({
+                        dayIndex: i,
+                        slot: slot++,
+                        type: 'mock',
+                        subject: scopedSubjects[(i - learningDaysCount) % scopedSubjects.length],
+                        topic: 'Mock Exam',
+                        text: `Timed mock + error log: ${scopedSubjects.slice(0, 3).join(', ')}`,
+                        resources: [],
+                        priority: 1
+                    }));
+                }
+
                 const reviewTopic = sortedTopics[(i - learningDaysCount) % sortedTopics.length];
-                const companionTopic = sortedTopics[(i - learningDaysCount + 1) % sortedTopics.length];
-
-                tasks.push({
-                    id: `task_${i}_review_${Date.now()}`,
-                    text: `Interleaved Review: ${reviewTopic.subject} — ${reviewTopic.topic}`,
+                tasks.push(createPlannerTask({
+                    dayIndex: i,
+                    slot: slot++,
+                    type: 'resource_drill',
+                    subject: reviewTopic.subject,
                     topic: reviewTopic.topic,
-                    type: 'review',
-                    completed: false,
-                    resources: this._buildResources(reviewTopic.subject, reviewTopic.topic, textbookCache[reviewTopic.subject])
-                });
-                tasks.push({
-                    id: `task_${i}_selftest_${Date.now() + 1}`,
-                    text: `Self-Test & Summarize: ${companionTopic.subject} — ${companionTopic.topic}`,
-                    topic: companionTopic.topic,
-                    type: 'learning',
-                    completed: false,
-                    resources: this._buildResources(companionTopic.subject, companionTopic.topic, textbookCache[companionTopic.subject])
-                });
+                    text: `Resource drill: master weak edges in ${reviewTopic.topic}`,
+                    resources: this._buildResources(reviewTopic.subject, reviewTopic.topic, textbookCache[reviewTopic.subject]),
+                    priority: weakTopics.includes(reviewTopic.topic) ? 1 : 2
+                }));
+            }
+
+            if (signals.due_flashcards > 0 && i % 2 === 0 && tasks.length < constraints.max_tasks_per_day) {
+                tasks.push(createPlannerTask({
+                    dayIndex: i,
+                    slot: slot++,
+                    type: 'flashcard_review',
+                    subject: 'Cortex',
+                    topic: 'Due cards',
+                    text: `Flashcard review: clear due cards (${signals.due_flashcards} currently due)`,
+                    resources: [],
+                    source: 'sm2',
+                    priority: 1
+                }));
             }
 
             if (tasks.length === 0) {
-                tasks.push({
-                    id: `task_${i}_pad_${Date.now()}`,
-                    text: planMode === 'exam' ? 'General Consolidation & Rest' : 'Light Review & Reflection',
-                    topic: 'Review',
-                    type: 'learning',
-                    completed: false,
-                    resources: []
-                });
+                tasks.push(createPlannerTask({
+                    dayIndex: i,
+                    slot: slot++,
+                    type: dayIsOff ? 'review' : 'active_recall',
+                    subject: scopedSubjects[i % scopedSubjects.length],
+                    topic: dayIsOff ? 'Recovery review' : 'General consolidation',
+                    text: dayIsOff ? 'Light review day: 20 minutes of recall only' : 'General consolidation: summarize and self-test',
+                    resources: [],
+                    priority: 3
+                }));
             }
 
-            totalTasksGenerated += tasks.length;
             daily_plan.push({
                 date: format(currentDay, 'yyyy-MM-dd'),
-                tasks,
+                tasks: tasks.slice(0, constraints.max_tasks_per_day),
                 completion_rate: 0
             });
         }
@@ -798,30 +633,33 @@ class StudyService {
         let advisory_text = '';
         try {
             const prompt = planMode === 'exam'
-                ? `Act as an expert medical study advisor. Write a 2-sentence, high-energy, personalised strategy for a Year ${year} MBBS student with ${horizonDays} days until exams. Subjects: ${scopedSubjects.join(', ')}. Weak areas: ${weakTopics.slice(0, 4).join(', ') || 'none specified'}. Emphasise spaced repetition and clinical integration.`
-                : `Act as an expert medical study coach. Write a 2-sentence practical strategy for a Year ${year} MBBS student building a ${horizonDays}-day self-study plan. Subjects: ${scopedSubjects.join(', ')}. Focus chapters: ${sortedTopics.slice(0, 8).map(t => t.topic).join(', ')}. Emphasise deliberate practice, note-making, and active recall.`;
-            if (process.env.GEMINI_API_KEY) {
-                advisory_text = await geminiService.callLLM(prompt, { temperature: 0.55, max_tokens: 160 });
+                ? `Act as an expert medical study advisor. Write a 2-sentence personalised strategy for a Year ${year} MBBS student in ${normalizedCountry} with ${horizonDays} days until exams. Subjects: ${scopedSubjects.join(', ')}. Weak areas: ${weakTopics.slice(0, 4).join(', ') || 'none specified'}. Emphasise active recall, SRS, and clinical integration.`
+                : `Act as an expert medical study coach. Write a 2-sentence practical strategy for a Year ${year} MBBS student in ${normalizedCountry} building a ${horizonDays}-day self-study plan. Subjects: ${scopedSubjects.join(', ')}. Emphasise deliberate practice, notes, and recall.`;
+            if (plannerLlmClient.isConfigured()) {
+                advisory_text = await plannerLlmClient.callText(prompt, { temperature: 0.55, max_tokens: 160 });
             }
         } catch (e) {
             console.warn('[StudyService] AI advisory failed:', e.message);
         }
         if (!advisory_text) {
             advisory_text = planMode === 'exam'
-                ? `With ${horizonDays} days to go, front-load your weak topics and let spaced repetition lock them in. Stay consistent — even 2 focused hours daily beats panic revision.`
-                : `This plan is built for steady mastery, not panic. Study actively, test yourself, and revisit the same chapter before it fades.`;
+                ? `With ${horizonDays} days to go, this plan protects your recall first: learn, test, review, then mock. Weak topics come early so your final weeks are for confidence, not panic.`
+                : `This plan is built for steady mastery. Study actively, test yourself, and revisit the same chapter before it fades.`;
         }
 
-        const goals = this.buildMilestoneGoals({
-            today,
-            horizonDays,
-            selectedSubjects: scopedSubjects,
-            planMode,
-            weakTopics
+        const resource_recommendations = rankResources({
+            subject: scopedSubjects[0],
+            topic: sortedTopics[0]?.topic,
+            country: normalizedCountry,
+            year,
+            userPreferences: { learning_style: learningStyle, preferred_resource_types: [] },
+            limit: 5
         });
-
-        const newPlan = new StudyPlan({
+        const goals = this.buildMilestoneGoals({ today, horizonDays, selectedSubjects: scopedSubjects, planMode, weakTopics });
+        const totalTasksGenerated = daily_plan.reduce((sum, day) => sum + day.tasks.length, 0);
+        const planPayload = {
             uid,
+            planner_version: 2,
             mbbs_year: year,
             plan_mode: planMode,
             plan_duration_days: horizonDays,
@@ -831,167 +669,494 @@ class StudyService {
             weak_topics: weakTopics,
             strong_topics: strongTopics,
             advisory_text,
+            learner_profile: {
+                country: normalizedCountry,
+                mbbs_year: year,
+                learning_style: learningStyle,
+                preferred_resource_types: [],
+                weak_topics: weakTopics,
+                strong_topics: strongTopics,
+                signal_summary: signals
+            },
+            constraints,
             daily_plan,
+            schedule_days: daily_plan,
+            resource_recommendations,
             goals,
             streak: { current: 0, longest: 0, last_checkin: null },
-            analytics: { total_tasks: totalTasksGenerated, completed: 0, pace_factor: 1.0 }
-        });
+            analytics: { total_tasks: totalTasksGenerated, completed: 0, pace_factor: 1.0 },
+            adaptation_history: [{
+                id: `system_${Date.now()}`,
+                type: 'system',
+                status: 'system',
+                message: `Created planner v2 using resource catalog v${RESOURCE_CATALOG_VERSION}.`,
+                reasons: ['Built from selected curriculum scope', 'Weak topics front-loaded', 'Reviews scheduled with SRS intervals'],
+                confidence: 0.86,
+                created_at: new Date()
+            }]
+        };
+        planPayload.plan_health = evaluatePlanHealth(planPayload);
 
-        await newPlan.save();
+        const newPlan = await studyPlanRepo.replaceByUid(uid, planPayload);
         invalidateLearnerContext(uid);
         return newPlan;
     }
 
+    async migratePlanIfNeeded(plan, config = {}) {
+        if (!plan) return null;
+        const needsMigration = plan.planner_version !== 2 || !plan.schedule_days?.length || !plan.constraints;
+        if (needsMigration) {
+            Object.assign(plan, makePlanV2Payload(plan, config));
+            plan.markModified?.('daily_plan');
+            plan.markModified?.('schedule_days');
+            plan.markModified?.('learner_profile');
+            plan.markModified?.('constraints');
+            await plan.save();
+            invalidateLearnerContext(plan.uid);
+            return plan;
+        }
+
+        plan.plan_health = evaluatePlanHealth(plan);
+        return plan;
+    }
+
+    recalculatePlan(plan) {
+        const days = getPlanDays(plan);
+        days.forEach(day => {
+            day.tasks = (day.tasks || []).map(task => normalizeTask(task));
+            day.completion_rate = calculateCompletionRate(day.tasks || []);
+        });
+        plan.daily_plan = days;
+        plan.schedule_days = days;
+        const tasks = days.flatMap(day => day.tasks || []);
+        plan.analytics = {
+            ...(plan.analytics?.toObject?.() || plan.analytics || {}),
+            total_tasks: tasks.length,
+            completed: tasks.filter(task => task.completed).length,
+            pace_factor: plan.analytics?.pace_factor || 1.0
+        };
+        plan.plan_health = evaluatePlanHealth(plan);
+    }
+
     async getStudyPlan(uid) {
-        return await StudyPlan.findOne({ uid });
+        const plan = await studyPlanRepo.findByUid(uid);
+        return this.migratePlanIfNeeded(plan);
     }
 
     async getTodayTasks(uid) {
-        const plan = await StudyPlan.findOne({ uid });
+        const plan = await this.getStudyPlan(uid);
         if (!plan) return null;
         const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
-        const todayPlan = plan.daily_plan.find(p => p.date === todayStr);
-        return {
-            plan_id: plan._id,
-            date: todayStr,
-            tasks: todayPlan ? todayPlan.tasks : [],
-            streak: plan.streak,
-            analytics: plan.analytics,
-            advisory_text: plan.advisory_text
-        };
+        return buildDayResponse(plan, todayStr);
     }
 
     async tickTask(uid, dateStr, taskId, completedStatus) {
-        const plan = await StudyPlan.findOne({ uid });
+        const requestedDateStr = assertPlanDate(dateStr);
+        const plan = await this.getStudyPlan(uid);
         if (!plan) throw new Error('Plan not found');
 
-        const dayPlan = plan.daily_plan.find(p => p.date === dateStr);
+        const dayPlan = getPlanDays(plan).find(p => p.date === requestedDateStr);
         if (!dayPlan) throw new Error('Daily plan not found for date');
-
         const task = dayPlan.tasks.find(t => t.id === taskId);
         if (!task) throw new Error('Task not found');
 
         const wasCompleted = task.completed;
         task.completed = completedStatus;
+        dayPlan.completion_rate = calculateCompletionRate(dayPlan.tasks || []);
 
-        if (!wasCompleted && completedStatus) {
-            plan.analytics.completed += 1;
-        } else if (wasCompleted && !completedStatus) {
-            plan.analytics.completed = Math.max(0, plan.analytics.completed - 1);
-        }
-
-        // Recompute daily completion rate
-        const totalToday = dayPlan.tasks.length;
-        const doneToday  = dayPlan.tasks.filter(t => t.completed).length;
-        dayPlan.completion_rate = totalToday > 0 ? (doneToday / totalToday) * 100 : 0;
-
-        // ── Streak logic ─────────────────────────────────────────────────────
-        const todayObj     = startOfDay(new Date());
+        const todayObj = startOfDay(new Date());
+        const todayStr = format(todayObj, 'yyyy-MM-dd');
         const yesterdayObj = addDays(todayObj, -1);
-
-        if (dayPlan.completion_rate === 100) {
-            let lastCheckin = plan.streak.last_checkin ? startOfDay(new Date(plan.streak.last_checkin)) : null;
-            if (!lastCheckin || lastCheckin.getTime() === yesterdayObj.getTime()) {
-                if (!lastCheckin || lastCheckin.getTime() !== todayObj.getTime()) {
-                    plan.streak.current += 1;
+        if (requestedDateStr === todayStr) {
+            if (dayPlan.completion_rate === 100) {
+                const lastCheckin = plan.streak.last_checkin ? startOfDay(new Date(plan.streak.last_checkin)) : null;
+                if (!lastCheckin || lastCheckin.getTime() === yesterdayObj.getTime()) {
+                    if (!lastCheckin || lastCheckin.getTime() !== todayObj.getTime()) {
+                        plan.streak.current += 1;
+                        plan.streak.last_checkin = todayObj;
+                    }
+                } else if (lastCheckin && lastCheckin.getTime() < yesterdayObj.getTime()) {
+                    plan.streak.current = 1;
                     plan.streak.last_checkin = todayObj;
                 }
-            } else if (lastCheckin && lastCheckin.getTime() < yesterdayObj.getTime()) {
-                plan.streak.current = 1;
-                plan.streak.last_checkin = todayObj;
-            }
-            if (plan.streak.current > plan.streak.longest) {
-                plan.streak.longest = plan.streak.current;
-            }
-        } else if (wasCompleted && !completedStatus && dayPlan.completion_rate < 100) {
-            let lastCheckin = plan.streak.last_checkin ? startOfDay(new Date(plan.streak.last_checkin)) : null;
-            if (lastCheckin && lastCheckin.getTime() === todayObj.getTime()) {
-                plan.streak.current = Math.max(0, plan.streak.current - 1);
-                plan.streak.last_checkin = plan.streak.current > 0 ? yesterdayObj : null;
+                if (plan.streak.current > plan.streak.longest) plan.streak.longest = plan.streak.current;
+            } else if (wasCompleted && !completedStatus && dayPlan.completion_rate < 100) {
+                const lastCheckin = plan.streak.last_checkin ? startOfDay(new Date(plan.streak.last_checkin)) : null;
+                if (lastCheckin && lastCheckin.getTime() === todayObj.getTime()) {
+                    plan.streak.current = Math.max(0, plan.streak.current - 1);
+                    plan.streak.last_checkin = plan.streak.current > 0 ? yesterdayObj : null;
+                }
             }
         }
 
+        this.recalculatePlan(plan);
         await plan.save();
-        return await this.getTodayTasks(uid);
+        invalidateLearnerContext(uid);
+        return buildDayResponse(plan, requestedDateStr);
     }
 
-    // ── Tick a goal as done/undone ────────────────────────────────────────────
     async tickGoal(uid, goalType, goalId) {
-        const plan = await StudyPlan.findOne({ uid });
+        const plan = await this.getStudyPlan(uid);
         if (!plan) throw new Error('Plan not found');
-
-        const goalList = plan.goals[goalType];
+        const goalList = plan.goals?.[goalType];
         if (!goalList) throw new Error(`Invalid goal type: ${goalType}`);
-
         const goal = goalList.find(g => g.id === goalId);
         if (!goal) throw new Error('Goal not found');
-
         goal.done = !goal.done;
         await plan.save();
         return { goalType, goalId, done: goal.done };
     }
 
     async addTask(uid, dateStr, text) {
-        const plan = await StudyPlan.findOne({ uid });
+        const requestedDateStr = assertPlanDate(dateStr);
+        const plan = await this.getStudyPlan(uid);
         if (!plan) throw new Error('Plan not found');
-
-        const dayPlan = plan.daily_plan.find(p => p.date === dateStr);
+        const dayPlan = getPlanDays(plan).find(p => p.date === requestedDateStr);
         if (!dayPlan) throw new Error('Daily plan not found for date');
 
-        const newTask = {
-            id: `task_${Date.now()}_custom`,
+        const detectedSubject = detectSubjectFromText(text);
+        const topicLabel = text.length <= 80 ? text : text.slice(0, 80);
+        dayPlan.tasks.push(createPlannerTask({
+            dayIndex: Date.now(),
+            slot: dayPlan.tasks.length,
+            type: 'learn',
+            subject: detectedSubject || 'Custom',
+            topic: topicLabel,
             text,
-            topic: 'Custom',
-            type: 'learning',
-            completed: false,
-            resources: []
-        };
+            resources: detectedSubject ? this._buildResources(detectedSubject, topicLabel, null) : [],
+            source: 'manual',
+            priority: 2
+        }));
 
-        dayPlan.tasks.push(newTask);
-        plan.analytics.total_tasks += 1;
-
-        const totalToday = dayPlan.tasks.length;
-        const doneToday  = dayPlan.tasks.filter(t => t.completed).length;
-        dayPlan.completion_rate = totalToday > 0 ? (doneToday / totalToday) * 100 : 0;
-
+        this.recalculatePlan(plan);
         await plan.save();
-        return await this.getTodayTasks(uid);
+        invalidateLearnerContext(uid);
+        return buildDayResponse(plan, requestedDateStr);
     }
 
     async editTask(uid, dateStr, taskId, newText) {
-        const plan = await StudyPlan.findOne({ uid });
+        const requestedDateStr = assertPlanDate(dateStr);
+        const plan = await this.getStudyPlan(uid);
         if (!plan) throw new Error('Plan not found');
-
-        const dayPlan = plan.daily_plan.find(p => p.date === dateStr);
+        const dayPlan = getPlanDays(plan).find(p => p.date === requestedDateStr);
         if (!dayPlan) throw new Error('Daily plan not found for date');
-
         const task = dayPlan.tasks.find(t => t.id === taskId);
         if (!task) throw new Error('Task not found');
-
         task.text = newText;
+        this.recalculatePlan(plan);
         await plan.save();
-        return await this.getTodayTasks(uid);
+        invalidateLearnerContext(uid);
+        return buildDayResponse(plan, requestedDateStr);
     }
 
     async getAnalytics(uid) {
-        const plan = await StudyPlan.findOne({ uid });
+        const plan = await this.getStudyPlan(uid);
         if (!plan) return null;
-
         const today = startOfDay(new Date());
+        const days = getPlanDays(plan);
         const heatmap = [];
         for (let i = 6; i >= 0; i--) {
-            const d    = addDays(today, -i);
+            const d = addDays(today, -i);
             const dStr = format(d, 'yyyy-MM-dd');
-            const dp   = plan.daily_plan.find(p => p.date === dStr);
+            const dp = days.find(p => p.date === dStr);
             heatmap.push({ date: dStr, rate: dp ? Math.round(dp.completion_rate) : 0 });
+        }
+        return {
+            streak: plan.streak,
+            analytics: plan.analytics,
+            heatmap,
+            goals: plan.goals,
+            plan_health: plan.plan_health
+        };
+    }
+
+    async getResources({ uid, subject, topic, country = 'India', year = null }) {
+        let userPreferences = {};
+        if (uid) {
+            const plan = await this.getStudyPlan(uid);
+            userPreferences = plan?.learner_profile || {};
+        }
+        return {
+            catalog_version: RESOURCE_CATALOG_VERSION,
+            policy: 'Best legal low-cost resources only: official, open, freemium, paid official, institutional, or controlled digital lending.',
+            resources: rankResources({ subject, topic, country, year, userPreferences, limit: 8 })
+        };
+    }
+
+    async getDailyAdvisory(uid) {
+        const plan = await this.getStudyPlan(uid);
+        if (!plan) return null;
+
+        const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
+
+        if (plan.daily_advisory_cache?.date === todayStr && plan.daily_advisory_cache?.text) {
+            return { text: plan.daily_advisory_cache.text, cached: true };
+        }
+
+        const days = getPlanDays(plan);
+        const recentDays = days.filter(d => d.date < todayStr).slice(-7);
+        const completionRates = recentDays.map(d => calculateCompletionRate(d.tasks || []));
+        const avgCompletion = completionRates.length
+            ? Math.round(completionRates.reduce((a, b) => a + b, 0) / completionRates.length)
+            : 0;
+
+        const todayDay = days.find(d => d.date === todayStr);
+        const todayTopics = (todayDay?.tasks || []).slice(0, 3).map(t => t.topic).filter(t => t && t !== 'Custom');
+        const weakTopics = (plan.weak_topics || []).slice(0, 3);
+        const catchUpCount = (todayDay?.tasks || []).filter(t => t.type === 'catch_up').length;
+
+        let daysUntilExam = null;
+        if (plan.exam_date) {
+            daysUntilExam = Math.max(0, differenceInDays(
+                typeof plan.exam_date === 'string' ? parseISO(plan.exam_date) : plan.exam_date,
+                startOfDay(new Date())
+            ));
+        }
+
+        const prompt = `You are a personal medical study coach for an MBBS student. Write exactly 2 sentences of personalized coaching advice for today. Be specific, encouraging, and actionable — reference the actual performance data and topics.
+
+Student data:
+- 7-day average task completion: ${avgCompletion}%
+- Current streak: ${plan.streak?.current || 0} days
+${weakTopics.length ? `- Weak areas needing attention: ${weakTopics.join(', ')}` : ''}
+${todayTopics.length ? `- Today's study topics: ${todayTopics.join(', ')}` : ''}
+${catchUpCount > 0 ? `- Catch-up tasks today: ${catchUpCount}` : ''}
+${daysUntilExam !== null ? `- Days until exam: ${daysUntilExam}` : ''}
+
+Write exactly 2 sentences. First sentence: acknowledge current performance and one specific action. Second sentence: motivational insight tied to the exam timeline or weak areas.`;
+
+        try {
+            const text = await plannerLlmClient.callText(prompt, { temperature: 0.75, max_tokens: 130 });
+            plan.daily_advisory_cache = { date: todayStr, text: text.trim() };
+            await plan.save();
+            return { text: text.trim(), cached: false };
+        } catch {
+            const fallback = plan.advisory_text || 'Stay consistent with today\'s plan and focus on active recall for your weak topics.';
+            return { text: fallback, cached: true };
+        }
+    }
+
+    findNextCapacityDay(days, fromDate, constraints) {
+        const start = startOfDay(parseISO(fromDate));
+        return days.find(day => {
+            const dayDate = startOfDay(parseISO(day.date));
+            const usedMinutes = (day.tasks || []).reduce((sum, task) => sum + (Number(task.estimated_minutes) || 30), 0);
+            return dayDate >= start
+                && (day.tasks || []).length < (constraints.max_tasks_per_day || 5)
+                && usedMinutes < (constraints.daily_available_minutes || 120);
+        });
+    }
+
+    performRebalance(plan, { maxMoved = 12, reason = 'manual' } = {}) {
+        const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
+        const days = getPlanDays(plan);
+        const moved = [];
+        for (const day of days.filter(d => d.date < todayStr)) {
+            const remaining = [];
+            for (const task of day.tasks || []) {
+                if (task.completed || moved.length >= maxMoved) {
+                    remaining.push(task);
+                    continue;
+                }
+                const target = this.findNextCapacityDay(days, todayStr, plan.constraints || defaultConstraints());
+                if (!target) {
+                    remaining.push(task);
+                    continue;
+                }
+                const movedTask = normalizeTask(task, { type: 'catch_up', source: 'rebalance' });
+                movedTask.id = `task_${Date.now()}_catchup_${moved.length}_${makeTaskIdPart(movedTask.topic)}`;
+                movedTask.type = movedTask.type === 'mock' ? 'mock' : 'catch_up';
+                movedTask.source = 'rebalance';
+                movedTask.text = movedTask.text.startsWith('Catch up:') ? movedTask.text : `Catch up: ${movedTask.text}`;
+                target.tasks.push(movedTask);
+                moved.push({ task_id: task.id, from: day.date, to: target.date, topic: task.topic });
+            }
+            day.tasks = remaining;
+            day.completion_rate = calculateCompletionRate(day.tasks || []);
+        }
+
+        this.recalculatePlan(plan);
+        plan.adaptation_history.push({
+            id: `rebalance_${Date.now()}`,
+            type: 'rebalance',
+            status: 'system',
+            message: moved.length ? `Moved ${moved.length} overdue tasks into upcoming catch-up slots.` : 'Rebalance checked the plan; no overdue movable tasks were found.',
+            proposed_changes: moved,
+            reasons: [reason, 'Preserved completed work and moved only unfinished overdue tasks'],
+            confidence: 0.9,
+            created_at: new Date()
+        });
+        return moved;
+    }
+
+    async rebalancePlan(uid, options = {}) {
+        const plan = await this.getStudyPlan(uid);
+        if (!plan) throw new Error('Plan not found');
+        const moved = this.performRebalance(plan, options);
+        await plan.save();
+        invalidateLearnerContext(uid);
+        return { plan, moved };
+    }
+
+    buildAssistantProposal(plan, message) {
+        const text = String(message || '').toLowerCase();
+        const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
+        const tomorrowStr = format(addDays(startOfDay(new Date()), 1), 'yyyy-MM-dd');
+        const proposed_changes = [];
+        const reasons = [];
+
+        const missedMatch = text.match(/missed\s+(\d+)/);
+        if (missedMatch || text.includes('catch up') || text.includes('rebalance')) {
+            proposed_changes.push({ type: 'rebalance', reason: missedMatch ? `Student missed ${missedMatch[1]} days` : 'Student asked for catch-up' });
+            reasons.push('Catch-up should move overdue incomplete tasks instead of piling everything into today.');
+        }
+        if (text.includes('lighter tomorrow') || text.includes('make tomorrow lighter') || text.includes('reduce tomorrow')) {
+            proposed_changes.push({ type: 'lighten_day', date: tomorrowStr, keep_tasks: 2 });
+            reasons.push('Tomorrow should keep the highest-priority tasks and move the rest forward.');
+        } else if (text.includes('lighter today') || text.includes('reduce today')) {
+            proposed_changes.push({ type: 'lighten_day', date: todayStr, keep_tasks: 2 });
+            reasons.push('Today should become a lighter execution day without deleting work.');
+        }
+
+        const focusMatch = text.match(/focus (?:more )?(?:on )?([a-zA-Z &]+)/);
+        if (focusMatch) {
+            const focus = focusMatch[1].replace(/tomorrow|today|please|more/g, '').trim();
+            if (focus) {
+                proposed_changes.push({ type: 'add_focus_review', focus, days: 3 });
+                reasons.push(`Added extra exposure for ${focus} across the next few study days.`);
+            }
+        }
+        if (text.includes('resource') || text.includes('resources')) {
+            proposed_changes.push({ type: 'refresh_resources' });
+            reasons.push('Resource packs should be refreshed from the ranked legal low-cost catalog.');
+        }
+        if (proposed_changes.length === 0) {
+            proposed_changes.push({ type: 'rebalance', reason: 'General plan tune-up' });
+            reasons.push('A low-risk tune-up checks overdue work and workload pressure first.');
         }
 
         return {
-            streak:    plan.streak,
-            analytics: plan.analytics,
-            heatmap,
-            goals:     plan.goals
+            id: `proposal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            type: 'assistant',
+            status: 'pending',
+            message: 'I can adjust your plan with these changes. Review them first, then apply if it feels right.',
+            proposed_changes,
+            reasons,
+            confidence: proposed_changes.length > 1 ? 0.82 : 0.72,
+            created_at: new Date()
         };
+    }
+
+    async chatWithPlannerAssistant(uid, message) {
+        const plan = await this.getStudyPlan(uid);
+        if (!plan) throw new Error('Plan not found');
+        const proposal = this.buildAssistantProposal(plan, message);
+        plan.adaptation_history.push(proposal);
+        await plan.save();
+        return {
+            message: proposal.message,
+            proposed_changes: proposal.proposed_changes,
+            confidence: proposal.confidence,
+            reasons: proposal.reasons,
+            proposal_id: proposal.id,
+            plan_health: plan.plan_health
+        };
+    }
+
+    applyProposalChange(plan, change) {
+        const days = getPlanDays(plan);
+        const today = startOfDay(new Date());
+        if (change.type === 'rebalance') {
+            return this.performRebalance(plan, { reason: change.reason || 'assistant proposal' });
+        }
+        if (change.type === 'lighten_day') {
+            const day = days.find(d => d.date === change.date);
+            if (!day || (day.tasks || []).length <= change.keep_tasks) return [];
+            const sorted = [...day.tasks].sort((a, b) => (a.priority || 2) - (b.priority || 2));
+            const keepIds = new Set(sorted.slice(0, change.keep_tasks || 2).map(task => task.id));
+            const moving = day.tasks.filter(task => !keepIds.has(task.id) && !task.completed);
+            day.tasks = day.tasks.filter(task => keepIds.has(task.id) || task.completed);
+            const moved = [];
+            moving.forEach(task => {
+                const target = this.findNextCapacityDay(days, format(addDays(parseISO(change.date), 1), 'yyyy-MM-dd'), plan.constraints || defaultConstraints());
+                if (!target) {
+                    day.tasks.push(task);
+                    return;
+                }
+                const movedTask = normalizeTask(task, { source: 'assistant' });
+                movedTask.id = `task_${Date.now()}_moved_${moved.length}_${makeTaskIdPart(movedTask.topic)}`;
+                movedTask.source = 'assistant';
+                target.tasks.push(movedTask);
+                moved.push({ task_id: task.id, from: day.date, to: target.date, topic: task.topic });
+            });
+            return moved;
+        }
+        if (change.type === 'add_focus_review') {
+            const focus = change.focus;
+            const created = [];
+            const subject = (plan.subjects_selected || []).find(s => focus.toLowerCase().includes(s.toLowerCase())) || focus;
+            for (let i = 0; i < Math.min(3, change.days || 3); i++) {
+                const date = format(addDays(today, i), 'yyyy-MM-dd');
+                const target = days.find(d => d.date === date) || this.findNextCapacityDay(days, date, plan.constraints || defaultConstraints());
+                if (!target || (target.tasks || []).length >= (plan.constraints?.max_tasks_per_day || 5)) continue;
+                const task = createPlannerTask({
+                    dayIndex: Date.now() + i,
+                    slot: target.tasks.length,
+                    type: i === 0 ? 'active_recall' : 'review',
+                    subject,
+                    topic: focus,
+                    text: `${i === 0 ? 'Active recall' : 'Focused review'}: ${focus}`,
+                    resources: this._buildResources(subject, focus, null),
+                    source: 'assistant',
+                    priority: 1
+                });
+                target.tasks.push(task);
+                created.push({ task_id: task.id, date: target.date, topic: focus });
+            }
+            return created;
+        }
+        if (change.type === 'refresh_resources') {
+            const refreshed = [];
+            days.slice(0, 7).forEach(day => {
+                (day.tasks || []).forEach(task => {
+                    if (!task.subject || !task.topic || task.topic === 'Mock Exam') return;
+                    task.resources = this._buildResources(task.subject, task.topic, null);
+                    refreshed.push({ task_id: task.id, date: day.date, topic: task.topic });
+                });
+            });
+            plan.resource_recommendations = rankResources({
+                subject: plan.subjects_selected?.[0],
+                topic: plan.weak_topics?.[0],
+                country: plan.learner_profile?.country || 'India',
+                userPreferences: plan.learner_profile || {},
+                limit: 5
+            });
+            return refreshed;
+        }
+        throw new Error(`Unsupported assistant change type: ${change.type}`);
+    }
+
+    async applyAssistantProposal(uid, proposalId) {
+        const plan = await this.getStudyPlan(uid);
+        if (!plan) throw new Error('Plan not found');
+        const proposal = (plan.adaptation_history || []).find(item => item.id === proposalId && item.status === 'pending');
+        if (!proposal) throw new Error('Pending proposal not found');
+
+        const allowedTypes = new Set(['rebalance', 'lighten_day', 'add_focus_review', 'refresh_resources']);
+        const applied_changes = [];
+        for (const change of proposal.proposed_changes || []) {
+            if (!allowedTypes.has(change.type)) {
+                throw new Error(`Unsupported assistant change type: ${change.type}`);
+            }
+            applied_changes.push({ type: change.type, result: this.applyProposalChange(plan, change) });
+        }
+
+        proposal.status = 'applied';
+        proposal.applied_at = new Date();
+        this.recalculatePlan(plan);
+        await plan.save();
+        invalidateLearnerContext(uid);
+        return { plan, applied_changes };
     }
 }
 

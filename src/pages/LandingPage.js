@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import '../animations.css';
 import CanvasParticles from '../components/landing/CanvasParticles';
 import TeamSection from '../components/landing/TeamSection';
-import { getViewportWidth, subscribeToMediaQuery } from '../utils/browser';
+import { canUseDOM, getViewportWidth, subscribeToMediaQuery } from '../utils/browser';
+import { useNavigate } from '../utils/navigation';
 
 // ─── Mobile detection hook ──────────────────────────────────────────────────
 function useIsMobile(breakpoint = 768) {
@@ -88,6 +88,10 @@ function CountUp({ end, suffix = '' }) {
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
+        if (!canUseDOM() || typeof window.IntersectionObserver !== 'function' || typeof window.requestAnimationFrame !== 'function') {
+            setCount(end);
+            return undefined;
+        }
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting && !observed.current) {
                 observed.current = true;
@@ -206,7 +210,9 @@ function Navbar({ onSignIn }) {
     const isMobile = useIsMobile();
 
     useEffect(() => {
+        if (!canUseDOM()) return undefined;
         const handler = () => setScrolled(window.scrollY > 30);
+        handler();
         window.addEventListener('scroll', handler);
         return () => window.removeEventListener('scroll', handler);
     }, []);
@@ -478,6 +484,125 @@ function VisionSection() {
                         <br /><br />
                         <strong style={{ color: '#f1f5f9', fontWeight: 600 }}>That&apos;s what inspired us to build Cortex—an AI-powered study companion built <em>just</em> for med students.</strong> We believe every medical student deserves a reliable digital mentor, and we&apos;re committed to making that vision real.
                     </p>
+                </div>
+            </FadeUp>
+        </section>
+    );
+}
+
+function CollegeTrustSection() {
+    const isMobile = useIsMobile();
+    const cards = [
+        {
+            title: 'Built for academic oversight',
+            desc: 'Structured progress, learner context, and health checks make Medsage easier to evaluate before a college rollout.',
+        },
+        {
+            title: 'Textbook-first learning habits',
+            desc: 'The experience emphasizes cited, syllabus-aware study workflows instead of generic chat or unsupported shortcuts.',
+        },
+        {
+            title: 'Reliable adoption surface',
+            desc: 'Runtime auth config, backend status visibility, and clear recovery states help teams support students with confidence.',
+        },
+    ];
+
+    return (
+        <section aria-label="College readiness" style={{ padding: isMobile ? '56px 16px' : '88px 32px', position: 'relative' }}>
+            <FadeUp>
+                <div style={{
+                    maxWidth: 1120,
+                    margin: '0 auto',
+                    borderRadius: isMobile ? 22 : 32,
+                    padding: isMobile ? '28px 20px' : '44px',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.075), rgba(99,102,241,0.05))',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 30px 90px rgba(0,0,0,0.28)',
+                    backdropFilter: 'blur(22px)',
+                }}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '0.9fr 1.4fr',
+                        gap: isMobile ? 28 : 44,
+                        alignItems: 'center',
+                    }}>
+                        <div>
+                            <span style={{
+                                display: 'inline-flex',
+                                marginBottom: 16,
+                                padding: '7px 16px',
+                                borderRadius: 100,
+                                background: 'rgba(16,185,129,0.1)',
+                                border: '1px solid rgba(16,185,129,0.28)',
+                                color: '#6ee7b7',
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 12,
+                                fontWeight: 800,
+                                letterSpacing: '1.4px',
+                            }}>COLLEGE READY</span>
+                            <h2 style={{
+                                margin: '0 0 16px',
+                                color: '#f8fafc',
+                                fontFamily: 'Inter, sans-serif',
+                                fontWeight: 900,
+                                fontSize: 'clamp(30px, 4.8vw, 52px)',
+                                letterSpacing: '-1.4px',
+                                lineHeight: 1.05,
+                            }}>
+                                A credible study layer for modern medical colleges.
+                            </h2>
+                            <p style={{
+                                margin: 0,
+                                color: 'rgba(255,255,255,0.58)',
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: 16,
+                                lineHeight: 1.75,
+                            }}>
+                                Medsage is being shaped for adoption conversations: clear learning value, visible reliability signals, and a student experience that feels dependable from the first sign-in.
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: 14 }}>
+                            {cards.map((card, index) => (
+                                <motion.div
+                                    key={card.title}
+                                    whileHover={{ x: isMobile ? 0 : 4 }}
+                                    style={{
+                                        padding: '18px 20px',
+                                        borderRadius: 18,
+                                        background: 'rgba(4,4,6,0.42)',
+                                        border: '1px solid rgba(255,255,255,0.085)',
+                                        display: 'grid',
+                                        gridTemplateColumns: 'auto 1fr',
+                                        gap: 14,
+                                        alignItems: 'start',
+                                    }}
+                                >
+                                    <div style={{
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: 12,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: 'rgba(99,102,241,0.14)',
+                                        color: '#a5b4fc',
+                                        fontWeight: 900,
+                                        fontFamily: 'Inter, sans-serif',
+                                        fontSize: 12,
+                                    }}>{index + 1}</div>
+                                    <div>
+                                        <h3 style={{ margin: '0 0 6px', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 800 }}>
+                                            {card.title}
+                                        </h3>
+                                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.52)', fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.6 }}>
+                                            {card.desc}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </FadeUp>
         </section>
@@ -947,14 +1072,17 @@ function Footer() {
 }
 
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────
-export default function LandingPage() {
-    const navigate = useNavigate();
-    const { currentUser } = useAuth();
+export default function LandingPage({ navigation = null }) {
+    const fallbackNavigate = useNavigate();
+    const navigate = navigation?.navigate || fallbackNavigate;
+    const { currentUser, authStatus } = useAuth();
 
     // If already signed in, send to dashboard
     useEffect(() => {
-        if (currentUser) navigate('/');
-    }, [currentUser, navigate]);
+        if (authStatus === 'authenticated' && currentUser) {
+            navigate('/', { replace: true });
+        }
+    }, [authStatus, currentUser, navigate]);
 
     const handleSignIn = () => navigate('/signin');
 
@@ -965,12 +1093,13 @@ export default function LandingPage() {
                 <Navbar onSignIn={handleSignIn} />
                 <HeroSection onSignIn={handleSignIn} />
                 <VisionSection />
+                <CollegeTrustSection />
                 <StatsBar />
                 <ExamsStrip />
                 <FeaturesSection />
                 <HowItWorksSection />
                 <FinalCTA onSignIn={handleSignIn} />
-                <TeamSection />
+                <TeamSection navigation={navigation} />
                 <Footer />
             </div>
         </div>

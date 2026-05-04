@@ -1,3 +1,11 @@
+const mockVerifyIdToken = jest.fn();
+
+jest.mock('google-auth-library', () => ({
+  OAuth2Client: jest.fn(() => ({
+    verifyIdToken: (...args) => mockVerifyIdToken(...args),
+  })),
+}));
+
 jest.mock('../../utils/logger', () => ({
   warn: jest.fn(),
   error: jest.fn(),
@@ -14,13 +22,14 @@ function createRes() {
 describe('auth middleware', () => {
   beforeEach(() => {
     jest.resetModules();
+    jest.useRealTimers();
     process.env.GOOGLE_CLIENT_ID = 'client-123';
-    global.fetch = jest.fn();
+    mockVerifyIdToken.mockReset();
   });
 
   afterEach(() => {
     delete process.env.GOOGLE_CLIENT_ID;
-    delete global.fetch;
+    jest.useRealTimers();
   });
 
   test('verifyToken returns requestId-aware error when token is missing', async () => {
@@ -42,16 +51,15 @@ describe('auth middleware', () => {
   });
 
   test('verifyToken attaches decoded user when token is valid', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-        json: async () => ({
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
         sub: 'user-1',
         email: 'student@example.com',
         name: 'Student One',
         picture: 'https://example.com/u.png',
         aud: 'client-123',
         iss: 'https://accounts.google.com',
-        email_verified: 'true',
+        email_verified: true,
         exp: `${Math.floor(Date.now() / 1000) + 3600}`,
       }),
     });
@@ -63,6 +71,10 @@ describe('auth middleware', () => {
 
     await verifyToken(req, res, next);
 
+    expect(mockVerifyIdToken).toHaveBeenCalledWith({
+      idToken: 'good-token',
+      audience: 'client-123',
+    });
     expect(next).toHaveBeenCalled();
     expect(req.user).toEqual({
       uid: 'user-1',
@@ -74,10 +86,7 @@ describe('auth middleware', () => {
   });
 
   test('verifyToken normalizes invalid token failures', async () => {
-    global.fetch.mockResolvedValue({
-      ok: false,
-      json: async () => ({ error_description: 'Token invalid' }),
-    });
+    mockVerifyIdToken.mockRejectedValue(new Error('Invalid token signature'));
 
     const { verifyToken } = require('../auth');
     const req = { headers: { authorization: 'Bearer bad-token' }, id: 'rid-3', path: '/api/v1/study/plan' };
@@ -96,10 +105,51 @@ describe('auth middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  test('verifyToken rejects audience mismatches', async () => {
+    mockVerifyIdToken.mockRejectedValue(new Error('Wrong recipient, payload audience != requiredAudience'));
+
+    const { verifyToken } = require('../auth');
+    const req = { headers: { authorization: 'Bearer mismatch-token' }, id: 'rid-4', path: '/api/v1/study/plan' };
+    const res = createRes();
+    const next = jest.fn();
+
+    await verifyToken(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: 'Authentication failed',
+      code: 'AUTH_AUDIENCE_MISMATCH',
+      requestId: 'rid-4',
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('verifyToken rejects expired tokens', async () => {
+    mockVerifyIdToken.mockRejectedValue(new Error('Token used too late'));
+
+    const { verifyToken } = require('../auth');
+    const req = { headers: { authorization: 'Bearer expired-token' }, id: 'rid-5', path: '/api/v1/study/plan' };
+    const res = createRes();
+    const next = jest.fn();
+
+    await verifyToken(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: 'Authentication failed',
+      code: 'AUTH_TOKEN_EXPIRED',
+      requestId: 'rid-5',
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
   test('verifyToken fails closed when GOOGLE_CLIENT_ID is missing', async () => {
     delete process.env.GOOGLE_CLIENT_ID;
+
     const { verifyToken } = require('../auth');
-    const req = { headers: { authorization: 'Bearer any-token' }, id: 'rid-4', path: '/api/v1/study/plan' };
+    const req = { headers: { authorization: 'Bearer any-token' }, id: 'rid-6', path: '/api/v1/study/plan' };
     const res = createRes();
     const next = jest.fn();
 
@@ -110,7 +160,52 @@ describe('auth middleware', () => {
       success: false,
       error: 'Authentication is temporarily unavailable',
       code: 'AUTH_MISCONFIGURED',
-      requestId: 'rid-4',
+      requestId: 'rid-6',
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('verifyToken does not special-case the removed local dev token path', async () => {
+    mockVerifyIdToken.mockRejectedValue(new Error('Invalid token signature'));
+
+    const { verifyToken } = require('../auth');
+    const req = {
+      headers: { authorization: 'Bearer medsage-local-dev-token' },
+      id: 'rid-7',
+      path: '/api/v1/study/plan',
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await verifyToken(req, res, next);
+
+    expect(mockVerifyIdToken).toHaveBeenCalledWith({
+      idToken: 'medsage-local-dev-token',
+      audience: 'client-123',
+    });
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('verifyToken returns a retryable auth outage when Google verification times out', async () => {
+    jest.useFakeTimers();
+    mockVerifyIdToken.mockImplementation(() => new Promise(() => {}));
+
+    const { verifyToken } = require('../auth');
+    const req = { headers: { authorization: 'Bearer slow-token' }, id: 'rid-8', path: '/api/v1/study/plan' };
+    const res = createRes();
+    const next = jest.fn();
+
+    const pendingVerification = verifyToken(req, res, next);
+    await jest.advanceTimersByTimeAsync(8000);
+    await pendingVerification;
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: 'Authentication is temporarily unavailable',
+      code: 'AUTH_UNAVAILABLE',
+      requestId: 'rid-8',
     });
     expect(next).not.toHaveBeenCalled();
   });

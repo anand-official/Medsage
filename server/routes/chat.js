@@ -1,7 +1,7 @@
 /**
  * Cortex Chat Sessions API
  *
- * Persists conversation sessions to MongoDB.
+ * Persists conversation sessions to Supabase Postgres.
  * Frontend uses localStorage as offline cache and syncs here on load/save.
  *
  * Routes:
@@ -14,11 +14,16 @@
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
-const ChatSession = require('../models/ChatSession');
+const chatSessionRepo = require('../repositories/chatSessionRepo');
 const { verifyToken } = require('../middleware/auth');
+const { sanitizeHistoryContent } = require('../services/cortexRequestUtils');
 
 const MAX_SESSIONS_PER_USER = 50;
 const MAX_MESSAGES_PER_SESSION = 200;
+
+function isMissingChatSessionTable(error) {
+    return /chat_sessions/i.test(error?.message || '') && /schema cache|does not exist/i.test(error?.message || '');
+}
 
 /**
  * @swagger
@@ -54,14 +59,14 @@ const MAX_MESSAGES_PER_SESSION = 200;
 // Returns session list (no messages) for the sidebar
 router.get('/sessions', verifyToken, async (req, res) => {
     try {
-        const sessions = await ChatSession.find({ user_id: req.user.uid })
-            .select('session_id title created_at updated_at')
-            .sort({ updated_at: -1 })
-            .limit(MAX_SESSIONS_PER_USER)
-            .lean();
+        const sessions = await chatSessionRepo.listByUser(req.user.uid, { limit: MAX_SESSIONS_PER_USER });
 
         res.json({ success: true, sessions });
     } catch (err) {
+        if (isMissingChatSessionTable(err)) {
+            console.warn('[Chat] chat_sessions table missing, returning empty session list');
+            return res.json({ success: true, sessions: [] });
+        }
         console.error('[Chat] List sessions error:', err.message);
         res.status(500).json({ success: false, error: 'Failed to load sessions' });
     }
@@ -131,10 +136,7 @@ router.get('/sessions/:id', [
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
-        const session = await ChatSession.findOne({
-            user_id: req.user.uid,
-            session_id: req.params.id
-        }).lean();
+        const session = await chatSessionRepo.findByUserSession(req.user.uid, req.params.id);
 
         if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
 
@@ -158,6 +160,9 @@ router.get('/sessions/:id', [
             },
         });
     } catch (err) {
+        if (isMissingChatSessionTable(err)) {
+            return res.status(404).json({ success: false, error: 'Session not found' });
+        }
         console.error('[Chat] Get session error:', err.message);
         res.status(500).json({ success: false, error: 'Failed to load session' });
     }
@@ -230,34 +235,35 @@ router.post('/sessions', [
     try {
         // Note: this cap check has a TOCTOU race under concurrent requests — acceptable for a soft UX limit.
         // Enforce per-user session cap before creating a new one
-        const existingCount = await ChatSession.countDocuments({ user_id: uid }, { maxTimeMS: 5000 });
-        const isNew = !(await ChatSession.exists({ user_id: uid, session_id }, { maxTimeMS: 5000 }));
+        const existingCount = await chatSessionRepo.countByUser(uid);
+        const isNew = !(await chatSessionRepo.existsByUserSession(uid, session_id));
         if (isNew && existingCount >= MAX_SESSIONS_PER_USER) {
             // Delete the oldest session to make room
-            const oldest = await ChatSession.findOne({ user_id: uid })
-                .sort({ updated_at: 1 })
-                .select('_id');
-            if (oldest) await ChatSession.deleteOne({ _id: oldest._id });
+            const oldest = await chatSessionRepo.getOldestByUser(uid);
+            if (oldest) await chatSessionRepo.deleteById(oldest._id);
         }
 
-        const rawTitle = title || (messages[0]?.text?.substring(0, 60) + '…') || 'Untitled session';
+        const firstMessageTitle = messages[0]?.text
+            ? sanitizeHistoryContent(messages[0].text).substring(0, 60) + '…'
+            : null;
+        const rawTitle = title || firstMessageTitle || 'Untitled session';
         const safeTitle = rawTitle.replace(/<[^>]*>/g, '').substring(0, 63);
 
-        const session = await ChatSession.findOneAndUpdate(
-            { user_id: uid, session_id },
-            {
-                $set: {
-                    title: safeTitle,
-                    messages: messages.slice(0, MAX_MESSAGES_PER_SESSION),
-                    updated_at: new Date(),
-                },
-                $setOnInsert: { user_id: uid, session_id, created_at: new Date() },
-            },
-            { upsert: true, new: true }
-        );
+        const session = await chatSessionRepo.upsert({
+            user_id: uid,
+            session_id,
+            title: safeTitle,
+            messages: messages.slice(0, MAX_MESSAGES_PER_SESSION),
+            updated_at: new Date(),
+            created_at: new Date(),
+        });
 
         res.json({ success: true, session_id: session.session_id });
     } catch (err) {
+        if (isMissingChatSessionTable(err)) {
+            console.warn('[Chat] chat_sessions table missing, skipping session persistence');
+            return res.json({ success: true, session_id });
+        }
         console.error('[Chat] Upsert session error:', err.message);
         res.status(500).json({ success: false, error: 'Failed to save session' });
     }
@@ -271,9 +277,12 @@ router.delete('/sessions/:id', [
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
-        await ChatSession.deleteOne({ user_id: req.user.uid, session_id: req.params.id });
+        await chatSessionRepo.deleteByUserSession(req.user.uid, req.params.id);
         res.json({ success: true });
     } catch (err) {
+        if (isMissingChatSessionTable(err)) {
+            return res.json({ success: true });
+        }
         console.error('[Chat] Delete session error:', err.message);
         res.status(500).json({ success: false, error: 'Failed to delete session' });
     }

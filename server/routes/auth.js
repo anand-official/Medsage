@@ -14,10 +14,10 @@ function validate(req, res, next) {
 
 /**
  * @swagger
- * /auth/user:
+ * /api/v1/auth/user:
  *   post:
- *     summary: Sync user profile after Firebase sign-in
- *     description: Called by the frontend after Google/Firebase sign-in to create or update the UserProfile in MongoDB. Requires a valid Firebase ID token.
+ *     summary: Sync user profile after Google sign-in
+ *     description: Called by the frontend after Google OAuth sign-in to create or update the user profile in Supabase. Requires a valid Google ID token.
  *     tags: [Auth]
  *     security:
  *       - BearerAuth: []
@@ -25,9 +25,9 @@ function validate(req, res, next) {
  *       200:
  *         description: User profile synced
  *       401:
- *         description: Missing or invalid Firebase token
+ *         description: Missing or invalid Google ID token
  *
- * /auth/profile:
+ * /api/v1/auth/profile:
  *   get:
  *     summary: Get current user's profile
  *     tags: [Auth]
@@ -59,7 +59,7 @@ function validate(req, res, next) {
  *       401:
  *         description: Unauthorized
  *
- * /auth/preferences:
+ * /api/v1/auth/preferences:
  *   put:
  *     summary: Update user preferences (study mode, theme, etc.)
  *     tags: [Auth]
@@ -72,11 +72,13 @@ function validate(req, res, next) {
  *         description: Unauthorized
  */
 // Define auth routes
-// Called by frontend after Firebase Google Sign-In to sync UserProfile.
+router.get('/config', authController.getPublicConfig);
+
+// Called by frontend after Google sign-in to sync UserProfile.
 // Requires a valid token — anonymous callers cannot trigger user creation.
 router.post('/user', verifyToken, authController.syncUser);
 
-// Protected routes - require valid Firebase token
+// Protected routes - require a valid Google ID token
 router.get('/profile', verifyToken, authController.getProfile);
 router.put('/profile', [
   body('displayName').optional().isString().isLength({ min: 1, max: 80 }),

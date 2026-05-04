@@ -625,8 +625,7 @@ const STATIC_CURRICULUMS = {
 function normalizeCountry(country = 'India') {
     const normalized = String(country || 'India').trim().toLowerCase();
     if (normalized === 'nepal') return 'Nepal';
-    if (normalized === 'india') return 'India';
-    return country || 'India';
+    return 'India';
 }
 
 function getExpectedSubjects(country, year) {

@@ -23,6 +23,20 @@ function resolvePersona(subject, options = {}) {
     const mode = options.mode || 'conceptual';
     const followUpIntent = options.followUpIntent || 'none';
     const threadMode = options.threadMode || 'new_topic';
+    const structure = mode === 'exam'
+        ? 'Open with the exam-facing frame, then move through definition, classification, key mechanism, and high-yield distinctions.'
+        : 'Open with intuition and first principles, then move into mechanism, clinical reasoning, and a short synthesis.';
+    const analogyStyle = mode === 'conceptual'
+        ? 'Use one concrete analogy when it genuinely makes the mechanism easier to visualize.'
+        : 'Keep analogies brief and only when they improve recall.';
+    const vivaStyle = mode === 'exam'
+        ? 'End sections with viva-style pivots, ranking cues, and likely examiner follow-ups.'
+        : 'Use viva-style pivots only when they sharpen understanding.';
+    const objectionHandling = followUpIntent === 'challenge'
+        ? 'Treat this as an objection. State what part of the previous answer stands, what must be corrected, and why.'
+        : followUpIntent === 'source_check'
+            ? 'Map major claims to evidence strength and show where the answer is grounded.'
+            : 'Address follow-ups directly without restarting the entire explanation.';
 
     const responseContract = [
         MODE_EMPHASIS[mode] || MODE_EMPHASIS.default,
@@ -30,6 +44,10 @@ function resolvePersona(subject, options = {}) {
         threadMode === 'follow_up'
             ? 'Preserve subject continuity across this follow-up unless the student explicitly changes topic.'
             : 'Treat this as a fresh topic explanation unless the student references prior context.',
+        structure,
+        analogyStyle,
+        vivaStyle,
+        objectionHandling,
     ].join(' ');
 
     return {
@@ -38,6 +56,10 @@ function resolvePersona(subject, options = {}) {
         response_contract: responseContract,
         follow_up_policy: FOLLOW_UP_POLICIES[followUpIntent] || FOLLOW_UP_POLICIES.none,
         mode_emphasis: MODE_EMPHASIS[mode] || MODE_EMPHASIS.default,
+        structure_preference: structure,
+        analogy_style: analogyStyle,
+        viva_style: vivaStyle,
+        objection_handling: objectionHandling,
     };
 }
 
